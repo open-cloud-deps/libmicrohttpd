@@ -1,8 +1,8 @@
 This is microhttpd.info, produced by makeinfo version 4.13 from
 microhttpd.texi.
 
-This manual documents GNU libmicrohttpd version 0.9.19, last updated
-26 November 2011. It is built upon the documentation in the header file
+This manual documents GNU libmicrohttpd version 0.9.20, last updated
+8 March 2012. It is built upon the documentation in the header file
 `microhttpd.h'.
 
 Copyright (C) 2007, 2008, 2009, 2010, 2011 Christian Grothoff
@@ -26,8 +26,8 @@ File: microhttpd.info,  Node: Top,  Next: microhttpd-intro,  Up: (dir)
 The GNU libmicrohttpd Library
 *****************************
 
-This manual documents GNU libmicrohttpd version 0.9.19, last updated
-26 November 2011. It is built upon the documentation in the header file
+This manual documents GNU libmicrohttpd version 0.9.20, last updated
+8 March 2012. It is built upon the documentation in the header file
 `microhttpd.h'.
 
 Copyright (C) 2007, 2008, 2009, 2010, 2011 Christian Grothoff
@@ -393,7 +393,10 @@ File: microhttpd.info,  Node: microhttpd-const,  Next: microhttpd-struct,  Prev:
           `MHD_USE_IPv6' is specified, the `struct sockaddr*' should
           point to a `struct sockaddr_in6', otherwise to a `struct
           sockaddr_in'.  If this option is not specified, the daemon
-          will listen to incoming connections from anywhere.
+          will listen to incoming connections from anywhere.  If you
+          use this option, the 'port' argument from `MHD_start_daemon'
+          is ignored and the port from the given `struct sockaddr *'
+          will be used instead.
 
     `MHD_OPTION_URI_LOG_CALLBACK'
           Specify a function that should be called before parsing the
@@ -1020,9 +1023,14 @@ File: microhttpd.info,  Node: microhttpd-requests,  Next: microhttpd-responses, 
      Get all the headers matching KIND from the request.
 
      The ITERATOR callback is invoked once for each header, with
-     ITERATOR_CLS as first argument. Return the number of entries
-     iterated over; this can be less than the number of headers if,
-     while iterating, ITERATOR returns `MHD_NO'.
+     ITERATOR_CLS as first argument.  After version 0.9.19, the headers
+     are iterated in the same order as they were received from the
+     network; previous versions iterated over the headers in reverse
+     order.
+
+     `MHD_get_connection_values' returns the number of entries iterated
+     over; this can be less than the number of headers if, while
+     iterating, ITERATOR returns `MHD_NO'.
 
      ITERATOR can be `NULL': in this case this function just counts and
      returns the number of headers.
@@ -1039,12 +1047,12 @@ File: microhttpd.info,  Node: microhttpd-requests,  Next: microhttpd-responses, 
  -- Function: int MHD_set_connection_value (struct MHD_Connection
           *connection, enum MHD_ValueKind kind, const char * key, const
           char * value)
-     This function can be used to add an entry to the HTTP headers of a
-     connection (so that the `MHD_get_connection_values function' will
-     return them - and the MHD PostProcessor will also see them).  This
-     maybe required in certain situations (see Mantis #1399) where
-     (broken) HTTP implementations fail to supply values needed by the
-     post processor (or other parts of the application).
+     This function can be used to append an entry to the list of HTTP
+     headers of a connection (so that the `MHD_get_connection_values
+     function' will return them - and the MHD PostProcessor will also
+     see them).  This maybe required in certain situations (see Mantis
+     #1399) where (broken) HTTP implementations fail to supply values
+     needed by the post processor (or other parts of the application).
 
      This function MUST only be called from within the
      MHD_AccessHandlerCallback (otherwise, access maybe improperly
@@ -3260,27 +3268,27 @@ Concept Index
 
 * ARM:                                   microhttpd-intro.    (line 175)
 * bind, restricting bind:                microhttpd-const.    (line 137)
-* cipher:                                microhttpd-const.    (line 192)
+* cipher:                                microhttpd-const.    (line 195)
 * clock:                                 microhttpd-const.    (line  61)
 * compilation:                           microhttpd-intro.    (line  59)
 * connection, limiting number of connections: microhttpd-const.
                                                               (line  82)
-* cookie:                                microhttpd-const.    (line 327)
+* cookie:                                microhttpd-const.    (line 330)
 * cortex m3:                             microhttpd-intro.    (line 175)
 * date:                                  microhttpd-const.    (line  61)
 * debugging:                             microhttpd-const.    (line  24)
-* digest auth:                           microhttpd-const.    (line 200)
+* digest auth:                           microhttpd-const.    (line 203)
 * eCos, GNU General Public License with eCos Extension: GNU GPL with eCos Extension.
                                                               (line   6)
 * embedded systems <1>:                  microhttpd-const.    (line  61)
 * embedded systems:                      microhttpd-intro.    (line  59)
-* escaping:                              microhttpd-const.    (line 281)
+* escaping:                              microhttpd-const.    (line 284)
 * FD_SETSIZE:                            microhttpd-const.    (line  55)
-* foreign-function interface:            microhttpd-const.    (line 259)
+* foreign-function interface:            microhttpd-const.    (line 262)
 * GPL, GNU General Public License:       GNU GPL with eCos Extension.
                                                               (line   6)
 * IAR:                                   microhttpd-intro.    (line 175)
-* internationalization:                  microhttpd-const.    (line 281)
+* internationalization:                  microhttpd-const.    (line 284)
 * IPv6:                                  microhttpd-const.    (line  42)
 * license <1>:                           GNU-FDL.             (line   6)
 * license <2>:                           GNU GPL with eCos Extension.
@@ -3288,35 +3296,35 @@ Concept Index
 * license:                               GNU-LGPL.            (line   6)
 * listen:                                microhttpd-info daemon.
                                                               (line  39)
-* logging:                               microhttpd-const.    (line 145)
+* logging:                               microhttpd-const.    (line 148)
 * long long:                             microhttpd-intro.    (line 175)
 * memory, limiting memory utilization:   microhttpd-const.    (line  77)
 * microhttpd.h:                          microhttpd-intro.    (line 115)
-* options:                               microhttpd-const.    (line 259)
-* performance:                           microhttpd-const.    (line 251)
+* options:                               microhttpd-const.    (line 262)
+* performance:                           microhttpd-const.    (line 254)
 * poll:                                  microhttpd-const.    (line  55)
 * portability:                           microhttpd-intro.    (line  59)
 * POST method <1>:                       microhttpd-post api. (line   6)
 * POST method <2>:                       microhttpd-post.     (line   6)
 * POST method <3>:                       microhttpd-cb.       (line  50)
 * POST method <4>:                       microhttpd-struct.   (line  19)
-* POST method:                           microhttpd-const.    (line 331)
-* pthread:                               microhttpd-const.    (line 297)
+* POST method:                           microhttpd-const.    (line 334)
+* pthread:                               microhttpd-const.    (line 300)
 * PUT method:                            microhttpd-cb.       (line  50)
-* query string:                          microhttpd-const.    (line 145)
-* random:                                microhttpd-const.    (line 200)
-* replay attack:                         microhttpd-const.    (line 211)
+* query string:                          microhttpd-const.    (line 148)
+* random:                                microhttpd-const.    (line 203)
+* replay attack:                         microhttpd-const.    (line 214)
 * select:                                microhttpd-const.    (line  55)
 * signals:                               microhttpd-intro.    (line 136)
-* SSL:                                   microhttpd-const.    (line 163)
-* stack:                                 microhttpd-const.    (line 297)
-* systemd:                               microhttpd-const.    (line 233)
-* thread:                                microhttpd-const.    (line 297)
+* SSL:                                   microhttpd-const.    (line 166)
+* stack:                                 microhttpd-const.    (line 300)
+* systemd:                               microhttpd-const.    (line 236)
+* thread:                                microhttpd-const.    (line 300)
 * timeout <1>:                           microhttpd-option conn.
                                                               (line   6)
 * timeout <2>:                           microhttpd-inspect.  (line  24)
 * timeout:                               microhttpd-const.    (line 110)
-* TLS:                                   microhttpd-const.    (line 163)
+* TLS:                                   microhttpd-const.    (line 166)
 
 
 File: microhttpd.info,  Node: Function and Data Index,  Next: Type Index,  Prev: Concept Index,  Up: Top
@@ -3372,7 +3380,7 @@ Function and Data Index
 * MHD_get_response_headers:              microhttpd-response inspect.
                                                               (line   8)
 * MHD_get_timeout:                       microhttpd-inspect.  (line  24)
-* MHD_lookup_connection_value:           microhttpd-requests. (line  54)
+* MHD_lookup_connection_value:           microhttpd-requests. (line  59)
 * MHD_post_process:                      microhttpd-post api. (line  34)
 * MHD_queue_auth_fail_response:          microhttpd-dauth digest.
                                                               (line  38)
@@ -3383,7 +3391,7 @@ Function and Data Index
 * MHD_run:                               microhttpd-init.     (line  54)
 * MHD_set_connection_option:             microhttpd-option conn.
                                                               (line   8)
-* MHD_set_connection_value:              microhttpd-requests. (line  31)
+* MHD_set_connection_value:              microhttpd-requests. (line  36)
 * MHD_set_panic_func:                    microhttpd-init.     (line   7)
 * MHD_start_daemon:                      microhttpd-init.     (line  21)
 * MHD_stop_daemon:                       microhttpd-init.     (line  51)
@@ -3409,44 +3417,44 @@ Type Index
                                                               (line  26)
 * MHD_FLAG:                              microhttpd-const.    (line   7)
 * MHD_OPTION:                            microhttpd-const.    (line  69)
-* MHD_OptionItem:                        microhttpd-const.    (line 304)
+* MHD_OptionItem:                        microhttpd-const.    (line 307)
 * MHD_PostProcessor:                     microhttpd-struct.   (line  19)
-* MHD_RequestTerminationCode:            microhttpd-const.    (line 346)
+* MHD_RequestTerminationCode:            microhttpd-const.    (line 349)
 * MHD_Response:                          microhttpd-struct.   (line  16)
-* MHD_ResponseMemoryMode:                microhttpd-const.    (line 365)
-* MHD_ValueKind:                         microhttpd-const.    (line 317)
+* MHD_ResponseMemoryMode:                microhttpd-const.    (line 368)
+* MHD_ValueKind:                         microhttpd-const.    (line 320)
 
 
 
 Tag Table:
-Node: Top876
-Node: microhttpd-intro3065
-Node: microhttpd-const10049
-Node: microhttpd-struct28229
-Node: microhttpd-cb29006
-Node: microhttpd-init37611
-Node: microhttpd-inspect40767
-Node: microhttpd-requests42603
-Node: microhttpd-responses45622
-Node: microhttpd-response enqueue46673
-Ref: microhttpd-response enqueue-Footnote-148942
-Node: microhttpd-response create49161
-Node: microhttpd-response headers55161
-Node: microhttpd-response inspect56986
-Node: microhttpd-dauth58154
-Node: microhttpd-dauth basic59700
-Node: microhttpd-dauth digest60886
-Node: microhttpd-post65527
-Node: microhttpd-post api68469
-Node: microhttpd-info70987
-Node: microhttpd-info daemon71399
-Node: microhttpd-info conn73214
-Node: microhttpd-option conn75639
-Node: GNU-LGPL76697
-Node: GNU GPL with eCos Extension104807
-Node: GNU-FDL124665
-Node: Concept Index149767
-Node: Function and Data Index154211
-Node: Type Index158666
+Node: Top872
+Node: microhttpd-intro3057
+Node: microhttpd-const10041
+Node: microhttpd-struct28401
+Node: microhttpd-cb29178
+Node: microhttpd-init37783
+Node: microhttpd-inspect40939
+Node: microhttpd-requests42775
+Node: microhttpd-responses46023
+Node: microhttpd-response enqueue47074
+Ref: microhttpd-response enqueue-Footnote-149343
+Node: microhttpd-response create49562
+Node: microhttpd-response headers55562
+Node: microhttpd-response inspect57387
+Node: microhttpd-dauth58555
+Node: microhttpd-dauth basic60101
+Node: microhttpd-dauth digest61287
+Node: microhttpd-post65928
+Node: microhttpd-post api68870
+Node: microhttpd-info71388
+Node: microhttpd-info daemon71800
+Node: microhttpd-info conn73615
+Node: microhttpd-option conn76040
+Node: GNU-LGPL77098
+Node: GNU GPL with eCos Extension105208
+Node: GNU-FDL125066
+Node: Concept Index150168
+Node: Function and Data Index154612
+Node: Type Index159067
 
 End Tag Table
