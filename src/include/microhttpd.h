@@ -106,7 +106,7 @@ extern "C"
 /**
  * Current version of the library.
  */
-#define MHD_VERSION 0x00091300
+#define MHD_VERSION 0x00091400
 
 /**
  * MHD-internal return code for "YES".
@@ -702,7 +702,16 @@ enum MHD_RequestTerminationCode
    * We had to close the session since MHD was being
    * shut down.
    */
-  MHD_REQUEST_TERMINATED_DAEMON_SHUTDOWN = 3
+  MHD_REQUEST_TERMINATED_DAEMON_SHUTDOWN = 3,
+
+  /**
+   * We tried to read additional data, but the other side closed the
+   * connection.  This error is similar to
+   * MHD_REQUEST_TERMINATED_WITH_ERROR, but specific to the case where
+   * the connection died because the other side did not send expected
+   * data.
+   */
+  MHD_REQUEST_TERMINATED_READ_ERROR = 4
 
 };
 
@@ -1405,7 +1414,7 @@ typedef void (*MHD_UpgradeHandler)(void *cls,
 				   void **con_cls,
 				   int upgrade_socket);
 
-
+#if 0
 /**
  * Create a response object that can be used for 101 UPGRADE
  * responses, for example to implement websockets.  After sending the
@@ -1438,7 +1447,7 @@ typedef void (*MHD_UpgradeHandler)(void *cls,
 struct MHD_Response *
 MHD_create_response_for_upgrade (MHD_UpgradeHandler upgrade_handler,
 				 void *upgrade_handler_cls);
-
+#endif
 
 /**
  * Destroy a response object and associated resources.  Note that
