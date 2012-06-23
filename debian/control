@@ -10,7 +10,6 @@ Vcs-browser: http://git.debian.org/?p=users/bbk-guest/libmicrohttpd.git
 Homepage: http://www.gnu.org/software/libmicrohttpd/
 
 Package: libmicrohttpd10
-Section: libs
 Architecture: any
 Pre-Depends: multiarch-support
 Depends: ${misc:Depends}, ${shlibs:Depends}
