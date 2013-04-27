@@ -5,8 +5,8 @@ Maintainer: Bertrand Marc <beberking@gmail.com>
 Build-Depends: debhelper (>= 9), autoconf, automake, dh-autoreconf,
  libgcrypt-dev, libgnutls-dev
 Standards-Version: 3.9.3
-Vcs-Git: git://git.debian.org/git/users/bbk-guest/libmicrohttpd.git
-Vcs-browser: http://git.debian.org/?p=users/bbk-guest/libmicrohttpd.git
+Vcs-Git: git://git.debian.org/git/collab-maint/libmicrohttpd.git
+Vcs-browser: http://git.debian.org/?p=collab-maint/libmicrohttpd.git
 Homepage: http://www.gnu.org/software/libmicrohttpd/
 
 Package: libmicrohttpd10
