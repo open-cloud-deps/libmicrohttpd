@@ -27,8 +27,10 @@
 
 /**
  * Size of on-stack buffer that we use for un-escaping of the value.
+ * We use a pretty small value to be nice to the stack on embedded
+ * systems.
  */
-#define XBUF_SIZE 1024
+#define XBUF_SIZE 512
 
 /**
  * States in the PP parser's state machine.
@@ -56,9 +58,10 @@ enum PP_State
   PP_Nested_PerformMarking,
   PP_Nested_ProcessEntryHeaders,
   PP_Nested_ProcessValueToBoundary,
-  PP_Nested_PerformCleanup,
+  PP_Nested_PerformCleanup
 
 };
+
 
 enum RN_State
 {
@@ -88,8 +91,9 @@ enum RN_State
   /**
    * Got a single dash, expect second dash.
    */
-  RN_Dash2 = 4,
+  RN_Dash2 = 4
 };
+
 
 /**
  * Bits for the globally known fields that
@@ -102,8 +106,9 @@ enum NE_State
   NE_content_name = 1,
   NE_content_type = 2,
   NE_content_filename = 4,
-  NE_content_transfer_encoding = 8,
+  NE_content_transfer_encoding = 8
 };
+
 
 /**
  * Internal state of the post-processor.  Note that the fields
@@ -430,7 +435,7 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
                 {
                   pp->state = PP_ExpectNewLine;
                 }
-              else
+              else if (post_data[poff] == '&')
                 {
                   poff++;       /* skip '&' */
                   pp->state = PP_Init;
@@ -489,6 +494,7 @@ find_boundary (struct MHD_PostProcessor *pp,
     {
       if (pp->buffer_pos == pp->buffer_size)
         pp->state = PP_Error;   /* out of memory */
+      ++(*ioffptr);
       return MHD_NO;            /* not enough data */
     }
   if ((0 != memcmp ("--", buf, 2)) || (0 != memcmp (&buf[2], boundary, blen)))
@@ -537,7 +543,7 @@ try_get_value (const char *buf, const char *key, char **destination)
         }
       if (spos[klen + 1] != '"')
         return;                 /* not quoted */
-      if (NULL == (endv = strstr (&spos[klen + 2], "\"")))
+      if (NULL == (endv = strchr (&spos[klen + 2], '\"')))
         return;                 /* no end-quote */
       vlen = endv - spos - klen - 1;
       *destination = malloc (vlen);
@@ -836,12 +842,11 @@ post_process_multipart (struct MHD_PostProcessor *pp,
            * > anything that appears before the first boundary delimiter
            * > line or after the last one.
            */
-          if (MHD_NO == find_boundary (pp,
-                                       pp->boundary,
-                                       pp->blen,
-                                       &ioff,
-                                       PP_ProcessEntryHeaders, PP_Done))
-            ++ioff;
+          (void) find_boundary (pp,
+				pp->boundary,
+				pp->blen,
+				&ioff,
+				PP_ProcessEntryHeaders, PP_Done);
           break;
         case PP_NextBoundary:
           if (MHD_NO == find_boundary (pp,
@@ -1057,10 +1062,19 @@ MHD_destroy_post_processor (struct MHD_PostProcessor *pp)
 
   if (NULL == pp)
     return MHD_YES;
+  if (PP_ProcessValue == pp->state)
+  {
+    /* key without terminated value left at the end of the
+       buffer; fake receiving a termination character to
+       ensure it is also processed */
+    post_process_urlencoded (pp, "\n", 1);
+  }
   /* These internal strings need cleaning up since
      the post-processing may have been interrupted
      at any stage */
-  if ((pp->xbuf_pos > 0) || (pp->state != PP_Done))
+  if ((pp->xbuf_pos > 0) || 
+      ( (pp->state != PP_Done) &&
+	(pp->state != PP_ExpectNewLine)))
     ret = MHD_NO;
   else
     ret = MHD_YES;

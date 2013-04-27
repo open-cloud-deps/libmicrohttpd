@@ -1,6 +1,6 @@
 /*
   This file is part of libmicrohttpd
-  (C) 2007, 2008, 2009, 2010 Daniel Pittman and Christian Grothoff
+  (C) 2007, 2008, 2009, 2010, 2011, 2012 Daniel Pittman and Christian Grothoff
   
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -42,6 +42,7 @@
 #define MHD_MAX(a,b) ((a)<(b)) ? (b) : (a)
 #define MHD_MIN(a,b) ((a)<(b)) ? (a) : (b)
 
+
 /**
  * Size by which MHD usually tries to increment read/write buffers.
  * TODO: we should probably get rid of this magic constant and
@@ -58,6 +59,22 @@ extern MHD_PanicCallback mhd_panic;
  * Closure argument for "mhd_panic".
  */
 extern void *mhd_panic_cls;
+
+#if HAVE_MESSAGES
+/**
+ * Trigger 'panic' action based on fatal errors.
+ * 
+ * @param error message (const char *)
+ */
+#define MHD_PANIC(msg) mhd_panic (mhd_panic_cls, __FILE__, __LINE__, msg)
+#else
+/**
+ * Trigger 'panic' action based on fatal errors.
+ * 
+ * @param error message (const char *)
+ */
+#define MHD_PANIC(msg) mhd_panic (mhd_panic_cls, __FILE__, __LINE__, NULL)
+#endif
 
 /**
  * Events we care about with respect to poll/select
@@ -180,6 +197,7 @@ struct MHD_HTTP_Header
 
 };
 
+
 /**
  * Representation of a response.
  */
@@ -261,6 +279,7 @@ struct MHD_Response
   int fd;
 
 };
+
 
 /**
  * States in a state machine for a connection.
@@ -405,6 +424,7 @@ enum MHD_CONNECTION_STATE
  * Should all state transitions be printed to stderr?
  */
 #define DEBUG_STATES MHD_NO
+
 
 #if HAVE_MESSAGES
 #if DEBUG_STATES
@@ -730,6 +750,12 @@ struct MHD_Connection
    */
   int cipher;
 
+  /**
+   * Could it be that we are ready to read due to TLS buffers
+   * even though the socket is not?
+   */
+  int tls_read_ready;
+
 #endif
 };
 
@@ -754,6 +780,7 @@ typedef void * (*LogCallback)(void * cls, const char * uri);
 typedef size_t (*UnescapeCallback)(void *cls,
 				   struct MHD_Connection *conn,
 				   char *uri);
+
 
 /**
  * State kept for each MHD daemon.
@@ -901,12 +928,12 @@ struct MHD_Daemon
    */
   int socket_fd;
 
-#ifndef HAVE_LISTEN_SHUTDOWN
   /**
-   * Pipe we use to signal shutdown.
+   * Pipe we use to signal shutdown, unless
+   * 'HAVE_LISTEN_SHUTDOWN' is defined AND we have a listen
+   * socket (which we can then 'shutdown' to stop listening).
    */
   int wpipe[2];
-#endif
 
   /**
    * Are we shutting down?
@@ -1057,5 +1084,12 @@ struct MHD_Daemon
   (element)->next = NULL; \
   (element)->prev = NULL; } while (0)
 
+
+/**
+ * Equivalent to time(NULL) but tries to use some sort of monotonic
+ * clock that isn't affected by someone setting the system real time
+ * clock.
+ */
+time_t MHD_monotonic_time(void);
 
 #endif

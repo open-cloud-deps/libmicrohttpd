@@ -28,13 +28,18 @@ if ENABLE_HTTPS
 noinst_PROGRAMS += https_fileserver_example 
 endif
 if HAVE_POSTPROCESSOR
-noinst_PROGRAMS += post_example 
+noinst_PROGRAMS += \
+  post_example 
 endif
 
 if ENABLE_DAUTH
 noinst_PROGRAMS += \
- authorization_example \
  digest_auth_example 
+endif
+
+if ENABLE_BAUTH
+noinst_PROGRAMS += \
+ authorization_example 
 endif
 
 if HAVE_W32

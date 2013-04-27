@@ -29,6 +29,11 @@ if USE_COVERAGE
   AM_CFLAGS = --coverage
 endif
 
+if !HAVE_TSEARCH
+libmicrohttpd_la_SOURCES += \
+  tsearch.c tsearch.h
+endif
+
 if HAVE_POSTPROCESSOR
 libmicrohttpd_la_SOURCES += \
   postprocessor.c
@@ -37,7 +42,12 @@ endif
 if ENABLE_DAUTH
 libmicrohttpd_la_SOURCES += \
   digestauth.c \
-  md5.c md5.h \
+  md5.c md5.h
+endif
+
+if ENABLE_BAUTH
+libmicrohttpd_la_SOURCES += \
+  basicauth.c \
   base64.c base64.h
 endif
 
@@ -50,27 +60,33 @@ endif
 
 
 check_PROGRAMS = \
-  daemon_test 
+  test_daemon 
 
 if HAVE_POSTPROCESSOR
 check_PROGRAMS += \
-  postprocessor_test \
-  postprocessor_large_test 
+  test_postprocessor \
+  test_postprocessor_large \
+  test_postprocessor_amp
 endif
 
 TESTS = $(check_PROGRAMS)
 
-daemon_test_SOURCES = \
-  daemon_test.c
-daemon_test_LDADD = \
+test_daemon_SOURCES = \
+  test_daemon.c
+test_daemon_LDADD = \
   $(top_builddir)/src/daemon/libmicrohttpd.la 
 
-postprocessor_test_SOURCES = \
-  postprocessor_test.c
-postprocessor_test_LDADD = \
+test_postprocessor_SOURCES = \
+  test_postprocessor.c
+test_postprocessor_LDADD = \
   $(top_builddir)/src/daemon/libmicrohttpd.la 
 
-postprocessor_large_test_SOURCES = \
-  postprocessor_large_test.c
-postprocessor_large_test_LDADD = \
+test_postprocessor_amp_SOURCES = \
+  test_postprocessor_amp.c
+test_postprocessor_amp_LDADD = \
+  $(top_builddir)/src/daemon/libmicrohttpd.la 
+
+test_postprocessor_large_SOURCES = \
+  test_postprocessor_large.c
+test_postprocessor_large_LDADD = \
   $(top_builddir)/src/daemon/libmicrohttpd.la 

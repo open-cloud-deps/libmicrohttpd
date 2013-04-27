@@ -186,7 +186,7 @@ do_gets (int port)
 		curl_easy_setopt (c, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 	      else
 		curl_easy_setopt (c, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
-	      curl_easy_setopt (c, CURLOPT_CONNECTTIMEOUT, 15L);
+	      curl_easy_setopt (c, CURLOPT_CONNECTTIMEOUT, 150L);
 	      /* NOTE: use of CONNECTTIMEOUT without also
 		 setting NOSIGNAL results in really weird
 		 crashes on my system! */
@@ -282,7 +282,7 @@ testExternalGet (int port)
   fd_set es;
   int max;
   struct timeval tv;
-  unsigned MHD_LONG_LONG tt;
+  MHD_UNSIGNED_LONG_LONG tt;
   int tret;
 
   d = MHD_start_daemon (MHD_USE_DEBUG,
@@ -331,9 +331,11 @@ main (int argc, char *const *argv)
   errorCount += testMultithreadedGet (port++, 0);
   errorCount += testMultithreadedPoolGet (port++, 0);
   errorCount += testExternalGet (port++);
+#ifndef WINDOWS
   errorCount += testInternalGet (port++, MHD_USE_POLL);
   errorCount += testMultithreadedGet (port++, MHD_USE_POLL);
   errorCount += testMultithreadedPoolGet (port++, MHD_USE_POLL);
+#endif
   MHD_destroy_response (response);
   if (errorCount != 0)
     fprintf (stderr, "Error (code: %u)\n", errorCount);

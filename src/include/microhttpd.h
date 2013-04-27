@@ -106,7 +106,7 @@ extern "C"
 /**
  * Current version of the library.
  */
-#define MHD_VERSION 0x00091400
+#define MHD_VERSION 0x00092000
 
 /**
  * MHD-internal return code for "YES".
@@ -147,14 +147,22 @@ extern "C"
  * standard int or a short.
  */
 #ifndef MHD_LONG_LONG
+/**
+ * @deprecated use MHD_UNSIGNED_LONG_LONG instead!
+ */
 #define MHD_LONG_LONG long long
+#define MHD_UNSIGNED_LONG_LONG unsigned long long
 #endif
-#ifndef MHD_LONG_LONG_PRINTF
 /**
  * Format string for printing a variable of type 'MHD_LONG_LONG'.
  * You should only redefine this if you also define MHD_LONG_LONG.
  */
+#ifndef MHD_LONG_LONG_PRINTF
+/**
+ * @deprecated use MHD_UNSIGNED_LONG_LONG_PRINTF instead!
+ */
 #define MHD_LONG_LONG_PRINTF "ll"
+#define MHD_UNSIGNED_LONG_LONG_PRINTF "%llu"
 #endif
 
 
@@ -209,6 +217,7 @@ extern "C"
 #define MHD_HTTP_NO_RESPONSE 444
 #define MHD_HTTP_RETRY_WITH 449
 #define MHD_HTTP_BLOCKED_BY_WINDOWS_PARENTAL_CONTROLS 450
+#define MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS 451
 
 #define MHD_HTTP_INTERNAL_SERVER_ERROR 500
 #define MHD_HTTP_NOT_IMPLEMENTED 501
@@ -265,6 +274,7 @@ extern "C"
 #define MHD_HTTP_HEADER_PROXY_AUTHENTICATE "Proxy-Authenticate"
 #define MHD_HTTP_HEADER_PROXY_AUTHORIZATION "Proxy-Authorization"
 #define MHD_HTTP_HEADER_RANGE "Range"
+/* This is not a typo, see HTTP spec */
 #define MHD_HTTP_HEADER_REFERER "Referer"
 #define MHD_HTTP_HEADER_RETRY_AFTER "Retry-After"
 #define MHD_HTTP_HEADER_SERVER "Server"
@@ -373,9 +383,28 @@ enum MHD_FLAG
    * and that DO provide other mechanisms for cache control.  See also
    * RFC 2616, section 14.18 (exception 3).
    */
-  MHD_SUPPRESS_DATE_NO_CLOCK = 128
+  MHD_SUPPRESS_DATE_NO_CLOCK = 128,
+
+  /**
+   * Run without a listen socket.  This option only makes sense if
+   * 'MHD_add_connection' is to be used exclusively to connect HTTP
+   * clients to the HTTP server.  This option is incompatible with
+   * using a thread pool; if it is used, 'MHD_OPTION_THREAD_POOL_SIZE'
+   * is ignored.
+   */
+  MHD_USE_NO_LISTEN_SOCKET = 256
 
 };
+
+
+/**
+ * Type of a callback function used for logging by MHD.
+ *
+ * @param cls closure
+ * @param fm format string (printf-style)
+ * @param ap arguments to 'fm'
+ */
+typedef void (*MHD_LogCallback)(void *cls, const char *fm, va_list ap);
 
 
 /**
@@ -507,6 +536,7 @@ enum MHD_OPTION
    * This option must be followed by two arguments; the
    * first must be a pointer to a function
    * of type "void fun(void * arg, const char * fmt, va_list ap)"
+   * (also known as MHD_LogCallback)
    * and the second a pointer "void*" which will
    * be passed as the "arg" argument to "fun".
    * <p>
@@ -818,7 +848,9 @@ struct MHD_PostProcessor;
 
 
 /**
- * Callback for serious error condition. The default action is to abort().
+ * Callback for serious error condition. The default action is to print
+ * an error message and abort().
+ *
  * @param cls user specified value
  * @param file where the error occured
  * @param line where the error occured
@@ -994,7 +1026,7 @@ typedef void
  * POST data.
  *
  * @param cls user-specified closure
- * @param kind type of the value
+ * @param kind type of the value, always MHD_POSTDATA_KIND when called from MHD
  * @param key 0-terminated key for the value
  * @param filename name of the uploaded file, NULL if not known
  * @param content_type mime-type of the data, NULL if not known
@@ -1138,7 +1170,7 @@ MHD_get_fdset (struct MHD_Daemon *daemon,
  *        necessiate the use of a timeout right now).
  */
 int MHD_get_timeout (struct MHD_Daemon *daemon, 
-		     unsigned MHD_LONG_LONG *timeout);
+		     MHD_UNSIGNED_LONG_LONG *timeout);
 
 
 /**
@@ -1219,8 +1251,8 @@ MHD_set_connection_value (struct MHD_Connection *connection,
  * try to continue, this is never safe.
  *
  * The default implementation that is used if no panic function is set
- * simply calls "abort".  Alternative implementations might call
- * "exit" or other similar functions.
+ * simply prints an error message and calls "abort".  Alternative
+ * implementations might call "exit" or other similar functions.
  *
  * @param cb new error handler
  * @param cls passed to error handler
@@ -1235,7 +1267,7 @@ MHD_set_panic_func (MHD_PanicCallback cb, void *cls);
  *
  * @param connection connection to get values from
  * @param kind what kind of value are we looking for
- * @param key the header to look for
+ * @param key the header to look for, NULL to lookup 'trailing' value without a key
  * @return NULL if no such item was found
  */
 const char *
@@ -1386,16 +1418,82 @@ MHD_create_response_from_fd_at_offset (size_t size,
 				       off_t offset);
 
 
+#if 0
 /**
- * Function called after a protocol upgrade response was sent
+ * Bits in an event mask that specifies which actions
+ * MHD should perform and under which conditions it
+ * should call the 'upgrade' callback again.
+ */ 
+enum MHD_UpgradeEventMask
+{
+
+  /**
+   * Never call the handler again; finish sending bytes
+   * in the 'write' buffer and then close the socket.
+   */
+  MHD_UPGRADE_EVENT_TERMINATE = 0,
+
+  /**
+   * Call the handler again once there is data ready
+   * for reading.
+   */
+  MHD_UPGRADE_EVENT_READ = 1,
+
+  /**
+   * Call the handler again once there is buffer space
+   * available for writing.
+   */
+  MHD_UPGRADE_EVENT_WRITE = 2,
+
+  /**
+   * Do not wait on any socket actions, we're waiting on
+   * an 'external' event.  Run the function again once
+   * the 'select' call returns _without_ this socket even
+   * being involved in the select sets (useful in 
+   * conjunction with the external select loop).
+   */
+  MHD_UPGRADE_EVENT_EXTERNAL = 4,
+
+  /**
+   * Uncork the TCP write buffer (that is, tell the OS to transmit all
+   * bytes in the buffer now, and to not use TCP-CORKing).  This is
+   * not really an event flag, but an additional request (which MHD
+   * may ignore if the platform does not support it).  Note that
+   * only returning 'CORK' will *also* cause the socket to be closed!
+   */
+  MHD_UPGRADE_EVENT_CORK = 8  
+    
+};
+
+
+/**
+ * Function called after a protocol "upgrade" response was sent
  * successfully and the socket should now be controlled by some
- * protocol other than HTTP.  Note that from this point on, MHD will
- * consider this connection to be "complete", so it will no longer be
- * counted as an active connection for the
- * MHD_OPTION_PER_IP_CONNECTION_LIMIT or the
- * MHD_OPTION_CONNECTION_LIMIT.  After this function returns, the
+ * protocol other than HTTP. 
+ *
+ * Any data received on the socket will be made available in
+ * 'data_in'.  The function should update 'data_in_size' to
+ * reflect the number of bytes consumed from 'data_in' (the remaining
+ * bytes will be made available in the next call to the handler).
+ *
+ * Any data that should be transmitted on the socket should be
+ * stored in 'data_out'.  '*data_out_size' is initially set to
+ * the available buffer space in 'data_out'.  It should be set to
+ * the number of bytes stored in 'data_out' (which can be zero).
+ *
+ * The return value is a BITMASK that indicates how the function
+ * intends to interact with the event loop.  It can request to be
+ * notified for reading, writing, request to UNCORK the send buffer
+ * (which MHD is allowed to ignore, if it is not possible to uncork on
+ * the local platform), to wait for the 'external' select loop to
+ * trigger another round.  It is also possible to specify "no events"
+ * to terminate the connection; in this case, the
  * MHD_RequestCompletedCallback will be called and all resources of
- * the connection (except for the socket itself) will be released.
+ * the connection will be released.
+ *
+ * Except when in 'thread-per-connection' mode, implementations
+ * of this function should never block (as it will still be called
+ * from within the main event loop).
  *
  * @param cls closure
  * @param connection original HTTP connection handle,
@@ -1404,24 +1502,29 @@ MHD_create_response_from_fd_at_offset (size_t size,
  * @param con_cls value as set by the last call to the
  *                MHD_AccessHandlerCallback; will afterwards
  *                be also given to the MHD_RequestCompletedCallback
- * @param upgrade_socket TCP socket that was upgraded from HTTP
- *                to some other protocol.  This function must
- *                take over the communication and is ultimately
- *                responsible for closing the socket.
+ * @param data_in_size available data for reading, set to data read
+ * @param data_in data read from the socket
+ * @param data_out_size available buffer for writing, set to bytes 
+ *                written to 'data_out'
+ * @param data_out buffer for sending data via the connection
+ * @return desired actions for event handling loop
  */
-typedef void (*MHD_UpgradeHandler)(void *cls,
-				   struct MHD_Connection *connection,
-				   void **con_cls,
-				   int upgrade_socket);
+typedef enum MHD_UpgradeEventMask (*MHD_UpgradeHandler)(void *cls,
+							struct MHD_Connection *connection,
+							void **con_cls,
+							size_t *data_in_size,
+							const char *data_in,
+							size_t *data_out_size,
+							char *data_out);
 
-#if 0
+
 /**
  * Create a response object that can be used for 101 UPGRADE
  * responses, for example to implement websockets.  After sending the
- * response, control over the socket is given to the callback (which
+ * response, control over the data stream is given to the callback (which
  * can then, for example, start some bi-directional communication).
  * If the response is queued for multiple connections, the callback
- * will be called with a socket for each connection.  The callback
+ * will be called for each connection.  The callback
  * will ONLY be called if the response header was successfully passed
  * to the OS; if there are communication errors before, the usual MHD
  * connection error handling code will be performed.
@@ -1429,12 +1532,12 @@ typedef void (*MHD_UpgradeHandler)(void *cls,
  * Setting the correct HTTP code (i.e. MHD_HTTP_SWITCHING_PROTOCOLS)
  * and setting correct HTTP headers for the upgrade must be done
  * manually (this way, it is possible to implement most existing
- * WebSocket version using this API; in fact, this API might be useful
- * for any protocol switch, not just web sockets).  Note that
+ * WebSocket versions using this API; in fact, this API might be useful
+ * for any protocol switch, not just websockets).  Note that
  * draft-ietf-hybi-thewebsocketprotocol-00 cannot be implemented this
  * way as the header "HTTP/1.1 101 WebSocket Protocol Handshake"
  * cannot be generated; instead, MHD will always produce "HTTP/1.1 101
- * Switching Protocols" (if the response 101 is used).
+ * Switching Protocols" (if the response code 101 is used).
  *
  * As usual, the response object can be extended with header
  * information and then be used any number of times (as long as the

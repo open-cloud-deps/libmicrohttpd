@@ -1,6 +1,12 @@
+/* Feel free to use this example code in any way
+   you see fit (Public Domain) */
+
 #include <sys/types.h>
 #include <sys/select.h>
 #include <sys/socket.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <microhttpd.h>
 
 #define PORT            8888
@@ -52,10 +58,10 @@ send_page (struct MHD_Connection *connection, const char *page,
 
   response =
     MHD_create_response_from_buffer (strlen (page), (void *) page,
-				     MHD_RESPMEM_PERSISTENT);
+				     MHD_RESPMEM_MUST_COPY);
   if (!response)
     return MHD_NO;
-
+  MHD_add_response_header (response, MHD_HTTP_HEADER_CONTENT_TYPE, "text/html");
   ret = MHD_queue_response (connection, status_code, response);
   MHD_destroy_response (response);
 
@@ -104,6 +110,7 @@ iterate_post (void *coninfo_cls, enum MHD_ValueKind kind, const char *key,
 
   return MHD_YES;
 }
+
 
 static void
 request_completed (void *cls, struct MHD_Connection *connection,
@@ -178,10 +185,9 @@ answer_to_connection (void *cls, struct MHD_Connection *connection,
 
   if (0 == strcmp (method, "GET"))
     {
-      int ret;
       char buffer[1024];
 
-      sprintf (buffer, askpage, nr_of_uploading_clients);
+      snprintf (buffer, sizeof (buffer), askpage, nr_of_uploading_clients);
       return send_page (connection, buffer, MHD_HTTP_OK);
     }
 
@@ -198,18 +204,27 @@ answer_to_connection (void *cls, struct MHD_Connection *connection,
           return MHD_YES;
         }
       else
-        return send_page (connection, con_info->answerstring,
-                          con_info->answercode);
+	{
+	  if (NULL != con_info->fp)
+	  {
+	    fclose (con_info->fp);
+	    con_info->fp = NULL;
+	  }
+	  /* Now it is safe to open and inspect the file before calling send_page with a response */
+	  return send_page (connection, con_info->answerstring,
+			    con_info->answercode);
+	}
+
     }
 
   return send_page (connection, errorpage, MHD_HTTP_BAD_REQUEST);
 }
 
+
 int
 main ()
 {
   struct MHD_Daemon *daemon;
-
 
   daemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY, PORT, NULL, NULL,
                              &answer_to_connection, NULL,
@@ -217,10 +232,7 @@ main ()
                              NULL, MHD_OPTION_END);
   if (NULL == daemon)
     return 1;
-
   getchar ();
-
   MHD_stop_daemon (daemon);
-
   return 0;
 }

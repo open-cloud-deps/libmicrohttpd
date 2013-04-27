@@ -5,17 +5,26 @@
 /* Define if building universal (internal helper macro) */
 #undef AC_APPLE_UNIVERSAL_BUILD
 
+/* disable basic Auth support */
+#undef BAUTH_SUPPORT
+
 /* This is a Cygwin system */
 #undef CYGWIN
 
-/* disable basic and digest Auth support */
+/* disable digest Auth support */
 #undef DAUTH_SUPPORT
 
 /* This is a FreeBSD system */
 #undef FREEBSD
 
+/* Define to 1 if you have the `accept4' function. */
+#undef HAVE_ACCEPT4
+
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
+
+/* Have clock_gettime */
+#undef HAVE_CLOCK_GETTIME
 
 /* Define to 1 if you have the declaration of `TCP_CORK', and to 0 if you
    don't. */
@@ -90,6 +99,9 @@
 
 /* Define to 1 if you have the <pthread.h> header file. */
 #undef HAVE_PTHREAD_H
+
+/* Define to 1 if you have the <search.h> header file. */
+#undef HAVE_SEARCH_H
 
 /* Do we have sockaddr_in.sin_len? */
 #undef HAVE_SOCKADDR_IN_SIN_LEN
@@ -196,7 +208,7 @@
 /* Defined if libcurl supports TFTP */
 #undef LIBCURL_PROTOCOL_TFTP
 
-/* This is a Linux system */
+/* This is a Linux kernel */
 #undef LINUX
 
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
@@ -285,6 +297,11 @@
 # ifndef WORDS_BIGENDIAN
 #  undef WORDS_BIGENDIAN
 # endif
+#endif
+
+/* Enable large inode numbers on Mac OS X 10.5.  */
+#ifndef _DARWIN_USE_64_BIT_INODE
+# define _DARWIN_USE_64_BIT_INODE 1
 #endif
 
 /* Number of bits in a file offset, on hosts where this is settable. */
