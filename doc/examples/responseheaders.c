@@ -1,11 +1,19 @@
+/* Feel free to use this example code in any way
+   you see fit (Public Domain) */
+
 #include <sys/types.h>
+#ifndef _WIN32
 #include <sys/select.h>
 #include <sys/socket.h>
+#else
+#include <winsock2.h>
+#endif
 #include <microhttpd.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdio.h>
 
 #define PORT 8888
 #define FILENAME "picture.png"
@@ -37,14 +45,14 @@ answer_to_connection (void *cls, struct MHD_Connection *connection,
 	MHD_create_response_from_buffer (strlen (errorstr), 
 					 (void *) errorstr, 
 					 MHD_RESPMEM_PERSISTENT);
-      if (response)
+      if (NULL != response)
         {
           ret =
             MHD_queue_response (connection, MHD_HTTP_INTERNAL_SERVER_ERROR,
                                 response);
           MHD_destroy_response (response);
 
-          return MHD_YES;
+          return ret;
         }
       else
         return MHD_NO;

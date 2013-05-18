@@ -1,7 +1,16 @@
+/* Feel free to use this example code in any way
+   you see fit (Public Domain) */
+
 #include <sys/types.h>
+#ifndef _WIN32
 #include <sys/select.h>
 #include <sys/socket.h>
+#else
+#include <winsock2.h>
+#endif
+#include <string.h>
 #include <microhttpd.h>
+#include <stdio.h>
 
 #define PORT 8888
 

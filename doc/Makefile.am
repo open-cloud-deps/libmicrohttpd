@@ -1,14 +1,15 @@
 man_MANS = libmicrohttpd.3
-EXTRA_DIST = $(man_MANS) Doxyfile 
+
+SUBDIRS = . examples
 
 DISTCLEANFILES = \
-  microhttpd.cps \
-  microhttpd.dvi \
-  microhttpd-tutorial.cps \
-  microhttpd-tutorial.dvi
+  libmicrohttpd.cps \
+  libmicrohttpd.dvi \
+  libmicrohttpd-tutorial.cps \
+  libmicrohttpd-tutorial.dvi
 info_TEXINFOS = \
-  microhttpd.texi \
-  microhttpd-tutorial.texi
+  libmicrohttpd.texi \
+  libmicrohttpd-tutorial.texi
 microhttpd_TEXINFOS = \
   chapters/basicauthentication.inc \
   chapters/bibliography.inc \
@@ -19,14 +20,9 @@ microhttpd_TEXINFOS = \
   chapters/processingpost.inc \
   chapters/responseheaders.inc \
   chapters/tlsauthentication.inc \
-  examples/basicauthentication.c \
-  examples/hellobrowser.c \
-  examples/largepost.c \
-  examples/logging.c \
-  examples/responseheaders.c \
-  examples/simplepost.c \
-  examples/tlsauthentication.c \
+  chapters/sessions.inc \
   fdl-1.3.texi \
   lgpl.texi \
   ecos.texi
 
+EXTRA_DIST = $(man_MANS) Doxyfile $(microhttpd_TEXINFOS)
