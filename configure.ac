@@ -1,5 +1,5 @@
 # This file is part of libmicrohttpd.
-# (C) 2006-2012 Christian Grothoff (and other contributing authors)
+# (C) 2006-2013 Christian Grothoff (and other contributing authors)
 #
 # libmicrohttpd is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published
@@ -21,15 +21,15 @@
 #
 #
 AC_PREREQ(2.57)
-AC_INIT([libmicrohttpd], [0.9.20],[libmicrohttpd@gnu.org])
-AM_INIT_AUTOMAKE([libmicrohttpd], [0.9.20])
-AM_CONFIG_HEADER([MHD_config.h])
+AC_INIT([libmicrohttpd], [0.9.27],[libmicrohttpd@gnu.org])
+AM_INIT_AUTOMAKE([silent-rules])
+AC_CONFIG_HEADERS([MHD_config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AH_TOP([#define _GNU_SOURCE  1])
 
-LIB_VERSION_CURRENT=25
+LIB_VERSION_CURRENT=27
 LIB_VERSION_REVISION=0
-LIB_VERSION_AGE=15
+LIB_VERSION_AGE=17
 AC_SUBST(LIB_VERSION_CURRENT)
 AC_SUBST(LIB_VERSION_REVISION)
 AC_SUBST(LIB_VERSION_AGE)
@@ -65,7 +65,6 @@ AC_LIBTOOL_WIN32_DLL
 AC_PROG_LIBTOOL
 AC_C_BIGENDIAN
 
-
 AC_CHECK_MEMBER([struct sockaddr_in.sin_len],
    [ AC_DEFINE(HAVE_SOCKADDR_IN_SIN_LEN, 1, [Do we have sockaddr_in.sin_len?])
    ],
@@ -98,12 +97,6 @@ case "$host_os" in
      AM_CONDITIONAL(HAVE_GNU_LD, false)    
      AM_CONDITIONAL(HAVE_W32, false)        
      ;;
-linux*)
-     AC_DEFINE_UNQUOTED(LINUX,1,[This is a Linux system])
-     AC_DEFINE_UNQUOTED(HAVE_LISTEN_SHUTDOWN,1,[can use shutdown on listen sockets])
-     AM_CONDITIONAL(HAVE_GNU_LD, true)    
-     AM_CONDITIONAL(HAVE_W32, false)        
-     ;;
 freebsd*)
      AC_DEFINE_UNQUOTED(SOMEBSD,1,[This is a BSD system])
      AC_DEFINE_UNQUOTED(FREEBSD,1,[This is a FreeBSD system])
@@ -131,9 +124,15 @@ netbsd*)
      LDFLAGS="$LDFLAGS -lpthread"
      ;;
 *arm-linux*)
-     AC_DEFINE_UNQUOTED(LINUX,1,[This is a Linux system])
+     AC_DEFINE_UNQUOTED(LINUX,1,[This is a Linux kernel])
      AC_DEFINE_UNQUOTED(HAVE_LISTEN_SHUTDOWN,1,[can use shutdown on listen sockets])
      CFLAGS="-D_REENTRANT -fPIC -pipe $CFLAGS"
+     AM_CONDITIONAL(HAVE_GNU_LD, true)    
+     AM_CONDITIONAL(HAVE_W32, false)        
+     ;;
+*linux*)
+     AC_DEFINE_UNQUOTED(LINUX,1,[This is a Linux kernel])
+     AC_DEFINE_UNQUOTED(HAVE_LISTEN_SHUTDOWN,1,[can use shutdown on listen sockets])
      AM_CONDITIONAL(HAVE_GNU_LD, true)    
      AM_CONDITIONAL(HAVE_W32, false)        
      ;;
@@ -185,11 +184,18 @@ AC_CHECK_HEADERS([fcntl.h math.h errno.h limits.h stdio.h locale.h sys/stat.h sy
 # Check for optional headers
 AC_CHECK_HEADERS([sys/types.h sys/time.h sys/msg.h netdb.h netinet/in.h netinet/tcp.h time.h sys/socket.h sys/mman.h arpa/inet.h sys/select.h poll.h winsock2.h ws2tcpip.h])
 
+AC_CHECK_HEADERS([search.h], AM_CONDITIONAL(HAVE_TSEARCH, true), AM_CONDITIONAL(HAVE_TSEARCH, false))
+
 # Check for plibc.h from system, if not found, use our own
 AC_CHECK_HEADERS([plibc.h],our_private_plibc_h=0,our_private_plibc_h=1)
 AM_CONDITIONAL(USE_PRIVATE_PLIBC_H, test x$our_private_plibc_h = x1)    
 
-AC_CHECK_FUNCS(memmem)
+AC_CHECK_FUNCS_ONCE(memmem)
+AC_CHECK_FUNCS_ONCE(accept4)
+
+AC_SEARCH_LIBS([clock_gettime], [rt], [
+				AC_DEFINE(HAVE_CLOCK_GETTIME, 1, [Have clock_gettime])
+])
 
 # IPv6
 AC_MSG_CHECKING(for IPv6)
@@ -249,6 +255,14 @@ then
   AC_DEFINE_UNQUOTED([MHD_REQ_CURL_GNUTLS_VERSION], "$MHD_REQ_CURL_GNUTLS_VERSION", [gnuTLS lib version - used in conjunction with cURL])
   AC_DEFINE_UNQUOTED([MHD_REQ_CURL_NSS_VERSION], "$MHD_REQ_CURL_NSS_VERSION", [NSS lib version - used in conjunction with cURL])
 fi
+
+AC_MSG_CHECKING(for magic_open -lmagic)
+AC_CHECK_LIB(magic, magic_open,
+  [AC_CHECK_HEADERS([magic.h],
+   AM_CONDITIONAL(HAVE_MAGIC, true),
+   AM_CONDITIONAL(HAVE_MAGIC, false))],
+  AM_CONDITIONAL(HAVE_MAGIC, false))
+
 LIBS=$SAVE_LIBS
 AM_CONDITIONAL(HAVE_CURL, test x$curl = x1)
 
@@ -356,23 +370,39 @@ AC_MSG_RESULT($enable_https)
 
 AM_CONDITIONAL(ENABLE_HTTPS, test "$enable_https" = "yes")
 
+# optional: HTTP Basic Auth support. Enabled by default
+AC_MSG_CHECKING(whether to support HTTP basic authentication)
+AC_ARG_ENABLE([bauth],
+		AS_HELP_STRING([--disable-bauth],
+			[disable HTTP basic Auth support]),
+		[enable_bauth=${enableval}],
+		[enable_bauth=yes])
+if test "$enable_bauth" = "yes"
+then
+ AC_DEFINE([BAUTH_SUPPORT],[1],[include basic Auth support])
+else
+ AC_DEFINE([BAUTH_SUPPORT],[0],[disable basic Auth support])
+fi
+AC_MSG_RESULT($enable_bauth)
+AM_CONDITIONAL(ENABLE_BAUTH, [test "x$enable_bauth" != "xno"])
+
 # optional: HTTP Digest Auth support. Enabled by default
-AC_MSG_CHECKING(whether to support HTTP basic and digest authentication)
+AC_MSG_CHECKING(whether to support HTTP digest authentication)
 AC_ARG_ENABLE([dauth],
 		AS_HELP_STRING([--disable-dauth],
 			[disable HTTP basic and digest Auth support]),
 		[enable_dauth=${enableval}],
 		[enable_dauth=yes])
-
 if test "$enable_dauth" = "yes"
 then
- AC_DEFINE([DAUTH_SUPPORT],[1],[include basic and digest Auth support])
+ AC_DEFINE([DAUTH_SUPPORT],[1],[include digest Auth support])
 else
- AC_DEFINE([DAUTH_SUPPORT],[0],[disable basic and digest Auth support])
+ AC_DEFINE([DAUTH_SUPPORT],[0],[disable digest Auth support])
 fi
 AC_MSG_RESULT($enable_dauth)
-
 AM_CONDITIONAL(ENABLE_DAUTH, [test "x$enable_dauth" != "xno"])
+
+
 
 MHD_LIB_LDFLAGS="-export-dynamic -no-undefined"
 
@@ -414,11 +444,12 @@ libmicrohttpd.pc
 Makefile
 contrib/Makefile
 doc/Makefile
+doc/examples/Makefile
 m4/Makefile
 src/Makefile
 src/include/Makefile
 src/include/plibc/Makefile
-src/daemon/Makefile
+src/microhttpd/Makefile
 src/examples/Makefile
 src/testcurl/Makefile
 src/testcurl/https/Makefile
@@ -450,7 +481,8 @@ AC_MSG_NOTICE([Configuration Summary:
   libcurl (testing): ${MSG_CURL}
   Target directory:  ${prefix}
   Messages:          ${enable_messages}
-  HTTP Authentic.:   ${enable_dauth}
+  Basic auth.:       ${enable_bauth}
+  Digest auth.:      ${enable_dauth}
   Postproc:          ${enable_postprocessor}
   HTTPS support:     ${enable_https}
 ])

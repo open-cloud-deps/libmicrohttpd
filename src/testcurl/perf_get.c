@@ -199,7 +199,7 @@ testInternalGet (int port, int poll_flag)
       curl_easy_setopt (c, CURLOPT_WRITEDATA, &cbc);
       curl_easy_setopt (c, CURLOPT_FAILONERROR, 1);
       curl_easy_setopt (c, CURLOPT_TIMEOUT, 150L);
-      curl_easy_setopt (c, CURLOPT_CONNECTTIMEOUT, 15L);
+      curl_easy_setopt (c, CURLOPT_CONNECTTIMEOUT, 150L);
       if (oneone)
 	curl_easy_setopt (c, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
       else
@@ -262,7 +262,7 @@ testMultithreadedGet (int port, int poll_flag)
 	curl_easy_setopt (c, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
       else
 	curl_easy_setopt (c, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
-      curl_easy_setopt (c, CURLOPT_CONNECTTIMEOUT, 15L);
+      curl_easy_setopt (c, CURLOPT_CONNECTTIMEOUT, 150L);
       /* NOTE: use of CONNECTTIMEOUT without also
 	 setting NOSIGNAL results in really weird
 	 crashes on my system! */
@@ -321,7 +321,7 @@ testMultithreadedPoolGet (int port, int poll_flag)
 	curl_easy_setopt (c, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
       else
 	curl_easy_setopt (c, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
-      curl_easy_setopt (c, CURLOPT_CONNECTTIMEOUT, 15L);
+      curl_easy_setopt (c, CURLOPT_CONNECTTIMEOUT, 150L);
       /* NOTE: use of CONNECTTIMEOUT without also
 	 setting NOSIGNAL results in really weird
 	 crashes on my system!*/
@@ -395,7 +395,7 @@ testExternalGet (int port)
       else
 	curl_easy_setopt (c, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
       curl_easy_setopt (c, CURLOPT_TIMEOUT, 150L);
-      curl_easy_setopt (c, CURLOPT_CONNECTTIMEOUT, 15L);
+      curl_easy_setopt (c, CURLOPT_CONNECTTIMEOUT, 150L);
       /* NOTE: use of CONNECTTIMEOUT without also
 	 setting NOSIGNAL results in really weird
 	 crashes on my system! */
@@ -454,7 +454,16 @@ testExternalGet (int port)
 		  c = NULL;
 		}
 	    }
-	  MHD_run (d);
+	  /* two possibilities here; as select sets are
+	     tiny, this makes virtually no difference
+	     in actual runtime right now, even though the
+	     number of select calls is virtually cut in half
+	     (and 'select' is the most expensive of our system
+	     calls according to 'strace') */
+	  if (0)
+	    MHD_run (d);
+	  else
+	    MHD_run_from_select (d, &rs, &ws, &es);
 	}
       if (NULL != c)
 	{
@@ -489,13 +498,15 @@ main (int argc, char *const *argv)
   response = MHD_create_response_from_buffer (strlen ("/hello_world"),
 					      "/hello_world",
 					      MHD_RESPMEM_MUST_COPY);
+  errorCount += testExternalGet (port++);
   errorCount += testInternalGet (port++, 0);
   errorCount += testMultithreadedGet (port++, 0);
   errorCount += testMultithreadedPoolGet (port++, 0);
-  errorCount += testExternalGet (port++);
+#ifndef WINDOWS
   errorCount += testInternalGet (port++, MHD_USE_POLL);
   errorCount += testMultithreadedGet (port++, MHD_USE_POLL);
   errorCount += testMultithreadedPoolGet (port++, MHD_USE_POLL);
+#endif
   MHD_destroy_response (response);
   if (errorCount != 0)
     fprintf (stderr, "Error (code: %u)\n", errorCount);

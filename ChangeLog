@@ -1,3 +1,174 @@
+Sun May  5 20:13:59 CEST 2013
+	Improved documentation and code style a bit.
+	Releasing libmicrohttpd 0.9.27. -CG
+
+Thu Apr 25 13:08:10 CEST 2013
+	Added 'MHD_quiesce_daemon' to allow application to stop
+	processing new incoming connections while finishing
+	ongoing requests. -CG
+
+Sun Mar 31 23:17:13 CEST 2013
+	Added MHD demonstration code 'src/examples/demo.c'. -CG
+
+Sun Mar 31 20:27:48 CEST 2013
+	Adding new API call 'MHD_run_from_select' to allow programs
+	running in 'external select mode' to reduce the number of
+	'select' calls by a factor of two. -CG
+
+Sun Mar 31 20:03:48 CEST 2013
+	Performance improvements, updated documentation.
+	Make better use of available memory pool memory for
+	reading (especially important for large POST uploads);
+	improve post processor speed by internally adjusting the
+	buffer size by 4 bytes to ensure "round" IO sizes given
+	a "round" post processor buffer size argument.  Note
+	that applications that previously added 4 bytes to the
+	post processor buffer size might now perform worse.
+	Using the new 'demo' example, POST upload speed
+	increased from ~90 MB/s to ~120 MB/s for a large file
+	(note that the improvement comes from better aligned
+	disk IO; without disk IO, the speed was (and remains)
+	at ~1500 MB/s on this system). -CG
+
+Fri Mar 29 16:44:29 CET 2013
+	Renaming testcases to consistenly begin with test_;
+	Changing build system to build examples in doc/.
+	Releasing libmicrohttpd 0.9.26. -CG
+
+Thu Mar  7 10:13:08 CET 2013
+	Fix bug in postprocessor URL parser (#2818). -jgresula
+
+Mon Mar  4 13:45:35 CET 2013
+	Fix dropping of SSL connections if uptime is less than
+        MHD_OPTION_CONNECTION_TIMEOUT due to integer underflow (#2802). -greed
+
+Fri Mar  1 01:11:57 CET 2013
+	Fully initialize cleanup mutex struct for each thread (#2803). -Ulion
+
+Wed Feb  6 01:51:52 CET 2013
+	Releasing libmicrohttpd 0.9.25. -CG
+
+Fri Feb  1 10:19:44 CET 2013
+	Handle case where POST data contains "key=" without value
+	at the end and is not new-line terminated by invoking the
+	callback with the "key" during MHD_destroy_post_processor (#2733). -CG
+
+Wed Jan 30 13:09:30 CET 2013
+	Adding more 'const' to allow keeping of reason phrases in ROM.
+	(see mailinglist). -CG/MV
+
+Tue Jan 29 21:27:56 CET 2013
+	Make code work with PlibC 0.1.7 (which removed plibc_init_utf8).
+	Only relevant for W32. Fixes #2734. -CG
+
+Sat Jan 26 21:26:48 CET 2013
+	Fixing regression introduced Jan 6 (test on data_size instead
+	of total_size. -CG
+
+Fri Jan 11 23:21:55 CET 2013
+	Also return MHD_YES from MHD_destroy_post_processor if
+	we did not get '\r\n' in the upload. -CG
+
+Sun Jan  6 21:10:13 CET 2013
+	Enable use of "MHD_create_response_from_callback" with
+	body size of zero. -CG
+
+Tue Dec 25 16:16:30 CET 2012
+	Releasing libmicrohttpd 0.9.24. -CG
+
+Tue Dec 18 21:18:11 CET 2012
+	Given both 'chunked' encoding and 'content-length',
+	ignore the 'content-length' header as per RFC. -ES
+
+Thu Dec  6 10:14:44 CET 2012
+	Force adding "Connection: close" header to response if
+	client asked for connection to be closed (so far, we
+	did close the connection, but did not send the
+	"Connection: close" header explicitly, which some clients
+	seem to dislike. (See discussion on mailinglist).
+	Also, if there is already a transfer-encoding other
+	than 'chunked' set by the application, we also now close
+	the connection if the response is of unknown size. -CG
+
+Wed Dec  5 19:22:26 CET 2012
+	Fixing parameter loss of POST parameters with IE8 and Chrome
+	in the PostProcessor as the code failed to properly handle
+	partial data. -MM
+
+Fri Nov  9 21:36:46 CET 2012
+	Releasing libmicrohttpd 0.9.23. -CG
+
+Thu Nov  8 22:32:59 CET 2012
+	Ship our own version of tsearch and friends if not provided by platform,
+	so that MHD works nicely on Android. -JJ
+
+Mon Oct 22 13:05:01 CEST 2012
+	Immediately do a second read if we get a full buffer from
+	TLS as there might be more data in the TLS buffers even if
+	there is no activity on the socket. -CG
+
+Tue Oct 16 01:33:55 CEST 2012
+	Consistently use "#ifdef" and "#ifndef" WINDOWS, and not
+	sometimes "#if". -CG
+
+Sat Sep  1 20:51:21 CEST 2012
+	Releasing libmicrohttpd 0.9.22. -CG
+
+Sat Sep  1 20:38:35 CEST 2012
+	Adding configure option to allow selecting support for basic
+	and digest authentication separately (#2525). -CG
+
+Thu Aug 30 21:12:56 CEST 2012
+	Fixing URI argument parsing when string contained keys without
+	equals sign (i.e. '&bar&') in the middle of the argument (#2531).
+	Also replacing 'strstr' with more efficient 'strchr' when
+	possible. -CG
+
+Tue Aug 21 14:36:17 CEST 2012
+	Use "int" instead of "enum X" in 'va_arg' calls to be nice to
+	compilers that use 'short' (i.e. 8 or 16 bit) enums but pass
+	enums still as "int" in varargs. (See discussion on mailinglist). -CG/MV
+
+Tue Aug 21 14:31:54 CEST 2012
+	Reduce default size in post processor buffer (for small systems;
+	performance impact on large systems should be minimal). -CG/MV
+
+Thu Jul 19 21:48:42 CEST 2012
+	Releasing libmicrohttpd 0.9.21. -CG
+
+Thu Jul 19 11:34:50 CEST 2012
+	Consistently use 'panic' function instead of ever directly
+	calling 'abort ()'.  Eliminating unused mutex in SSL mode.
+	Removing check in testcases that fails depending on which
+	version of gnuTLS is involved. -CG
+
+Tue Jul 17 23:50:43 CEST 2012
+	Stylistic code clean up.  Allowing lookup up of trailing values
+	without keys using "MHD_lookup_connection_value" with a key of NULL
+	(thus achieving consistency with the existing iterator API). -CG
+
+Tue Jul 17 22:37:05 CEST 2012
+	Adding experimental (!) code for MHD operation without listen socket. -CG
+
+Tue Jul 17 22:15:57 CEST 2012
+	Making sendfile test pass again on non-W32 systems. -CG
+
+Mon Jul  9 13:43:35 CEST 2012
+	Misc changes to allow testcases to pass on W32. -LRN
+
+Sun Jul  8 15:05:31 CEST 2012
+	Misc changes to fix build on W32. -LRN
+
+Fri Jun 22 11:31:25 CEST 2012
+	Make sure sockets opened by MHD are non-inheritable by default (#2414). -CG
+
+Tue Jun 19 19:44:53 CEST 2012
+	Change various uses of time(NULL) to new MHD_monotonic_time() function to
+	make timeouts immune to the system real time clock changing. -MC
+
+Tue Jun 12 21:35:00 CEST 2012
+	Adding 451 status code. -CG
+
 Thu May 31 13:33:45 CEST 2012
 	Releasing 0.9.20. -CG
 

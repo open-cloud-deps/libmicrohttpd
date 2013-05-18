@@ -1,11 +1,11 @@
 About
 =====
 
-libmicrohttpd is a GNU library (part of the GNU project) written in C
-that provides a compact API and implementation of an HTTP 1.1 web
-server (HTTP 1.0 is also supported).  libmicrohttpd only implements
-the HTTP 1.1 protocol.  The main application must still provide the
-content.
+GNU libmicrohttpd is a GNU package offering a C library that provides
+a compact API and implementation of an HTTP 1.1 web server (HTTP 1.0
+is also supported).  GNU libmicrohttpd only implements the HTTP 1.1
+protocol.  The main application must still provide the application
+logic to generate the content.
 
 
 Installation
@@ -97,7 +97,6 @@ Untested features:
 
 Functions not covered by "make check":
 ======================================
-- file_reader (response.c); special case (sendfile)
 - mhd_panic_std (daemon.c); special case (abort)
 - parse_options (daemon.c)
 - MHD_set_panic_func (daemon.c)
@@ -108,5 +107,4 @@ Missing documentation:
 ======================
 
 - manual:
-  * document configuration options
   * document details on porting MHD (plibc, z/OS)
