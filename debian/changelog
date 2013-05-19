@@ -1,3 +1,16 @@
+libmicrohttpd (0.9.27-1) unstable; urgency=low
+
+  * Move the git repository to collab-maint.
+  * Imported Upstream version 0.9.27
+  * debian/rules: remove useless override_dh_builddeb.
+  * Add a symbols file for libmicrohttpd.
+  * Enable the test suite.
+  * debian/control: extend long descriptions with key features.
+  * Migrate debian/copyright to standard format 1.0.
+  * Standards version 3.9.4.
+
+ -- Bertrand Marc <beberking@gmail.com>  Sun, 19 May 2013 20:23:09 +0200
+
 libmicrohttpd (0.9.20-1) unstable; urgency=low
 
   * debian/control: add Vcs-Git and Vcs-browser fields.
