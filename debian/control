@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Bertrand Marc <beberking@gmail.com>
 Build-Depends: debhelper (>= 9), autoconf, automake, dh-autoreconf,
  libgcrypt-dev, libgnutls-dev, libcurl4-gnutls-dev, zzuf, socat
-Standards-Version: 3.9.3
+Standards-Version: 3.9.4
 Vcs-Git: git://git.debian.org/git/collab-maint/libmicrohttpd.git
 Vcs-browser: http://git.debian.org/?p=collab-maint/libmicrohttpd.git
 Homepage: http://www.gnu.org/software/libmicrohttpd/
