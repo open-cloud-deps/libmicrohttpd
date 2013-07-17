@@ -1,3 +1,9 @@
+libmicrohttpd (0.9.27-2) unstable; urgency=low
+
+  * Disable the test suite, as it fails on kfreebsd.
+
+ -- Bertrand Marc <beberking@gmail.com>  Wed, 17 Jul 2013 18:20:03 +0200
+
 libmicrohttpd (0.9.27-1) unstable; urgency=low
 
   * Move the git repository to collab-maint.
