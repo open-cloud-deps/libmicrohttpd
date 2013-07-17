@@ -2,6 +2,8 @@ libmicrohttpd (0.9.27-2) unstable; urgency=low
 
   * Disable the test suite, as it fails on kfreebsd.
   * Remove useless debian/source/options.
+  * debian/control: update Vcs-git and Vcs-browser to use anonscm.debian.org
+    instead of git.debian.org.
 
  -- Bertrand Marc <beberking@gmail.com>  Wed, 17 Jul 2013 18:20:03 +0200
 
