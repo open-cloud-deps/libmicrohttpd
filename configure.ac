@@ -3,7 +3,7 @@
 #
 # libmicrohttpd is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published
-# by the Free Software Foundation; either version 2, or (at your
+# by the Free Software Foundation; either version 3, or (at your
 # option) any later version.
 #
 # libmicrohttpd is distributed in the hope that it will be useful, but
@@ -21,18 +21,26 @@
 #
 #
 AC_PREREQ(2.57)
-AC_INIT([libmicrohttpd], [0.9.27],[libmicrohttpd@gnu.org])
+AC_INIT([libmicrohttpd], [0.9.28],[libmicrohttpd@gnu.org])
 AM_INIT_AUTOMAKE([silent-rules])
 AC_CONFIG_HEADERS([MHD_config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AH_TOP([#define _GNU_SOURCE  1])
 
-LIB_VERSION_CURRENT=27
+LIB_VERSION_CURRENT=28
 LIB_VERSION_REVISION=0
-LIB_VERSION_AGE=17
+LIB_VERSION_AGE=18
 AC_SUBST(LIB_VERSION_CURRENT)
 AC_SUBST(LIB_VERSION_REVISION)
 AC_SUBST(LIB_VERSION_AGE)
+
+LIBSPDY_VERSION_CURRENT=0
+LIBSPDY_VERSION_REVISION=0
+LIBSPDY_VERSION_AGE=0
+AC_SUBST(LIBSPDY_VERSION_CURRENT)
+AC_SUBST(LIBSPDY_VERSION_REVISION)
+AC_SUBST(LIBSPDY_VERSION_AGE)
+
 
 if test `uname -s` = "OS/390"
 then
@@ -88,7 +96,7 @@ fi
 
 # for pkg-config
 MHD_LIBDEPS=""
-
+epoll=0
 # Check system type
 case "$host_os" in
 *darwin* | *rhapsody* | *macosx*)
@@ -128,13 +136,27 @@ netbsd*)
      AC_DEFINE_UNQUOTED(HAVE_LISTEN_SHUTDOWN,1,[can use shutdown on listen sockets])
      CFLAGS="-D_REENTRANT -fPIC -pipe $CFLAGS"
      AM_CONDITIONAL(HAVE_GNU_LD, true)    
-     AM_CONDITIONAL(HAVE_W32, false)        
+     AM_CONDITIONAL(HAVE_W32, false)
+     AC_MSG_CHECKING(whether to support epoll)
+     AC_ARG_ENABLE([epoll],
+		AS_HELP_STRING([--disable-epoll],
+			[disable epoll]),
+		[enable_epoll=${enableval}],
+		[enable_epoll=yes])
+     AC_MSG_RESULT($enable_epoll)
      ;;
 *linux*)
      AC_DEFINE_UNQUOTED(LINUX,1,[This is a Linux kernel])
      AC_DEFINE_UNQUOTED(HAVE_LISTEN_SHUTDOWN,1,[can use shutdown on listen sockets])
      AM_CONDITIONAL(HAVE_GNU_LD, true)    
      AM_CONDITIONAL(HAVE_W32, false)        
+     AC_MSG_CHECKING(whether to support epoll)
+     AC_ARG_ENABLE([epoll],
+		AS_HELP_STRING([--disable-epoll],
+			[disable epoll]),
+		[enable_epoll=${enableval}],
+		[enable_epoll=yes])
+     AC_MSG_RESULT($enable_epoll)
      ;;
 *cygwin*)
      AC_DEFINE_UNQUOTED(CYGWIN,1,[This is a Cygwin system])
@@ -171,6 +193,23 @@ netbsd*)
      AM_CONDITIONAL(HAVE_W32, false)        
 ;;
 esac
+
+
+if test "$enable_epoll" = "yes"
+then
+ AC_CHECK_HEADERS([sys/epoll.h], 
+                   [enable_epoll="yes"], 
+                   [enable_epoll="no"])
+fi
+
+if test "$enable_epoll" = "yes"
+then
+ AC_DEFINE([EPOLL_SUPPORT],[1],[include epoll support])
+else
+ AC_DEFINE([EPOLL_SUPPORT],[0],[disable epoll support])
+fi
+AM_CONDITIONAL(ENABLE_EPOLL, [test "x$enable_epoll" != "xno"])
+
 
 CHECK_PTHREAD
 LIBS="$PTHREAD_LIBS $LIBS"
@@ -262,6 +301,57 @@ AC_CHECK_LIB(magic, magic_open,
    AM_CONDITIONAL(HAVE_MAGIC, true),
    AM_CONDITIONAL(HAVE_MAGIC, false))],
   AM_CONDITIONAL(HAVE_MAGIC, false))
+
+
+# optional: libmicrospdy support. Enabled by default
+AC_MSG_CHECKING(whether to support libmicrospdy)
+AC_ARG_ENABLE([spdy],
+		AS_HELP_STRING([--disable-spdy],
+			[disable libmicrospdy]),
+		[enable_spdy=${enableval}],
+		[enable_spdy=yes])
+AC_MSG_RESULT($enable_spdy)
+
+if test "$enable_spdy" = "yes"
+then
+ AC_CHECK_HEADERS([openssl/err.h], 
+                   [AM_CONDITIONAL(HAVE_OPENSSL, true)
+                   enable_spdy="yes"], 
+                   [AM_CONDITIONAL(HAVE_OPENSSL, false)
+                   enable_spdy="no"])
+fi
+
+if test "$enable_spdy" = "yes"
+then
+ AC_DEFINE([SPDY_SUPPORT],[1],[include libmicrospdy support])
+else
+ AC_DEFINE([SPDY_SUPPORT],[0],[disable libmicrospdy support])
+fi
+AM_CONDITIONAL(ENABLE_SPDY, [test "x$enable_spdy" != "xno"])
+AC_MSG_CHECKING(whether we have OpenSSL and thus can support libmicrospdy)
+AC_MSG_RESULT($enable_spdy)
+
+spdy_OPENSSL
+# for pkg-config
+SPDY_LIBDEPS=""
+
+
+AC_CHECK_HEADERS([spdylay/spdylay.h], 
+                 [AM_CONDITIONAL(HAVE_SPDYLAY, true) 
+		 have_spdylay="yes"], 
+                 [AM_CONDITIONAL(HAVE_SPDYLAY, false) 
+                 have_spdylay="no"])
+
+AC_SUBST(SPDY_LIB_LDFLAGS)
+# for pkg-config
+AC_SUBST(SPDY_LIBDEPS)
+
+AM_CONDITIONAL(ENABLE_MINITASN1,  [test -n " " ] )
+AM_CONDITIONAL(ENABLE_OPENSSL,  [test -n "" ] )
+AM_CONDITIONAL(HAVE_LD_OUTPUT_DEF,  [test -n "" ] )
+AM_CONDITIONAL(HAVE_LD_VERSION_SCRIPT,  [test -n "" ] )
+
+
 
 LIBS=$SAVE_LIBS
 AM_CONDITIONAL(HAVE_CURL, test x$curl = x1)
@@ -450,9 +540,12 @@ src/Makefile
 src/include/Makefile
 src/include/plibc/Makefile
 src/microhttpd/Makefile
+src/microspdy/Makefile
+src/spdy2http/Makefile
 src/examples/Makefile
 src/testcurl/Makefile
 src/testcurl/https/Makefile
+src/testspdy/Makefile
 src/testzzuf/Makefile])
 AC_OUTPUT
 
@@ -485,6 +578,9 @@ AC_MSG_NOTICE([Configuration Summary:
   Digest auth.:      ${enable_dauth}
   Postproc:          ${enable_postprocessor}
   HTTPS support:     ${enable_https}
+  epoll support:     ${enable_epoll}
+  libmicrospdy:      ${enable_spdy}
+  spdylay (testing): ${have_spdylay}
 ])
 
 if test "x$enable_https" = "xyes"

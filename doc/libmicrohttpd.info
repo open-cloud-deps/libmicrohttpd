@@ -1,7 +1,7 @@
 This is libmicrohttpd.info, produced by makeinfo version 4.13 from
 libmicrohttpd.texi.
 
-This manual is for GNU libmicrohttpd (version 0.9.27, 5 May 2013), a
+This manual is for GNU libmicrohttpd (version 0.9.28, 8 July 2013), a
 library for embedding an HTTP(S) server into C applications.
 
    Copyright (C) 2007-2012 Christian Grothoff
@@ -24,7 +24,7 @@ File: libmicrohttpd.info,  Node: Top,  Next: microhttpd-intro,  Up: (dir)
 The GNU libmicrohttpd Library
 *****************************
 
-This manual is for GNU libmicrohttpd (version 0.9.27, 5 May 2013), a
+This manual is for GNU libmicrohttpd (version 0.9.28, 8 July 2013), a
 library for embedding an HTTP(S) server into C applications.
 
    Copyright (C) 2007-2012 Christian Grothoff
@@ -121,7 +121,60 @@ based on reports we've received from developers include:
 
    * Administrative console (via HTTP/HTTPS) for network appliances
 
-1.2 Compiling GNU libmicrohttpd
+1.2 Thread modes and event loops
+================================
+
+MHD supports four basic thread modes and up to three event loop styes.
+
+   The four basic thread modes are external (MHD creates no threads,
+event loop is fully managed by the application), internal (MHD creates
+one thread for all connections), thread pool (MHD creates a thread pool
+which is used to process all connections) and thread-per-connection
+(MHD creates one listen thread and then one thread per accepted
+connection).
+
+   These thread modes are then combined with the event loop styles.
+MHD support select, poll and epoll.  epoll is only available on Linux,
+poll may not be available on some platforms.  Note that it is possible
+to combine MHD using epoll with an external select-based event loop.
+
+   The default (if no other option is passed) is "external select".
+The highest performance can typically be obtained with a thread pool
+using `epoll'.  Apache Benchmark (ab) was used to compare the
+performance of `select' and `epoll' when using a thread pool and a
+large number of connections. *note fig:performance:: shows the
+resulting plot from the `benchmark.c' example, which measures the
+latency between an incoming request and the completion of the
+transmission of the response.  In this setting, the `epoll' thread pool
+with four threads was able to handle more than 45,000 connections per
+second on loopback (with Apache Benchmark running three processes on
+the same machine).  
+
+Figure 1.1: Performance measurements for select vs. epoll (with
+thread-pool).
+
+   Not all combinations of thread modes and event loop styles are
+supported.  This is partially to keep the API simple, and partially
+because some combinations simply make no sense as others are strictly
+superior.  Note that the choice of style depends fist of all on the
+application logic, and then on the performance requirements.
+Applications that perform a blocking operation while handling a request
+within the callbacks from MHD must use a thread per connection.  This
+is typically rather costly.  Applications that do not support threads
+or that must run on embedded devices without thread-support must use
+the external mode.  Using `epoll' is only supported on Linux, thus
+portable applications must at least have a fallback option available.
+*note tbl:supported:: lists the sane combinations.
+
+                        select   poll   epoll
+external                yes      no     yes
+internal                yes      yes    yes
+thread pool             yes      yes    yes
+thread-per-connection   yes      yes    no
+
+Table 1.1: Supported combinations of event styles and thread modes.
+
+1.3 Compiling GNU libmicrohttpd
 ===============================
 
 MHD uses the standard GNU system where the usual build process involves
@@ -166,6 +219,10 @@ full list of options run "./configure -help"):
      do not include the authentication APIs (results in binary
      incompatibility)
 
+```--disable-epoll'
+     do not include epoll support, even on Linux (minimally smaller
+     binary size, good for testing portability to non-Linux systems)
+
 ```--enable-coverage'''
      set flags for analysis of code-coverage with gcc/gcov (results in
      slow, large binaries)
@@ -177,7 +234,7 @@ full list of options run "./configure -help"):
      specifies path to libgnutls installation
 
 
-1.3 Including the microhttpd.h header
+1.4 Including the microhttpd.h header
 =====================================
 
 Ideally, before including "microhttpd.h" you should add the necessary
@@ -198,7 +255,7 @@ failing) to include the right headers.
 automatically include headers needed on GNU/Linux systems (possibly
 causing problems when porting to other platforms).
 
-1.4 SIGPIPE
+1.5 SIGPIPE
 ===========
 
 MHD does not install a signal handler for SIGPIPE.  On platforms where
@@ -237,7 +294,7 @@ ignore_sigpipe ()
              "Failed to install SIGPIPE handler: %s\n", strerror (errno));
 }
 
-1.5 MHD_UNSIGNED_LONG_LONG
+1.6 MHD_UNSIGNED_LONG_LONG
 ==========================
 
 Some platforms do not support `long long'.  Hence MHD defines a macro
@@ -303,6 +360,17 @@ File: libmicrohttpd.info,  Node: microhttpd-const,  Next: microhttpd-struct,  Pr
           IPv4).  If you specify `MHD_USE_IPV6' and the local platform
           does not support it, `MHD_start_daemon' will return NULL.
 
+          If you want MHD to support IPv4 and IPv6 using a single
+          socket, pass MHD_USE_DUAL_STACK, otherwise, if you only pass
+          this option, MHD will try to bind to IPv6-only (resulting in
+          no IPv4 support).
+
+    `MHD_USE_DUAL_STACK'
+          Use a single socket for IPv4 and IPv6.  Note that this will
+          mean that IPv4 addresses are returned by MHD in the
+          IPv6-mapped format (the 'struct sockaddr_in6' format will be
+          used for IPv4 and IPv6).
+
     `MHD_USE_PEDANTIC_CHECKS'
           Be pedantic about the protocol (as opposed to as tolerant as
           possible).  Specifically, at the moment, this flag causes MHD
@@ -314,10 +382,23 @@ File: libmicrohttpd.info,  Node: microhttpd-const,  Next: microhttpd-struct,  Pr
 
     `MHD_USE_POLL'
           Use poll instead of select. This allows sockets with
-          descriptors `>= FD_SETSIZE'.  This option only works in
-          conjunction with `MHD_USE_THREAD_PER_CONNECTION' (at this
-          point).  If you specify `MHD_USE_POLL' and the local platform
+          descriptors `>= FD_SETSIZE'.  This option currently only
+          works in conjunction with `MHD_USE_THREAD_PER_CONNECTION' or
+          `MHD_USE_INTERNAL_SELECT' (at this point).  If you specify
+          `MHD_USE_POLL' and the local platform does not support it,
+          `MHD_start_daemon' will return NULL.
+
+    `MHD_USE_EPOLL_LINUX_ONLY'
+          Use epoll instead of poll or select. This allows sockets with
+          descriptors `>= FD_SETSIZE'.  This option is only available on
+          Linux systems and only works in conjunction with
+          `MHD_USE_THREAD_PER_CONNECTION' (at this point).  If you
+          specify `MHD_USE_EPOLL_LINUX_ONLY' and the local platform
           does not support it, `MHD_start_daemon' will return NULL.
+          Using epoll instead of select or poll can in some situations
+          result in significantly higher performance as the system call
+          has fundamentally lower complexity (O(1) for epoll vs. O(n)
+          for select/poll where n is the number of open connections).
 
     `MHD_SUPPRESS_DATE_NO_CLOCK'
           Suppress (automatically) adding the 'Date:' header to HTTP
@@ -332,6 +413,19 @@ File: libmicrohttpd.info,  Node: microhttpd-const,  Next: microhttpd-struct,  Pr
           exclusively to connect HTTP clients to the HTTP server.  This
           option is incompatible with using a thread pool; if it is
           used, `MHD_OPTION_THREAD_POOL_SIZE' is ignored.
+
+    `MHD_USE_PIPE_FOR_SHUTDOWN'
+          Force MHD to use a signal pipe to notify the event loop (of
+          threads) of our shutdown.  This is required if an appliction
+          uses `MHD_USE_INTERNAL_SELECT' or
+          `MHD_USE_THREAD_PER_CONNECTION' and then performs
+          `MHD_quiesce_daemon' (which eliminates our ability to signal
+          termination via the listen socket).  In these modes,
+          `MHD_quiesce_daemon' will fail if this option was not set.
+          Also, use of this option is automatic (as in, you do not even
+          have to specify it), if `MHD_USE_NO_LISTEN_SOCKET' is
+          specified.  In "external" select mode, this option is always
+          simply ignored.
 
 
  -- Enumeration: MHD_OPTION
@@ -349,6 +443,14 @@ File: libmicrohttpd.info,  Node: microhttpd-const,  Next: microhttpd-struct,  Pr
           are unlikely to result in much benefit, as half of the memory
           will be typically used for IO, and TCP buffers are unlikely
           to support window sizes above 64k on most systems.
+
+    `MHD_OPTION_CONNECTION_MEMORY_INCREMENT'
+          Increment to use for growing the read buffer (followed by a
+          `size_t').  The default is 1024 (bytes).  Increasing this
+          value will make MHD use memory for reading more aggressively,
+          which can reduce the number of `recvfrom' calls but may
+          increase the number of `sendto' calls.  The given value must
+          fit within MHD_OPTION_CONNECTION_MEMORY_LIMIT.
 
     `MHD_OPTION_CONNECTION_LIMIT'
           Maximum number of concurrent connections to accept (followed
@@ -963,6 +1065,7 @@ File: libmicrohttpd.info,  Node: microhttpd-init,  Next: microhttpd-inspect,  Pr
 
      Return `-1' on error (daemon not listening), the handle to the
      listen socket otherwise.
+
 
  -- Function: void MHD_stop_daemon (struct MHD_Daemon *daemon)
      Shutdown an HTTP daemon.
@@ -1838,12 +1941,16 @@ File: libmicrohttpd.info,  Node: microhttpd-info daemon,  Next: microhttpd-info 
     `MHD_DAEMON_INFO_KEY_SIZE'
           Request information about the key size for a particular cipher
           algorithm.  The cipher algorithm should be passed as an extra
-          argument (of type 'enum MHD_GNUTLS_CipherAlgorithm').
+          argument (of type 'enum MHD_GNUTLS_CipherAlgorithm').  No
+          longer supported, using this value will cause
+          MHD_get_daemon_info to return NULL.
 
     `MHD_DAEMON_INFO_MAC_KEY_SIZE'
           Request information about the key size for a particular cipher
           algorithm.  The cipher algorithm should be passed as an extra
-          argument (of type 'enum MHD_GNUTLS_HashAlgorithm').
+          argument (of type 'enum MHD_GNUTLS_HashAlgorithm').  No
+          longer supported, using this value will cause
+          MHD_get_daemon_info to return NULL.
 
     `MHD_DAEMON_INFO_LISTEN_FD'
           Request the file-descriptor number that MHD is using to
@@ -1851,6 +1958,17 @@ File: libmicrohttpd.info,  Node: microhttpd-info daemon,  Next: microhttpd-info 
           was specified and a client needs to learn what port is
           actually being used by MHD.  No extra arguments should be
           passed.
+
+    `MHD_DAEMON_INFO_EPOLL_FD_LINUX_ONLY'
+          Request the file-descriptor number that MHD is using for
+          epoll.  If the build is not supporting epoll, NULL is
+          returned; if we are using a thread pool or this daemon was
+          not started with MHD_USE_EPOLL_LINUX_ONLY, (a pointer to) -1
+          is returned.  If we are using MHD_USE_SELECT_INTERNALLY or
+          are in 'external' select mode, the internal epoll FD is
+          returned.  This function must be used in external select mode
+          with epoll to obtain the FD to call epoll on.  No extra
+          arguments should be passed.
 
 
 
@@ -1913,6 +2031,20 @@ File: libmicrohttpd.info,  Node: microhttpd-info conn,  Next: microhttpd-option 
     `MHD_CONNECTION_INFO_DAEMON'
           Returns information about `struct MHD_Daemon' which manages
           this connection.
+
+    `MHD_CONNECTION_INFO_CONNECTION_FD'
+          Returns the file descriptor (usually a TCP socket) associated
+          with this connection (in the "connect-fd" member of the
+          returned struct).  Note that manipulating the descriptor
+          directly can have problematic consequences (as in, break
+          HTTP).  Applications might use this access to manipulate TCP
+          options, for example to set the "TCP-NODELAY" option for
+          COMET-like applications.  Note that MHD will set TCP-CORK
+          after sending the HTTP header and clear it after finishing
+          the footers automatically (if the platform supports it).  As
+          the connection callbacks are invoked in between, those might
+          be used to set different values for TCP-CORK and TCP-NODELAY
+          in the meantime.
 
 
 
@@ -3356,41 +3488,46 @@ Concept Index
 * *MHD_KeyValueIterator:                 microhttpd-cb.       (line 110)
 * *MHD_PostDataIterator:                 microhttpd-cb.       (line 177)
 * *MHD_RequestCompletedCallback:         microhttpd-cb.       (line  91)
-* ARM:                                   microhttpd-intro.    (line 175)
-* bind, restricting bind:                microhttpd-const.    (line 150)
-* cipher:                                microhttpd-const.    (line 208)
-* clock:                                 microhttpd-const.    (line  64)
-* compilation:                           microhttpd-intro.    (line  59)
+* ARM:                                   microhttpd-intro.    (line 232)
+* bind, restricting bind:                microhttpd-const.    (line 195)
+* cipher:                                microhttpd-const.    (line 253)
+* clock:                                 microhttpd-const.    (line  88)
+* compilation:                           microhttpd-intro.    (line 112)
 * connection, limiting number of connections: microhttpd-const.
-                                                              (line  95)
-* cookie:                                microhttpd-const.    (line 343)
-* cortex m3:                             microhttpd-intro.    (line 175)
-* date:                                  microhttpd-const.    (line  64)
+                                                              (line 140)
+* cookie:                                microhttpd-const.    (line 388)
+* cortex m3:                             microhttpd-intro.    (line 232)
+* date:                                  microhttpd-const.    (line  88)
 * debugging:                             microhttpd-const.    (line  24)
-* digest auth:                           microhttpd-const.    (line 216)
+* digest auth:                           microhttpd-const.    (line 261)
 * eCos, GNU General Public License with eCos Extension: GNU GPL with eCos Extension.
                                                               (line   6)
-* embedded systems <1>:                  microhttpd-const.    (line  64)
-* embedded systems:                      microhttpd-intro.    (line  59)
-* escaping:                              microhttpd-const.    (line 297)
-* FD_SETSIZE:                            microhttpd-const.    (line  57)
-* foreign-function interface:            microhttpd-const.    (line 275)
+* embedded systems <1>:                  microhttpd-const.    (line  88)
+* embedded systems:                      microhttpd-intro.    (line 112)
+* epoll <1>:                             microhttpd-info daemon.
+                                                              (line  50)
+* epoll <2>:                             microhttpd-const.    (line  76)
+* epoll:                                 microhttpd-intro.    (line  59)
+* escaping:                              microhttpd-const.    (line 342)
+* FD_SETSIZE:                            microhttpd-const.    (line  68)
+* foreign-function interface:            microhttpd-const.    (line 320)
 * GPL, GNU General Public License:       GNU GPL with eCos Extension.
                                                               (line   6)
-* IAR:                                   microhttpd-intro.    (line 175)
-* internationalization:                  microhttpd-const.    (line 297)
+* IAR:                                   microhttpd-intro.    (line 232)
+* internationalization:                  microhttpd-const.    (line 342)
 * IPv6:                                  microhttpd-const.    (line  43)
 * license <1>:                           GNU-FDL.             (line   6)
 * license <2>:                           GNU GPL with eCos Extension.
                                                               (line   6)
 * license:                               GNU-LGPL.            (line   6)
 * listen <1>:                            microhttpd-info daemon.
-                                                              (line  39)
-* listen:                                microhttpd-const.    (line  71)
-* logging:                               microhttpd-const.    (line 161)
-* long long:                             microhttpd-intro.    (line 175)
-* memory, limiting memory utilization:   microhttpd-const.    (line  87)
-* MHD_add_connection:                    microhttpd-init.     (line 121)
+                                                              (line  43)
+* listen:                                microhttpd-const.    (line  95)
+* logging:                               microhttpd-const.    (line 206)
+* long long:                             microhttpd-intro.    (line 232)
+* memory:                                microhttpd-const.    (line 132)
+* memory, limiting memory utilization:   microhttpd-const.    (line 124)
+* MHD_add_connection:                    microhttpd-init.     (line 122)
 * MHD_add_response_footer:               microhttpd-response headers.
                                                               (line  20)
 * MHD_add_response_header:               microhttpd-response headers.
@@ -3439,10 +3576,10 @@ Concept Index
 * MHD_get_response_headers:              microhttpd-response inspect.
                                                               (line   8)
 * MHD_get_timeout:                       microhttpd-inspect.  (line  24)
-* MHD_LONG_LONG:                         microhttpd-intro.    (line 175)
+* MHD_LONG_LONG:                         microhttpd-intro.    (line 232)
 * MHD_lookup_connection_value:           microhttpd-requests. (line  59)
-* MHD_OPTION:                            microhttpd-const.    (line  79)
-* MHD_OptionItem:                        microhttpd-const.    (line 320)
+* MHD_OPTION:                            microhttpd-const.    (line 116)
+* MHD_OptionItem:                        microhttpd-const.    (line 365)
 * MHD_post_process:                      microhttpd-post api. (line  35)
 * MHD_PostProcessor:                     microhttpd-struct.   (line  19)
 * MHD_queue_auth_fail_response:          microhttpd-dauth digest.
@@ -3452,46 +3589,51 @@ Concept Index
 * MHD_queue_response:                    microhttpd-response enqueue.
                                                               (line   9)
 * MHD_quiesce_daemon:                    microhttpd-init.     (line  51)
-* MHD_RequestTerminationCode:            microhttpd-const.    (line 362)
+* MHD_RequestTerminationCode:            microhttpd-const.    (line 407)
 * MHD_Response:                          microhttpd-struct.   (line  16)
-* MHD_ResponseMemoryMode:                microhttpd-const.    (line 381)
-* MHD_run:                               microhttpd-init.     (line  71)
-* MHD_run_from_select:                   microhttpd-init.     (line  89)
+* MHD_ResponseMemoryMode:                microhttpd-const.    (line 426)
+* MHD_run:                               microhttpd-init.     (line  72)
+* MHD_run_from_select:                   microhttpd-init.     (line  90)
 * MHD_set_connection_option:             microhttpd-option conn.
                                                               (line   8)
 * MHD_set_connection_value:              microhttpd-requests. (line  36)
 * MHD_set_panic_func:                    microhttpd-init.     (line   7)
 * MHD_start_daemon:                      microhttpd-init.     (line  21)
-* MHD_stop_daemon:                       microhttpd-init.     (line  68)
-* MHD_ValueKind:                         microhttpd-const.    (line 333)
-* microhttpd.h:                          microhttpd-intro.    (line 115)
-* options:                               microhttpd-const.    (line 275)
-* performance:                           microhttpd-const.    (line 267)
-* poll <1>:                              microhttpd-init.     (line  74)
-* poll:                                  microhttpd-const.    (line  57)
-* portability:                           microhttpd-intro.    (line  59)
+* MHD_stop_daemon:                       microhttpd-init.     (line  69)
+* MHD_ValueKind:                         microhttpd-const.    (line 378)
+* microhttpd.h:                          microhttpd-intro.    (line 172)
+* options:                               microhttpd-const.    (line 320)
+* performance <1>:                       microhttpd-const.    (line 312)
+* performance:                           microhttpd-intro.    (line  83)
+* poll <1>:                              microhttpd-init.     (line  75)
+* poll <2>:                              microhttpd-const.    (line  68)
+* poll:                                  microhttpd-intro.    (line  59)
+* portability:                           microhttpd-intro.    (line 112)
 * POST method <1>:                       microhttpd-post api. (line   6)
 * POST method <2>:                       microhttpd-post.     (line   6)
 * POST method <3>:                       microhttpd-cb.       (line  50)
 * POST method <4>:                       microhttpd-struct.   (line  19)
-* POST method:                           microhttpd-const.    (line 347)
-* proxy:                                 microhttpd-const.    (line  71)
-* pthread:                               microhttpd-const.    (line 313)
+* POST method:                           microhttpd-const.    (line 392)
+* proxy:                                 microhttpd-const.    (line  95)
+* pthread:                               microhttpd-const.    (line 358)
 * PUT method:                            microhttpd-cb.       (line  50)
-* query string:                          microhttpd-const.    (line 161)
-* random:                                microhttpd-const.    (line 216)
-* replay attack:                         microhttpd-const.    (line 227)
-* select <1>:                            microhttpd-init.     (line  74)
-* select:                                microhttpd-const.    (line  57)
-* signals:                               microhttpd-intro.    (line 136)
+* query string:                          microhttpd-const.    (line 206)
+* quiesce <1>:                           microhttpd-init.     (line  51)
+* quiesce:                               microhttpd-const.    (line 102)
+* random:                                microhttpd-const.    (line 261)
+* replay attack:                         microhttpd-const.    (line 272)
+* select <1>:                            microhttpd-init.     (line  75)
+* select <2>:                            microhttpd-const.    (line  68)
+* select:                                microhttpd-intro.    (line  59)
+* signals:                               microhttpd-intro.    (line 193)
 * SSL:                                   microhttpd-const.    (line  32)
-* stack:                                 microhttpd-const.    (line 313)
-* systemd:                               microhttpd-const.    (line 249)
-* thread:                                microhttpd-const.    (line 313)
+* stack:                                 microhttpd-const.    (line 358)
+* systemd:                               microhttpd-const.    (line 294)
+* thread:                                microhttpd-const.    (line 358)
 * timeout <1>:                           microhttpd-option conn.
                                                               (line   6)
 * timeout <2>:                           microhttpd-inspect.  (line  24)
-* timeout:                               microhttpd-const.    (line 123)
+* timeout:                               microhttpd-const.    (line 168)
 * TLS:                                   microhttpd-const.    (line  32)
 
 
@@ -3513,34 +3655,36 @@ Type Index
 
 
 Tag Table:
-Node: Top813
-Node: microhttpd-intro2923
-Node: microhttpd-const10446
-Node: microhttpd-struct29717
-Node: microhttpd-cb30497
-Node: microhttpd-init39098
-Node: microhttpd-inspect44519
-Node: microhttpd-requests46356
-Node: microhttpd-responses49839
-Node: microhttpd-response enqueue50893
-Ref: microhttpd-response enqueue-Footnote-153165
-Node: microhttpd-response create53384
-Node: microhttpd-response headers59384
-Node: microhttpd-response inspect61212
-Node: microhttpd-dauth62383
-Node: microhttpd-dauth basic63932
-Node: microhttpd-dauth digest65121
-Node: microhttpd-post69765
-Node: microhttpd-post api72708
-Node: microhttpd-info75290
-Node: microhttpd-info daemon75705
-Node: microhttpd-info conn77525
-Node: microhttpd-option conn79961
-Node: GNU-LGPL81022
-Node: GNU GPL with eCos Extension109141
-Node: GNU-FDL129011
-Node: Concept Index154116
-Node: Function and Data Index164638
-Node: Type Index164818
+Node: Top814
+Node: microhttpd-intro2925
+Ref: fig:performance6964
+Ref: tbl:supported7846
+Node: microhttpd-const13246
+Node: microhttpd-struct34953
+Node: microhttpd-cb35733
+Node: microhttpd-init44334
+Node: microhttpd-inspect49756
+Node: microhttpd-requests51593
+Node: microhttpd-responses55076
+Node: microhttpd-response enqueue56130
+Ref: microhttpd-response enqueue-Footnote-158402
+Node: microhttpd-response create58621
+Node: microhttpd-response headers64621
+Node: microhttpd-response inspect66449
+Node: microhttpd-dauth67620
+Node: microhttpd-dauth basic69169
+Node: microhttpd-dauth digest70358
+Node: microhttpd-post75002
+Node: microhttpd-post api77945
+Node: microhttpd-info80527
+Node: microhttpd-info daemon80942
+Node: microhttpd-info conn83599
+Node: microhttpd-option conn86863
+Node: GNU-LGPL87924
+Node: GNU GPL with eCos Extension116043
+Node: GNU-FDL135913
+Node: Concept Index161018
+Node: Function and Data Index172262
+Node: Type Index172442
 
 End Tag Table
