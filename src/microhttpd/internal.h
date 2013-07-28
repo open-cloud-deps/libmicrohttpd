@@ -1,6 +1,6 @@
 /*
   This file is part of libmicrohttpd
-  (C) 2007, 2008, 2009, 2010, 2011, 2012 Daniel Pittman and Christian Grothoff
+  (C) 2007-2013 Daniel Pittman and Christian Grothoff
   
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -32,6 +32,10 @@
 #if HTTPS_SUPPORT
 #include <gnutls/gnutls.h>
 #endif
+#if EPOLL_SUPPORT
+#include <sys/epoll.h>
+#endif
+
 
 /**
  * Should we perform additional sanity checks at runtime (on our internal
@@ -41,6 +45,16 @@
 
 #define MHD_MAX(a,b) ((a)<(b)) ? (b) : (a)
 #define MHD_MIN(a,b) ((a)<(b)) ? (a) : (b)
+
+
+/**
+ * Minimum size by which MHD tries to increment read/write buffers.
+ * We usually begin with half the available pool space for the
+ * IO-buffer, but if absolutely needed we additively grow by the
+ * number of bytes given here (up to -- theoretically -- the full pool
+ * space).
+ */
+#define MHD_BUF_INC_SIZE 1024
 
 
 /**
@@ -69,44 +83,69 @@ extern void *mhd_panic_cls;
 #define MHD_PANIC(msg) mhd_panic (mhd_panic_cls, __FILE__, __LINE__, NULL)
 #endif
 
+
 /**
- * Events we care about with respect to poll/select
- * for file descriptors.
+ * State of the socket with respect to epoll (bitmask).
  */
-enum MHD_PollActions
+enum MHD_EpollState
   {
-    /**
-     * No event interests us.
-     */
-    MHD_POLL_ACTION_NOTHING = 0,
 
     /**
-     * We would like to read.
+     * The socket is not involved with a defined state in epoll right
+     * now.
      */
-    MHD_POLL_ACTION_IN = 1,
+    MHD_EPOLL_STATE_UNREADY = 0,
 
     /**
-     * We would like to write.
-     */ 
-    MHD_POLL_ACTION_OUT = 2
+     * epoll told us that data was ready for reading, and we did
+     * not consume all of it yet.
+     */
+    MHD_EPOLL_STATE_READ_READY = 1,
+
+    /**
+     * epoll told us that space was available for writing, and we did
+     * not consume all of it yet.
+     */
+    MHD_EPOLL_STATE_WRITE_READY = 2,
+
+    /**
+     * Is this connection currently in the 'eready' EDLL?
+     */
+    MHD_EPOLL_STATE_IN_EREADY_EDLL = 4,
+
+    /**
+     * Is this connection currently in the 'epoll' set?
+     */
+    MHD_EPOLL_STATE_IN_EPOLL_SET = 8
+
   };
 
 
 /**
- * Socket descriptor and events we care about.
+ * What is this connection waiting for?
  */
-struct MHD_Pollfd 
-{
-  /**
-   * Socket descriptor.
-   */
-  int fd;
+enum MHD_ConnectionEventLoopInfo
+  {
+    /**
+     * We are waiting to be able to read.
+     */
+    MHD_EVENT_LOOP_INFO_READ = 0,
 
-  /**
-   * Which events do we care about for this socket?
-   */
-  enum MHD_PollActions events;
-};
+    /**
+     * We are waiting to be able to write.
+     */
+    MHD_EVENT_LOOP_INFO_WRITE = 1,
+
+    /**
+     * We are waiting for the application to provide data.
+     */ 
+    MHD_EVENT_LOOP_INFO_BLOCK = 2,
+
+    /**
+     * We are finished and are awaiting cleanup.
+     */ 
+    MHD_EVENT_LOOP_INFO_CLEANUP = 3
+  };
 
 
 /**
@@ -461,15 +500,37 @@ typedef ssize_t (*TransmitCallback) (struct MHD_Connection * conn,
 struct MHD_Connection
 {
 
+#if EPOLL_SUPPORT
   /**
-   * This is a doubly-linked list.
+   * Next pointer for the EDLL listing connections that are epoll-ready.
+   */
+  struct MHD_Connection *nextE;
+
+  /**
+   * Previous pointer for the EDLL listing connections that are epoll-ready.
+   */
+  struct MHD_Connection *prevE;
+#endif
+
+  /**
+   * Next pointer for the DLL describing our IO state.
    */
   struct MHD_Connection *next;
 
   /**
-   * This is a doubly-linked list.
+   * Previous pointer for the DLL describing our IO state.
    */
   struct MHD_Connection *prev;
+
+  /**
+   * Next pointer for the XDLL organizing connections by timeout.
+   */
+  struct MHD_Connection *nextX;
+
+  /**
+   * Previous pointer for the XDLL organizing connections by timeout.
+   */
+  struct MHD_Connection *prevX;
 
   /**
    * Reference to the MHD_Daemon struct.
@@ -602,7 +663,7 @@ struct MHD_Connection
 
   /**
    * How many more bytes of the body do we expect
-   * to read? "-1" for unknown.
+   * to read? MHD_SIZE_UNKNOWN for unknown.
    */
   uint64_t remaining_upload_size;
 
@@ -651,11 +712,10 @@ struct MHD_Connection
   int socket_fd;
 
   /**
-   * Has this socket been closed for reading (i.e.
-   * other side closed the connection)?  If so,
-   * we must completely close the connection once
-   * we are done sending our response (and stop
-   * trying to read from this socket).
+   * Has this socket been closed for reading (i.e.  other side closed
+   * the connection)?  If so, we must completely close the connection
+   * once we are done sending our response (and stop trying to read
+   * from this socket).
    */
   int read_closed;
 
@@ -665,9 +725,26 @@ struct MHD_Connection
   int thread_joined;
 
   /**
+   * Are we currently inside the "idle" handler (to avoid recursively invoking it).
+   */
+  int in_idle;
+
+#if EPOLL_SUPPORT
+  /**
+   * What is the state of this socket in relation to epoll?
+   */
+  enum MHD_EpollState epoll_state;
+#endif
+
+  /**
    * State in the FSM for this connection.
    */
   enum MHD_CONNECTION_STATE state;
+
+  /**
+   * What is this connection waiting for?
+   */
+  enum MHD_ConnectionEventLoopInfo event_loop_info;
 
   /**
    * HTTP response code.  Only valid if response object
@@ -781,7 +858,11 @@ typedef size_t (*UnescapeCallback)(void *cls,
 
 
 /**
- * State kept for each MHD daemon.
+ * State kept for each MHD daemon.  All connections are kept in two
+ * doubly-linked lists.  The first one reflects the state of the
+ * connection in terms of what operations we are waiting for (read,
+ * write, locally blocked, cleanup) whereas the second is about its
+ * timeout state (default or custom).
  */
 struct MHD_Daemon
 {
@@ -797,7 +878,7 @@ struct MHD_Daemon
   void *default_handler_cls;
 
   /**
-   * Tail of doubly-linked list of our current, active connections.
+   * Head of doubly-linked list of our current, active connections.
    */
   struct MHD_Connection *connections_head;
 
@@ -807,7 +888,7 @@ struct MHD_Daemon
   struct MHD_Connection *connections_tail;
 
   /**
-   * Tail of doubly-linked list of connections to clean up.
+   * Head of doubly-linked list of connections to clean up.
    */
   struct MHD_Connection *cleanup_head;
 
@@ -816,10 +897,54 @@ struct MHD_Daemon
    */
   struct MHD_Connection *cleanup_tail;
 
+#if EPOLL_SUPPORT
   /**
-   * Function to call to check if we should
-   * accept or reject an incoming request.
-   * May be NULL.
+   * Head of EDLL of connections ready for processing (in epoll mode).
+   */
+  struct MHD_Connection *eready_head;
+
+  /**
+   * Tail of EDLL of connections ready for processing (in epoll mode)
+   */
+  struct MHD_Connection *eready_tail;
+#endif
+
+  /**
+   * Head of the XDLL of ALL connections with a default ('normal')
+   * timeout, sorted by timeout (earliest at the tail, most recently
+   * used connection at the head).  MHD can just look at the tail of
+   * this list to determine the timeout for all of its elements;
+   * whenever there is an event of a connection, the connection is
+   * moved back to the tail of the list.
+   *
+   * All connections by default start in this list; if a custom
+   * timeout that does not match 'connection_timeout' is set, they
+   * are moved to the 'manual_timeout_head'-XDLL.
+   */
+  struct MHD_Connection *normal_timeout_head;
+
+  /**
+   * Tail of the XDLL of ALL connections with a default timeout,
+   * sorted by timeout (earliest timeout at the tail).
+   */
+  struct MHD_Connection *normal_timeout_tail;
+
+  /**
+   * Head of the XDLL of ALL connections with a non-default/custom
+   * timeout, unsorted.  MHD will do a O(n) scan over this list to
+   * determine the current timeout.
+   */
+  struct MHD_Connection *manual_timeout_head;
+
+  /**
+   * Tail of the XDLL of ALL connections with a non-default/custom
+   * timeout, unsorted.
+   */
+  struct MHD_Connection *manual_timeout_tail;
+
+  /**
+   * Function to call to check if we should accept or reject an
+   * incoming request.  May be NULL.
    */
   MHD_AcceptPolicyCallback apc;
 
@@ -897,6 +1022,11 @@ struct MHD_Daemon
   size_t pool_size;
 
   /**
+   * Increment for growth of the per-connection memory pools.
+   */
+  size_t pool_increment;
+
+  /**
    * Size of threads created by MHD.
    */
   size_t thread_stack_size;
@@ -925,6 +1055,19 @@ struct MHD_Daemon
    * Listen socket.
    */
   int socket_fd;
+
+#if EPOLL_SUPPORT
+  /**
+   * File descriptor associated with our epoll loop.
+   */
+  int epoll_fd;
+
+  /**
+   * MHD_YES if the listen socket is in the 'epoll' set, 
+   * MHD_NO if not.
+   */
+  int listen_socket_in_epoll;
+#endif
 
   /**
    * Pipe we use to signal shutdown, unless
@@ -1001,6 +1144,14 @@ struct MHD_Daemon
    * Pointer to our SSL/TLS certificate authority (in ASCII) in memory.
    */
   const char *https_mem_trust;
+
+  /**
+   * For how many connections do we have 'tls_read_ready' set to MHD_YES?
+   * Used to avoid O(n) traversal over all connections when determining
+   * event-loop timeout (as it needs to be zero if there is any connection
+   * which might have ready data within TLS).
+   */
+  unsigned int num_tls_read_ready;
 
 #endif
 
@@ -1083,10 +1234,93 @@ struct MHD_Daemon
   (element)->prev = NULL; } while (0)
 
 
+
+/**
+ * Insert an element at the head of a XDLL. Assumes that head, tail and
+ * element are structs with prevX and nextX fields.
+ *
+ * @param head pointer to the head of the XDLL
+ * @param tail pointer to the tail of the XDLL
+ * @param element element to insert
+ */
+#define XDLL_insert(head,tail,element) do { \
+  (element)->nextX = (head); \
+  (element)->prevX = NULL; \
+  if ((tail) == NULL) \
+    (tail) = element; \
+  else \
+    (head)->prevX = element; \
+  (head) = (element); } while (0)
+
+
+/**
+ * Remove an element from a XDLL. Assumes
+ * that head, tail and element are structs
+ * with prevX and nextX fields.
+ *
+ * @param head pointer to the head of the XDLL
+ * @param tail pointer to the tail of the XDLL
+ * @param element element to remove
+ */
+#define XDLL_remove(head,tail,element) do { \
+  if ((element)->prevX == NULL) \
+    (head) = (element)->nextX;  \
+  else \
+    (element)->prevX->nextX = (element)->nextX; \
+  if ((element)->nextX == NULL) \
+    (tail) = (element)->prevX;  \
+  else \
+    (element)->nextX->prevX = (element)->prevX; \
+  (element)->nextX = NULL; \
+  (element)->prevX = NULL; } while (0)
+
+
+/**
+ * Insert an element at the head of a EDLL. Assumes that head, tail and
+ * element are structs with prevE and nextE fields.
+ *
+ * @param head pointer to the head of the EDLL
+ * @param tail pointer to the tail of the EDLL
+ * @param element element to insert
+ */
+#define EDLL_insert(head,tail,element) do { \
+  (element)->nextE = (head); \
+  (element)->prevE = NULL; \
+  if ((tail) == NULL) \
+    (tail) = element; \
+  else \
+    (head)->prevE = element; \
+  (head) = (element); } while (0)
+
+
+/**
+ * Remove an element from a EDLL. Assumes
+ * that head, tail and element are structs
+ * with prevE and nextE fields.
+ *
+ * @param head pointer to the head of the EDLL
+ * @param tail pointer to the tail of the EDLL
+ * @param element element to remove
+ */
+#define EDLL_remove(head,tail,element) do { \
+  if ((element)->prevE == NULL) \
+    (head) = (element)->nextE;  \
+  else \
+    (element)->prevE->nextE = (element)->nextE; \
+  if ((element)->nextE == NULL) \
+    (tail) = (element)->prevE;  \
+  else \
+    (element)->nextE->prevE = (element)->prevE; \
+  (element)->nextE = NULL; \
+  (element)->prevE = NULL; } while (0)
+
+
 /**
  * Equivalent to time(NULL) but tries to use some sort of monotonic
  * clock that isn't affected by someone setting the system real time
  * clock.
+ *
+ * @return 'current' time
  */
 time_t MHD_monotonic_time(void);
 

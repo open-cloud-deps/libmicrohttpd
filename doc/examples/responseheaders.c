@@ -37,7 +37,8 @@ answer_to_connection (void *cls, struct MHD_Connection *connection,
        (0 != fstat (fd, &sbuf)) )
     {
       /* error accessing file */
-      if (fd != -1) close (fd);
+      if (fd != -1)
+	(void) close (fd);
       const char *errorstr =
         "<html><body>An internal server error has occured!\
                               </body></html>";
@@ -77,7 +78,7 @@ main ()
   if (NULL == daemon)
     return 1;
 
-  getchar ();
+  (void) getchar ();
 
   MHD_stop_daemon (daemon);
 
