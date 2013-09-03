@@ -208,8 +208,8 @@ struct MHD_PostProcessor
   /**
    * Do we have to call the 'ikvi' callback when processing the
    * multipart post body even if the size of the payload is zero?
-   * Set to MHD_YES whenever we parse a new multiparty entry header,
-   * and to MHD_NO the first time we call the 'ikvi' callback.
+   * Set to #MHD_YES whenever we parse a new multiparty entry header,
+   * and to #MHD_NO the first time we call the 'ikvi' callback.
    * Used to ensure that we do always call 'ikvi' even if the
    * payload is empty (but not more than once).
    */
@@ -244,10 +244,14 @@ struct MHD_PostProcessor
 
 
 /**
- * Create a PostProcessor.
+ * Create a `struct MHD_PostProcessor`.
  *
- * A PostProcessor can be used to (incrementally)
- * parse the data portion of a POST request.
+ * A `struct MHD_PostProcessor` can be used to (incrementally) parse
+ * the data portion of a POST request.  Note that some buggy browsers
+ * fail to set the encoding type.  If you want to support those, you
+ * may have to call #MHD_set_connection_value with the proper encoding
+ * type before creating a post processor (if no supported encoding
+ * type is set, this function will fail).
  *
  * @param connection the connection on which the POST is
  *        happening (used to determine the POST format)
@@ -255,11 +259,14 @@ struct MHD_PostProcessor
  *        internal buffering (used only for the parsing,
  *        specifically the parsing of the keys).  A
  *        tiny value (256-1024) should be sufficient.
- *        Do NOT use 0.
- * @param iter iterator to be called with the parsed data
- * @param iter_cls first argument to iter
+ *        Do NOT use a value smaller than 256.  For good
+ *        performance, use 32 or 64k (i.e. 65536).
+ * @param iter iterator to be called with the parsed data,
+ *        Must NOT be NULL.
+ * @param iter_cls first argument to @a iter
  * @return NULL on error (out of memory, unsupported encoding),
  *         otherwise a PP handle
+ * @ingroup request
  */
 struct MHD_PostProcessor *
 MHD_create_post_processor (struct MHD_Connection *connection,
@@ -329,8 +336,8 @@ MHD_create_post_processor (struct MHD_Connection *connection,
  *
  * @param pp post processor context
  * @param post_data upload data
- * @param post_data_len number of bytes in upload_data
- * @return MHD_YES on success, MHD_NO if there was an error processing the data
+ * @param post_data_len number of bytes in @a post_data
+ * @return #MHD_YES on success, #MHD_NO if there was an error processing the data
  */
 static int
 post_process_urlencoded (struct MHD_PostProcessor *pp,
@@ -485,7 +492,7 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
  * @param prefix prefix to match
  * @param line line to match prefix in
  * @param suffix set to a copy of the rest of the line, starting at the end of the match
- * @return MHD_YES if there was a match, MHD_NO if not
+ * @return #MHD_YES if there was a match, #MHD_NO if not
  */
 static int
 try_match_header (const char *prefix, char *line, char **suffix)
@@ -516,7 +523,7 @@ try_match_header (const char *prefix, char *line, char **suffix)
  *                   if the boundary is found
  * @param next_dash_state dash_state to which we should advance the
  *                   post processor if the boundary is found
- * @return MHD_NO if the boundary is not found, MHD_YES if we did find it
+ * @return #MHD_NO if the boundary is not found, #MHD_YES if we did find it
  */
 static int
 find_boundary (struct MHD_PostProcessor *pp,
@@ -554,8 +561,7 @@ find_boundary (struct MHD_PostProcessor *pp,
  * In buf, there maybe an expression '$key="$value"'.  If that is the
  * case, copy a copy of $value to destination.
  *
- * If destination is already non-NULL,
- * do nothing.
+ * If destination is already non-NULL, do nothing.
  */
 static void
 try_get_value (const char *buf, 
@@ -606,8 +612,8 @@ try_get_value (const char *buf,
  *                processed
  * @param next_state state to which the post processor should
  *                be advanced if we find the end of the headers
- * @return MHD_YES if we can continue processing,
- *         MHD_NO on error or if we do not have
+ * @return #MHD_YES if we can continue processing,
+ *         #MHD_NO on error or if we do not have
  *                enough data yet
  */
 static int
@@ -787,8 +793,8 @@ free_unmarked (struct MHD_PostProcessor *pp)
  *
  * @param pp post processor context
  * @param post_data data to decode
- * @param post_data_len number of bytes in 'post_data'
- * @return MHD_NO on error, 
+ * @param post_data_len number of bytes in @a post_data
+ * @return #MHD_NO on error, 
  */
 static int
 post_process_multipart (struct MHD_PostProcessor *pp,
@@ -1082,26 +1088,25 @@ END:
 
 
 /**
- * Parse and process POST data.
- * Call this function when POST data is available
- * (usually during an MHD_AccessHandlerCallback)
- * with the upload_data and upload_data_size.
- * Whenever possible, this will then cause calls
- * to the MHD_IncrementalKeyValueIterator.
+ * Parse and process POST data.  Call this function when POST data is
+ * available (usually during an #MHD_AccessHandlerCallback) with the
+ * "upload_data" and "upload_data_size".  Whenever possible, this will
+ * then cause calls to the #MHD_IncrementalKeyValueIterator.
  *
  * @param pp the post processor
- * @param post_data post_data_len bytes of POST data
- * @param post_data_len length of post_data
- * @return MHD_YES on success, MHD_NO on error
+ * @param post_data @a post_data_len bytes of POST data
+ * @param post_data_len length of @a post_data
+ * @return #MHD_YES on success, #MHD_NO on error
  *         (out-of-memory, iterator aborted, parse error)
+ * @ingroup request
  */
 int
 MHD_post_process (struct MHD_PostProcessor *pp,
                   const char *post_data, size_t post_data_len)
 {
-  if (post_data_len == 0)
+  if (0 == post_data_len)
     return MHD_YES;
-  if (pp == NULL)
+  if (NULL == pp)
     return MHD_NO;
   if (0 == strncasecmp (MHD_HTTP_POST_ENCODING_FORM_URLENCODED, pp->encoding,
                          strlen(MHD_HTTP_POST_ENCODING_FORM_URLENCODED)))
@@ -1119,10 +1124,11 @@ MHD_post_process (struct MHD_PostProcessor *pp,
  * Release PostProcessor resources.
  *
  * @param pp post processor context to destroy
- * @return MHD_YES if processing completed nicely,
- *         MHD_NO if there were spurious characters / formatting
+ * @return #MHD_YES if processing completed nicely,
+ *         #MHD_NO if there were spurious characters / formatting
  *                problems; it is common to ignore the return
  *                value of this function
+ * @ingroup request
  */
 int
 MHD_destroy_post_processor (struct MHD_PostProcessor *pp)

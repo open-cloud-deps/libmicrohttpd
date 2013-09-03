@@ -22,7 +22,7 @@
  * 		 PROGRAM
  * @author Andrey Uzunov
  */
- 
+
 #include "platform.h"
 #include <unistd.h>
 #include <stdlib.h>
@@ -55,6 +55,8 @@ static void
 new_session_callback (void *cls,
 						struct SPDY_Session * session)
 {
+  (void)cls;
+  
 	char ipstr[1024];
 		
 	struct sockaddr *addr;
@@ -96,6 +98,9 @@ session_closed_handler (void *cls,
 						struct SPDY_Session * session,
 						int by_client)
 {
+  (void)cls;
+  (void)session;
+  
 	//printf("session_closed_handler called\n");
 	
 	if(SPDY_YES != by_client)
@@ -139,7 +144,7 @@ response_done_callback(void *cls,
 	free(cls);
 }
 
-
+/*
 static int
 print_headers (void *cls,
                            const char *name, const char *value)
@@ -148,6 +153,8 @@ print_headers (void *cls,
 	printf("%s: %s\n",name,value);
 	return SPDY_YES;
 }
+ */
+ 
  
 /*       
 void
@@ -199,8 +206,11 @@ standard_request_handler(void *cls,
                         const char *version,
                         const char *host,
                         const char *scheme,
-						struct SPDY_NameValue * headers)
+						struct SPDY_NameValue * headers,
+            bool more)
 {
+  (void)more;
+  
 	char *html;
 	char *data;
 	struct SPDY_Response *response=NULL;
@@ -259,10 +269,30 @@ standard_request_handler(void *cls,
 }
 
 
+static int
+new_post_data_cb (void * cls,
+					 struct SPDY_Request *request,
+					 const void * buf,
+					 size_t size,
+					 bool more)
+{
+  (void)cls;
+  (void)request;
+  (void)more;
+  
+	printf("DATA:\n===============================\n");
+  write(0, buf, size);
+	printf("\n===============================\n");
+  return SPDY_YES;
+}
+
+
 static void 
 sig_handler(int signo)
 {
-    printf("received signal\n");
+  (void)signo;
+  
+  printf("received signal\n");
 }
 
 
@@ -278,17 +308,19 @@ main (int argc, char *const *argv)
 	
 	SPDY_init();
 	
-	struct sockaddr_in addr4;
+	/*
+  struct sockaddr_in addr4;
 	struct in_addr inaddr4;
 	inaddr4.s_addr = htonl(INADDR_ANY);
 	addr4.sin_family = AF_INET;
 	addr4.sin_addr = inaddr4;
 	addr4.sin_port = htons(atoi(argv[1]));
-	
+	*/
+  
 	struct SPDY_Daemon *daemon = SPDY_start_daemon(atoi(argv[1]),
 	 DATA_DIR "cert-and-key.pem",
 	 DATA_DIR "cert-and-key.pem",
-	&new_session_callback,&session_closed_handler,&standard_request_handler,NULL,NULL,
+	&new_session_callback,&session_closed_handler,&standard_request_handler,&new_post_data_cb,NULL,
 	SPDY_DAEMON_OPTION_SESSION_TIMEOUT, 10,
 	//SPDY_DAEMON_OPTION_SOCK_ADDR,  (struct sockaddr *)&addr4,
 	SPDY_DAEMON_OPTION_END);
@@ -298,15 +330,17 @@ main (int argc, char *const *argv)
 		return 1;
 	}
 	
+  /*
 	struct sockaddr_in6 addr6;
 	addr6.sin6_family = AF_INET6;
 	addr6.sin6_addr = in6addr_any;
 	addr6.sin6_port = htons(atoi(argv[1]) + 1);
-	
+	*/
+  
 	struct SPDY_Daemon *daemon2 = SPDY_start_daemon(atoi(argv[1]) + 1,
 	 DATA_DIR "cert-and-key.pem",
 	 DATA_DIR "cert-and-key.pem",
-	&new_session_callback,NULL,&standard_request_handler,NULL,&main,
+	&new_session_callback,NULL,&standard_request_handler,&new_post_data_cb,&main,
 	//SPDY_DAEMON_OPTION_SESSION_TIMEOUT, 0,
 	//SPDY_DAEMON_OPTION_SOCK_ADDR,  (struct sockaddr *)&addr6,
 	//SPDY_DAEMON_OPTION_FLAGS, SPDY_DAEMON_FLAG_ONLY_IPV6,
@@ -348,7 +382,7 @@ main (int argc, char *const *argv)
 			timeout.tv_usec = (timeoutlong % 1000) * 1000;
 		}
     
-		printf("ret=%i; timeoutlong=%i; sec=%i; usec=%i\n", ret, timeoutlong, timeout.tv_sec, timeout.tv_usec);
+		printf("ret=%i; timeoutlong=%llu; sec=%llu; usec=%llu\n", ret, timeoutlong, (long long unsigned)timeout.tv_sec, (long long unsigned)timeout.tv_usec);
 		//raise(SIGINT);
 
 		/* get file descriptors from the transfers */ 
@@ -380,7 +414,7 @@ main (int argc, char *const *argv)
 	}
 	else if(daemon != NULL){
 	
-	printf("%i loops in %i secs\n", loops, time(NULL) - start);
+	printf("%lu loops in %llu secs\n", loops, (long long unsigned)(time(NULL) - start));
 		SPDY_stop_daemon(daemon);
 		daemon=NULL;
 	}

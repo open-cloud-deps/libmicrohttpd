@@ -133,6 +133,9 @@
 /* Do we have sockaddr_in.sin_len? */
 #undef HAVE_SOCKADDR_IN_SIN_LEN
 
+/* SOCK_NONBLOCK is defined in a socket header */
+#undef HAVE_SOCK_NONBLOCK
+
 /* Define to 1 if you have the <spdylay/spdylay.h> header file. */
 #undef HAVE_SPDYLAY_SPDYLAY_H
 

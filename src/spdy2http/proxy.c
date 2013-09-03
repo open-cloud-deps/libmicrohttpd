@@ -24,6 +24,14 @@
  *      TODO:
  * - test all options!
  * - don't abort on lack of memory
+ * - Memory leak: in rare cases the proxy object is not freed (and there
+ * is a lot of data pointed from it)
+ * - Correct recapitalizetion of header names before giving the headers
+ * to curl.
+ * - curl does not close sockets when connection is closed and no
+ * new sockets are opened (they stay in CLOSE_WAIT)
+ * - add '/' when a user requests http://example.com . Now this is a bad
+ * request
  * @author Andrey Uzunov
  */
  
@@ -42,6 +50,8 @@
 #include <getopt.h>
 #include <regex.h>
 
+#define ERROR_RESPONSE "502 Bad Gateway"
+
 
 struct global_options
 {
@@ -49,6 +59,7 @@ struct global_options
   char *cert;
   char *cert_key;
   char *listen_host;
+  unsigned int timeout;
   uint16_t listen_port;
   bool verbose;
   bool curl_verbose;
@@ -77,16 +88,16 @@ struct URI
 
 
 #define PRINT_INFO(msg) do{\
-	printf("%i:%s\n", __LINE__, msg);\
+	fprintf(stdout, "%i:%s\n", __LINE__, msg);\
 	fflush(stdout);\
 	}\
 	while(0)
 
 
 #define PRINT_INFO2(fmt, ...) do{\
-	printf("%i\n", __LINE__);\
-	printf(fmt,##__VA_ARGS__);\
-	printf("\n");\
+	fprintf(stdout, "%i\n", __LINE__);\
+	fprintf(stdout, fmt,##__VA_ARGS__);\
+	fprintf(stdout, "\n");\
 	fflush(stdout);\
 	}\
 	while(0)
@@ -94,7 +105,7 @@ struct URI
 
 #define PRINT_VERBOSE(msg) do{\
   if(glob_opt.verbose){\
-	printf("%i:%s\n", __LINE__, msg);\
+	fprintf(stdout, "%i:%s\n", __LINE__, msg);\
 	fflush(stdout);\
 	}\
   }\
@@ -103,9 +114,9 @@ struct URI
 
 #define PRINT_VERBOSE2(fmt, ...) do{\
   if(glob_opt.verbose){\
-	printf("%i\n", __LINE__);\
-	printf(fmt,##__VA_ARGS__);\
-	printf("\n");\
+	fprintf(stdout, "%i\n", __LINE__);\
+	fprintf(stdout, fmt,##__VA_ARGS__);\
+	fprintf(stdout, "\n");\
 	fflush(stdout);\
 	}\
 	}\
@@ -142,6 +153,8 @@ static regex_t uri_preg;
 static bool call_spdy_run;
 static bool call_curl_run;
 
+int debug_num_curls;
+
 
 struct Proxy
 {
@@ -154,11 +167,17 @@ struct Proxy
 	char *version;
 	char *status_msg;
 	void *http_body;
+	void *received_body;
+  bool *session_alive;
 	size_t http_body_size;
+	size_t received_body_size;
 	//ssize_t length;
 	int status;
   bool done;
-  bool *session_alive;
+  bool receiving_done;
+  bool is_curl_read_paused;
+  bool is_with_body_data;
+  bool error;
 };
 
 
@@ -209,6 +228,7 @@ deinit_parse_uri(regex_t * preg)
 static int
 parse_uri(regex_t * preg, const char * full_uri, struct URI ** uri)
 {
+  //TODO memeory checks
   int ret;
   char *colon;
   long long port;
@@ -267,8 +287,58 @@ parse_uri(regex_t * preg, const char * full_uri, struct URI ** uri)
 }
 
 
-static void catch_signal(int signal)
+static bool
+store_in_buffer(const void *src, size_t src_size, void **dst, size_t *dst_size)
 {
+  if(0 == src_size)
+    return true;
+  
+  if(NULL == *dst)
+		*dst = malloc(src_size);
+	else
+		*dst = realloc(*dst, src_size + *dst_size);
+	if(NULL == *dst)
+		return false;
+
+	memcpy(*dst + *dst_size, src, src_size);
+	*dst_size += src_size;
+  
+  return true;
+}
+
+
+static ssize_t
+get_from_buffer(void **src, size_t *src_size, void *dst, size_t max_size)
+{
+  size_t ret;
+  void *newbody;
+  
+	if(max_size >= *src_size)
+	{
+		ret = *src_size;
+		newbody = NULL;
+	}
+	else
+	{
+		ret = max_size;
+		if(NULL == (newbody = malloc(*src_size - max_size)))
+			return -1;
+		memcpy(newbody, *src + ret, *src_size - ret);
+	}
+	memcpy(dst, *src, ret);
+	free(*src);
+	*src = newbody;
+	*src_size -= ret;
+  
+  return ret;
+}
+
+
+static void
+catch_signal(int signal)
+{
+  (void)signal;
+  
   loop = 0;
 }
 
@@ -276,6 +346,8 @@ static void
 new_session_cb (void * cls,
 							struct SPDY_Session * session)
 {
+  (void)cls;
+  
   bool *session_alive;
   
   PRINT_VERBOSE("new session");
@@ -294,6 +366,8 @@ session_closed_cb (void * cls,
 								struct SPDY_Session * session,
 								int by_client)
 {
+  (void)cls;
+  
   bool *session_alive;
   
   PRINT_VERBOSE2("session closed; by client: %i", by_client);
@@ -303,7 +377,44 @@ session_closed_cb (void * cls,
   
   *session_alive = false;
 }
-                
+   
+
+static int
+spdy_post_data_cb (void * cls,
+					 struct SPDY_Request *request,
+					 const void * buf,
+					 size_t size,
+					 bool more)
+{
+  (void)cls;
+  int ret;
+	struct Proxy *proxy = (struct Proxy *)SPDY_get_cls_from_request(request);
+  
+  if(!store_in_buffer(buf, size, &proxy->received_body, &proxy->received_body_size))
+	{
+		PRINT_INFO("not enough memory (malloc/realloc returned NULL)");
+		return 0;
+	}
+  
+  proxy->receiving_done = !more;
+  
+  PRINT_VERBOSE2("POST bytes from SPDY: %zu", size);
+
+  call_curl_run = true;
+  
+  if(proxy->is_curl_read_paused)
+  {
+    if(CURLE_OK != (ret = curl_easy_pause(proxy->curl_handle, CURLPAUSE_CONT)))
+    {
+      PRINT_INFO2("curl_easy_pause returned %i", ret);
+      abort();
+    }
+    PRINT_VERBOSE("curl_read_cb pause resumed");
+  }
+  
+  return SPDY_YES;
+}
+             
                 
 ssize_t
 response_callback (void *cls,
@@ -313,11 +424,14 @@ response_callback (void *cls,
 {
 	ssize_t ret;
 	struct Proxy *proxy = (struct Proxy *)cls;
-	void *newbody;
-	
-	//printf("response_callback\n");
   
   *more = true;
+  
+  if(proxy->error)
+  {
+    PRINT_VERBOSE("tell spdy about the error");
+    return -1;
+  }
 	
 	if(!proxy->http_body_size)//nothing to write now
   {
@@ -325,26 +439,13 @@ response_callback (void *cls,
 		return 0;
   }
 	
-	if(max >= proxy->http_body_size)
-	{
-		ret = proxy->http_body_size;
-		newbody = NULL;
-	}
-	else
-	{
-		ret = max;
-		if(NULL == (newbody = malloc(proxy->http_body_size - max)))
-		{
-			PRINT_INFO("no memory");
-			return -1;
-		}
-		memcpy(newbody, proxy->http_body + max, proxy->http_body_size - max);
-	}
-	memcpy(buffer, proxy->http_body, ret);
-	free(proxy->http_body);
-	proxy->http_body = newbody;
-	proxy->http_body_size -= ret;
-	
+  ret = get_from_buffer(&(proxy->http_body), &(proxy->http_body_size), buffer, max);
+  if(ret < 0)
+  {
+    PRINT_INFO("no memory");
+    return -1;
+  }
+  
   if(proxy->done && 0 == proxy->http_body_size) *more = false;
   
   PRINT_VERBOSE2("given bytes to microspdy: %zd", ret);
@@ -366,12 +467,15 @@ response_done_callback(void *cls,
 	
 	if(SPDY_RESPONSE_RESULT_SUCCESS != status)
 	{
-		printf("answer was NOT sent, %i\n",status);
+		PRINT_VERBOSE2("answer was NOT sent, %i\n",status);
+    free(proxy->http_body);
+    proxy->http_body = NULL;
 	}
 	if(CURLM_OK != (ret = curl_multi_remove_handle(multi_handle, proxy->curl_handle)))
 	{
 		PRINT_INFO2("curl_multi_remove_handle failed (%i)", ret);
 	}
+  debug_num_curls--;
 	curl_slist_free_all(proxy->curl_headers);
 	curl_easy_cleanup(proxy->curl_handle);
 	
@@ -391,8 +495,8 @@ curl_header_cb(void *ptr, size_t size, size_t nmemb, void *userp)
 	char *name;
 	char *value;
 	char *status;
-	int i;
-	int pos;
+	unsigned int i;
+	unsigned int pos;
 	int ret;
   int num_values;
   const char * const * values;
@@ -418,6 +522,7 @@ curl_header_cb(void *ptr, size_t size, size_t nmemb, void *userp)
 							&response_callback,
 							proxy,
 							0)))
+							//256)))
 			DIE("no response");
     
 		SPDY_name_value_destroy(proxy->headers);
@@ -430,7 +535,12 @@ curl_header_cb(void *ptr, size_t size, size_t nmemb, void *userp)
 							false,
 							&response_done_callback,
 							proxy))
-			DIE("no queue");
+              {
+			//DIE("no queue");
+      //TODO right?
+      proxy->error = true;
+      return 0;
+    }
 		
     call_spdy_run = true;
     
@@ -501,11 +611,11 @@ curl_header_cb(void *ptr, size_t size, size_t nmemb, void *userp)
 	{
     abort_it=true;
     if(NULL != (values = SPDY_name_value_lookup(proxy->headers, name, &num_values)))
-      for(i=0; i<num_values; ++i)
+      for(i=0; i<(unsigned int)num_values; ++i)
         if(0 == strcasecmp(value, values[i]))
         {
           abort_it=false;
-          PRINT_INFO2("header appears more than once with same value '%s: %s'", name, value);
+          PRINT_VERBOSE2("header appears more than once with same value '%s: %s'", name, value);
           break;
         }
     
@@ -535,6 +645,12 @@ curl_write_cb(void *contents, size_t size, size_t nmemb, void *userp)
     return 0;
   }
   
+  if(!store_in_buffer(contents, realsize, &proxy->http_body, &proxy->http_body_size))
+	{
+		PRINT_INFO("not enough memory (malloc/realloc returned NULL)");
+		return 0;
+	}
+  /*
 	if(NULL == proxy->http_body)
 		proxy->http_body = malloc(realsize);
 	else
@@ -547,12 +663,76 @@ curl_write_cb(void *contents, size_t size, size_t nmemb, void *userp)
 
 	memcpy(proxy->http_body + proxy->http_body_size, contents, realsize);
 	proxy->http_body_size += realsize;
+  */ 
   
   PRINT_VERBOSE2("received bytes from curl: %zu", realsize);
 
   call_spdy_run = true;
           
 	return realsize;
+}
+
+
+static size_t
+curl_read_cb(void *ptr, size_t size, size_t nmemb, void *userp)
+{
+	ssize_t ret;
+	size_t max = size * nmemb;
+	struct Proxy *proxy = (struct Proxy *)userp;
+	//void *newbody;
+ 
+    
+  if((proxy->receiving_done && !proxy->received_body_size) || !proxy->is_with_body_data || max < 1)
+  {
+    PRINT_VERBOSE("curl_read_cb last call");
+    return 0;
+  }
+    
+  if(!*(proxy->session_alive))
+  {
+    PRINT_VERBOSE("POST is still being sent, but session is dead");
+    return CURL_READFUNC_ABORT;
+  }
+	
+	if(!proxy->received_body_size)//nothing to write now
+  {
+    PRINT_VERBOSE("curl_read_cb called paused");
+    proxy->is_curl_read_paused = true;
+		return CURL_READFUNC_PAUSE;//TODO curl pause should be used
+  }
+  
+  ret = get_from_buffer(&(proxy->received_body), &(proxy->received_body_size), ptr, max);
+  if(ret < 0)
+  {
+    PRINT_INFO("no memory");
+    return CURL_READFUNC_ABORT;
+  }
+  
+	/*
+	if(max >= proxy->received_body_size)
+	{
+		ret = proxy->received_body_size;
+		newbody = NULL;
+	}
+	else
+	{
+		ret = max;
+		if(NULL == (newbody = malloc(proxy->received_body_size - max)))
+		{
+			PRINT_INFO("no memory");
+			return CURL_READFUNC_ABORT;
+		}
+		memcpy(newbody, proxy->received_body + max, proxy->received_body_size - max);
+	}
+	memcpy(ptr, proxy->received_body, ret);
+	free(proxy->received_body);
+	proxy->received_body = newbody;
+	proxy->received_body_size -= ret;
+  * */
+  
+  PRINT_VERBOSE2("given POST bytes to curl: %zd", ret);
+	
+	return ret;
 }
 
 
@@ -575,17 +755,19 @@ iterate_cb (void *cls, const char *name, const char * const * value, int num_val
     DIE("No memory");
 	line[0] = 0;
     
-    strcat(line, name);
-    strcat(line, ": ");
-    //all spdy header names are lower case;
-    //for simplicity here we just capitalize the first letter
-    line[0] = toupper(line[0]);
+  strcat(line, name);
+  strcat(line, ": ");
+  //all spdy header names are lower case;
+  //for simplicity here we just capitalize the first letter
+  line[0] = toupper(line[0]);
     
 	for(i=0; i<num_values; ++i)
 	{
 		if(i) strcat(line, ", ");
+  PRINT_VERBOSE2("Adding request header: '%s' len %ld", value[i], strlen(value[i]));
 		strcat(line, value[i]);
 	}
+  PRINT_VERBOSE2("Adding request header: '%s'", line);
   if(NULL == (*curl_headers = curl_slist_append(*curl_headers, line)))
 		DIE("curl_slist_append failed");
 	free(line);
@@ -603,7 +785,8 @@ standard_request_handler(void *cls,
                         const char *version,
                         const char *host,
                         const char *scheme,
-                        struct SPDY_NameValue * headers)
+                        struct SPDY_NameValue * headers,
+                        bool more)
 {
 	(void)cls;
 	(void)priority;
@@ -614,11 +797,19 @@ standard_request_handler(void *cls,
 	int ret;
   struct URI *uri;
   struct SPDY_Session *session;
+  
+  proxy = SPDY_get_cls_from_request(request);
+  if(NULL != proxy)
+  {
+    //ignore trailers or more headers
+    return;
+  }
 	
 	PRINT_VERBOSE2("received request for '%s %s %s'\n", method, path, version);
   
+  //TODO not freed once in a while
 	if(NULL == (proxy = malloc(sizeof(struct Proxy))))
-        DIE("No memory");
+    DIE("No memory");
 	memset(proxy, 0, sizeof(struct Proxy));
   
   session = SPDY_get_session_for_request(request);
@@ -626,7 +817,10 @@ standard_request_handler(void *cls,
   proxy->session_alive = SPDY_get_cls_from_session(session);
   assert(NULL != proxy->session_alive);
   
+  SPDY_set_cls_to_request(request, proxy);
+  
 	proxy->request = request;
+	proxy->is_with_body_data = more;
 	if(NULL == (proxy->headers = SPDY_name_value_create()))
         DIE("No memory");
   
@@ -675,6 +869,18 @@ standard_request_handler(void *cls,
 	
 	if(glob_opt.curl_verbose)
     CURL_SETOPT(proxy->curl_handle, CURLOPT_VERBOSE, 1);
+	
+  if(0 == strcmp(SPDY_HTTP_METHOD_POST,method))
+  {
+    if(NULL == (proxy->curl_headers = curl_slist_append(proxy->curl_headers, "Expect:")))
+      DIE("curl_slist_append failed");
+    CURL_SETOPT(proxy->curl_handle, CURLOPT_POST, 1);
+    CURL_SETOPT(proxy->curl_handle, CURLOPT_READFUNCTION, curl_read_cb);
+    CURL_SETOPT(proxy->curl_handle, CURLOPT_READDATA, proxy);
+  }
+  
+  if(glob_opt.timeout)
+    CURL_SETOPT(proxy->curl_handle, CURLOPT_TIMEOUT, glob_opt.timeout);
 	CURL_SETOPT(proxy->curl_handle, CURLOPT_URL, proxy->url);
 	if(glob_opt.http10)
 		CURL_SETOPT(proxy->curl_handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
@@ -684,18 +890,19 @@ standard_request_handler(void *cls,
 	CURL_SETOPT(proxy->curl_handle, CURLOPT_HEADERDATA, proxy);
 	CURL_SETOPT(proxy->curl_handle, CURLOPT_PRIVATE, proxy);
 	CURL_SETOPT(proxy->curl_handle, CURLOPT_HTTPHEADER, proxy->curl_headers);
-  CURL_SETOPT(proxy->curl_handle, CURLOPT_SSL_VERIFYPEER, 0L);
+  CURL_SETOPT(proxy->curl_handle, CURLOPT_SSL_VERIFYPEER, 0L);//TODO
   CURL_SETOPT(proxy->curl_handle, CURLOPT_SSL_VERIFYHOST, 0L);
   if(glob_opt.ipv4 && !glob_opt.ipv6)
     CURL_SETOPT(proxy->curl_handle, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
   else if(glob_opt.ipv6 && !glob_opt.ipv4)
     CURL_SETOPT(proxy->curl_handle, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
-	
+    
 	if(CURLM_OK != (ret = curl_multi_add_handle(multi_handle, proxy->curl_handle)))
 	{
 		PRINT_INFO2("curl_multi_add_handle failed (%i)", ret);
 		abort();
 	}
+  debug_num_curls++;
     
   //~5ms additional latency for calling this
 	if(CURLM_OK != (ret = curl_multi_perform(multi_handle, &still_running))
@@ -734,6 +941,8 @@ run ()
   struct addrinfo *gai;
   enum SPDY_IO_SUBSYSTEM io = glob_opt.notls ? SPDY_IO_SUBSYSTEM_RAW : SPDY_IO_SUBSYSTEM_OPENSSL;
   enum SPDY_DAEMON_FLAG flags = SPDY_DAEMON_FLAG_NO;
+  //struct SPDY_Response *error_response;
+  char *curl_private;
   
 	signal(SIGPIPE, SIG_IGN);
 	
@@ -757,7 +966,7 @@ run ()
 								&new_session_cb,
 								&session_closed_cb,
 								&standard_request_handler,
-								NULL,
+								&spdy_post_data_cb,
 								NULL,
 								SPDY_DAEMON_OPTION_SESSION_TIMEOUT,
 								1800,
@@ -786,7 +995,7 @@ run ()
 								&new_session_cb,
 								&session_closed_cb,
 								&standard_request_handler,
-								NULL,
+								&spdy_post_data_cb,
 								NULL,
 								SPDY_DAEMON_OPTION_SESSION_TIMEOUT,
 								1800,
@@ -796,6 +1005,8 @@ run ()
                 flags,
                 SPDY_DAEMON_OPTION_SOCK_ADDR,
                 addr,
+                //SPDY_DAEMON_OPTION_MAX_NUM_FRAMES,
+                //1,
 								SPDY_DAEMON_OPTION_END);
   }
 	
@@ -816,22 +1027,24 @@ run ()
 		FD_ZERO(&ws);
 		FD_ZERO(&es);
     
+    PRINT_VERBOSE2("num  curls %i", debug_num_curls);
+    
     ret_spdy = SPDY_get_timeout(daemon, &timeout_spdy);
     if(SPDY_NO == ret_spdy || timeout_spdy > 5000)
       timeoutlong = 5000;
     else
       timeoutlong = timeout_spdy;
-    PRINT_VERBOSE2("SPDY timeout %i; %i", timeout_spdy, ret_spdy);
+    PRINT_VERBOSE2("SPDY timeout %lld; %i", timeout_spdy, ret_spdy);
     
     if(CURLM_OK != (ret_curl = curl_multi_timeout(multi_handle, &timeout_curl)))
     {
       PRINT_VERBOSE2("curl_multi_timeout failed (%i)", ret_curl);
       //curl_timeo = timeoutlong;
     }
-    else if(timeoutlong > timeout_curl)
-      timeoutlong = timeout_curl;
+    else if(timeout_curl >= 0 && timeoutlong > (unsigned long)timeout_curl)
+      timeoutlong = (unsigned long)timeout_curl;
       
-    PRINT_VERBOSE2("curl timeout %i", timeout_curl);
+    PRINT_VERBOSE2("curl timeout %ld", timeout_curl);
       
     timeout.tv_sec = timeoutlong / 1000;
 		timeout.tv_usec = (timeoutlong % 1000) * 1000;
@@ -853,9 +1066,9 @@ run ()
     if(maxfd_curl > maxfd)
       maxfd = maxfd_curl;
       
-    PRINT_VERBOSE2("timeout before %i %i", timeout.tv_sec, timeout.tv_usec);
+    PRINT_VERBOSE2("timeout before %lld %lld", (unsigned long long)timeout.tv_sec, (unsigned long long)timeout.tv_usec);
     ret = select(maxfd+1, &rs, &ws, &es, &timeout);
-    PRINT_VERBOSE2("timeout after %i %i; ret is %i", timeout.tv_sec, timeout.tv_usec, ret);
+    PRINT_VERBOSE2("timeout after %lld %lld; ret is %i", (unsigned long long)timeout.tv_sec, (unsigned long long)timeout.tv_usec, ret);
 		
 		/*switch(ret) {
 			case -1:
@@ -873,7 +1086,7 @@ run ()
         call_spdy_run = false;
       }
         
-      if(ret > 0 || (CURLM_OK == ret_curl && 0 == timeout_curl) || call_curl_run)
+      //if(ret > 0 || (CURLM_OK == ret_curl && 0 == timeout_curl) || call_curl_run)
       {
 				PRINT_VERBOSE("run curl");
 				if(CURLM_OK != (ret = curl_multi_perform(multi_handle, &still_running))
@@ -889,21 +1102,48 @@ run ()
     
     while ((msg = curl_multi_info_read(multi_handle, &msgs_left))) {
       if (msg->msg == CURLMSG_DONE) {
+        PRINT_VERBOSE("A curl handler is done");
+        if(CURLE_OK != (ret = curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &curl_private)))
+        {
+          PRINT_INFO2("err %i",ret);
+          abort();
+        }
+        assert(NULL != curl_private);
+        proxy = (struct Proxy *)curl_private;
         if(CURLE_OK == msg->data.result)
         {
-          if(CURLE_OK != (ret = curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &proxy)))
-          {
-            PRINT_INFO2("err %i",ret);
-            abort();
-          }
-
           proxy->done = true;
           call_spdy_run = true;
         }
         else
         {
-          PRINT_VERBOSE2("bad curl result for '%s'", proxy->url);
-          proxy->done = true;
+          PRINT_VERBOSE2("bad curl result (%i) for '%s'", msg->data.result, proxy->url);
+          if(NULL == proxy->response)
+          {
+            SPDY_name_value_destroy(proxy->headers);
+            if(!*(proxy->session_alive))
+            {
+              free(proxy->http_body);
+              proxy->http_body = NULL;
+
+              if(CURLM_OK != (ret = curl_multi_remove_handle(multi_handle, proxy->curl_handle)))
+              {
+                PRINT_INFO2("curl_multi_remove_handle failed (%i)", ret);
+              }
+              debug_num_curls--;
+              curl_slist_free_all(proxy->curl_headers);
+              curl_easy_cleanup(proxy->curl_handle);
+              
+              SPDY_destroy_request(proxy->request);
+              //SPDY_destroy_response(proxy->response);
+              free(proxy->url);
+              free(proxy);
+            }
+            else
+              proxy->error = true;
+          }
+          else
+            proxy->error = true;
           call_spdy_run = true;
           //TODO spdy should be notified to send RST_STREAM
         }
@@ -923,14 +1163,14 @@ run ()
       
     struct timespec ts;
     if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0)
-    PRINT_VERBOSE2("time now %i %i", ts.tv_sec, ts.tv_nsec);
+    PRINT_VERBOSE2("time now %lld %lld", (unsigned long long)ts.tv_sec, (unsigned long long)ts.tv_nsec);
     }
   }
   while(loop);
-	
-	curl_multi_cleanup(multi_handle);
 
 	SPDY_stop_daemon(daemon);
+	
+	curl_multi_cleanup(multi_handle);
 	
 	SPDY_deinit();
   
@@ -945,7 +1185,7 @@ display_usage()
 {
   printf(
     "Usage: microspdy2http -p <PORT> [-c <CERTIFICATE>] [-k <CERT-KEY>]\n"
-    "                      [-rvh0Dt] [-b <HTTP-SERVER>] [-l <HOST>]\n\n"
+    "                      [-rvh0DtT] [-b <HTTP-SERVER>] [-l <HOST>]\n\n"
     "OPTIONS:\n"
     "    -p, --port            Listening port.\n"
     "    -l, --host            Listening host. If not set, will listen on [::]\n"
@@ -966,6 +1206,8 @@ display_usage()
     "    -6, --curl-ipv6       Curl may use IPv6 to connect to the final destination.\n"
     "                          If neither --curl-ipv4 nor --curl-ipv6 is set,\n"
     "                          both will be used by default.\n"
+    "    -T, --timeout         Maximum time in seconds for each HTTP transfer.\n"
+    "                          Use 0 for no timeout; this is the default value.\n"
     "    -t, --transparent     If set, the proxy will fetch an URL which\n"
     "                          is based on 'Host:' header and requested path.\n"
     "                          Otherwise, full URL in the requested path is required.\n\n"
@@ -993,12 +1235,13 @@ main (int argc, char *const *argv)
     {"transparent",  no_argument, 0, 't'},
     {"curl-ipv4",  no_argument, 0, '4'},
     {"curl-ipv6",  no_argument, 0, '6'},
+    {"timeout",  required_argument, 0, 'T'},
     {0, 0, 0, 0}
   };
   
   while (1)
   {
-    getopt_ret = getopt_long( argc, argv, "p:l:c:k:b:rv0Dth46", long_options, &option_index);
+    getopt_ret = getopt_long( argc, argv, "p:l:c:k:b:rv0Dth46T:", long_options, &option_index);
     if (getopt_ret == -1)
       break;
 
@@ -1058,6 +1301,10 @@ main (int argc, char *const *argv)
         
       case '6':
         glob_opt.ipv6 = true;
+        break;
+        
+      case 'T':
+        glob_opt.timeout = atoi(optarg);
         break;
         
       case 0:

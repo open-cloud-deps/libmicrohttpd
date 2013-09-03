@@ -1,3 +1,62 @@
+Mon Sep  2 22:59:45 CEST 2013
+	Fix use-after-free in epoll()-mode on read error.
+	Releasing libmicrohttpd 0.9.30. -CG
+
+Sun Sep  1 21:55:53 CEST 2013
+	Fixing build issues on FreeBSD. -CG
+
+Fri Aug 30 13:53:04 CEST 2013
+	Started to implement #3008 (RFC 2616, section 8.1.4
+	says HTTP server SHOULD terminate connection if the
+	client closes it for writing via TCP FIN, so we should
+	continue to try to read and react differently
+	if recv() returns zero). -CG
+
+Wed Aug 28 18:40:47 CEST 2013
+	Fix #3007 (build issue if messages are disabled). -CG
+
+Tue Aug 27 18:39:08 CEST 2013
+	Fix build issue if SOCK_NONBLOCK/EPOLL_CLOEXEC are not
+	defined (as is the case on older glibc versions). -CG
+
+Fri Aug 23 14:28:02 CEST 2013
+	Releasing libmicrohttpd 0.9.29. -CG
+
+Mon Aug 12 23:51:18 CEST 2013
+	Updated manual, documenting W32 select/shutdown issue. -CG
+
+Sat Aug 10 21:01:18 CEST 2013
+	Fixed #2983. -CG
+
+Sat Aug 10 20:39:27 CEST 2013
+	Use 'errno' to indicate why 'MHD_add_connection' failed
+	(#2984). -CG
+
+Sat Aug 10 17:31:31 CEST 2013
+	Disable use of 'shutdown' on W32 always as winsock
+	doesn't properly behave with half-closed connections
+	(see http://www.chilkatsoft.com/p/p_299.asp). -CG/LRN
+
+Thu Aug  8 07:55:07 CEST 2013
+	Fixing issue with pipelining not working as desired. -CG
+
+Wed Aug  7 08:17:40 CEST 2013
+	Removing dependency on liberty (on W32). -MC
+
+Fri Aug  2 20:55:47 CEST 2013
+	Fix HTTP 1.1 compliance with respect to not returning
+	content-length headers for successful "CONNECT" requests.
+	Note that for unsuccessful "CONNECT" requests with an
+	empty response body, users must now explicitly set the
+	content-length header. -CG
+
+Sun Jul 28 16:35:17 CEST 2013
+	Fixing build issue (missing #ifdef) in conjunction with
+	--disable-messages. -blueness
+
+Sat Jul 20 12:35:40 CEST 2013
+	Fixing combination of MHD_USE_SSL and MHD_USE_EPOLL_LINUX_ONLY. -CG
+
 Fri Jul 19 09:57:27 CEST 2013
 	Fix issue where connections were not cleaned up when
 	'MHD_run_from_select' was used.  Adding experimental

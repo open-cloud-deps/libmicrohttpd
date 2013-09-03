@@ -1,10 +1,10 @@
 This is libmicrohttpd.info, produced by makeinfo version 4.13 from
 libmicrohttpd.texi.
 
-This manual is for GNU libmicrohttpd (version 0.9.28, 8 July 2013), a
-library for embedding an HTTP(S) server into C applications.
+This manual is for GNU libmicrohttpd (version 0.9.30, 27 August 2013),
+a library for embedding an HTTP(S) server into C applications.
 
-   Copyright (C) 2007-2012 Christian Grothoff
+   Copyright (C) 2007-2013 Christian Grothoff
 
      Permission is granted to copy, distribute and/or modify this
      document under the terms of the GNU Free Documentation License,
@@ -24,10 +24,10 @@ File: libmicrohttpd.info,  Node: Top,  Next: microhttpd-intro,  Up: (dir)
 The GNU libmicrohttpd Library
 *****************************
 
-This manual is for GNU libmicrohttpd (version 0.9.28, 8 July 2013), a
-library for embedding an HTTP(S) server into C applications.
+This manual is for GNU libmicrohttpd (version 0.9.30, 27 August 2013),
+a library for embedding an HTTP(S) server into C applications.
 
-   Copyright (C) 2007-2012 Christian Grothoff
+   Copyright (C) 2007-2013 Christian Grothoff
 
      Permission is granted to copy, distribute and/or modify this
      document under the terms of the GNU Free Documentation License,
@@ -312,6 +312,36 @@ reasons, `MHD_LONG_LONG_PRINTF' is without the percent sign, whereas
 written code should only use the unsigned versions.  However, you need
 to define both in "platform.h" if you need to change the definition for
 the specific platform.
+
+1.7 Portability to W32
+======================
+
+On W32, GNUnet requires PlibC, a lightweight library to provide some
+more POSIX-like calls on W32.  While PlibC takes care of most issues,
+it is unable to make `select' (or equivalent alternative socket calls)
+unblock when a socket is `shutdown'.  This can be problematic if MHD is
+used in "one thread per connection" mode.  In this case, an inactive
+TCP connection may block `MHD_stop_daemon' until the connection times
+out.  You may be able to mitigate the issue by setting a reasonably low
+timeout, but in general we of course recommend migrating away from
+Windows.  Using MHD with other types of event loops is unaffected by
+this issue.
+
+1.8 Portability to z/OS
+=======================
+
+To compile MHD on z/OS, extract the archive and run
+
+iconv -f UTF-8 -t IBM-1047 contrib/ascebc > /tmp/ascebc.sh
+chmod +x /tmp/ascebc.sh
+for n in `find * -type f`
+do
+  /tmp/ascebc.sh $n
+done
+ to convert all source files to EBCDIC.  Note that you must run
+`configure' from the directory where the configure script is located.
+Otherwise, configure will fail to find the `contrib/xcc' script (which
+is a wrapper around the z/OS c89 compiler).
 
 
 File: libmicrohttpd.info,  Node: microhttpd-const,  Next: microhttpd-struct,  Prev: microhttpd-intro,  Up: Top
@@ -1125,7 +1155,13 @@ File: libmicrohttpd.info,  Node: microhttpd-init,  Next: microhttpd-inspect,  Pr
      MHD.  This API is usually not needed (since MHD will accept
      inbound connections on the server socket).  Use this API in
      special cases, for example if your HTTP server is behind NAT and
-     needs to connect out to the HTTP client.
+     needs to connect out to the HTTP client, or if you are building a
+     proxy.
+
+     If you use this API in conjunction with a internal select or a
+     thread pool, you must set the option `MHD_USE_PIPE_FOR_SHUTDOWN' to
+     ensure that the freshly added connection is immediately processed
+     by MHD.
 
      The given client socket will be managed (and closed!) by MHD after
      this call and must no longer be used directly by the application
@@ -1146,7 +1182,8 @@ File: libmicrohttpd.info,  Node: microhttpd-init,  Next: microhttpd-inspect,  Pr
 
      This function will return `MHD_YES' on success, `MHD_NO' if this
      daemon could not handle the connection (i.e. malloc failed, etc).
-     The socket will be closed in any case.
+     The socket will be closed in any case; 'errno' is set to indicate
+     further details about the error.
 
 
 File: libmicrohttpd.info,  Node: microhttpd-inspect,  Next: microhttpd-requests,  Prev: microhttpd-init,  Up: Top
@@ -3655,36 +3692,36 @@ Type Index
 
 
 Tag Table:
-Node: Top814
-Node: microhttpd-intro2925
-Ref: fig:performance6964
-Ref: tbl:supported7846
-Node: microhttpd-const13246
-Node: microhttpd-struct34953
-Node: microhttpd-cb35733
-Node: microhttpd-init44334
-Node: microhttpd-inspect49756
-Node: microhttpd-requests51593
-Node: microhttpd-responses55076
-Node: microhttpd-response enqueue56130
-Ref: microhttpd-response enqueue-Footnote-158402
-Node: microhttpd-response create58621
-Node: microhttpd-response headers64621
-Node: microhttpd-response inspect66449
-Node: microhttpd-dauth67620
-Node: microhttpd-dauth basic69169
-Node: microhttpd-dauth digest70358
-Node: microhttpd-post75002
-Node: microhttpd-post api77945
-Node: microhttpd-info80527
-Node: microhttpd-info daemon80942
-Node: microhttpd-info conn83599
-Node: microhttpd-option conn86863
-Node: GNU-LGPL87924
-Node: GNU GPL with eCos Extension116043
-Node: GNU-FDL135913
-Node: Concept Index161018
-Node: Function and Data Index172262
-Node: Type Index172442
+Node: Top817
+Node: microhttpd-intro2931
+Ref: fig:performance6970
+Ref: tbl:supported7852
+Node: microhttpd-const14430
+Node: microhttpd-struct36137
+Node: microhttpd-cb36917
+Node: microhttpd-init45518
+Node: microhttpd-inspect51268
+Node: microhttpd-requests53105
+Node: microhttpd-responses56588
+Node: microhttpd-response enqueue57642
+Ref: microhttpd-response enqueue-Footnote-159914
+Node: microhttpd-response create60133
+Node: microhttpd-response headers66133
+Node: microhttpd-response inspect67961
+Node: microhttpd-dauth69132
+Node: microhttpd-dauth basic70681
+Node: microhttpd-dauth digest71870
+Node: microhttpd-post76514
+Node: microhttpd-post api79457
+Node: microhttpd-info82039
+Node: microhttpd-info daemon82454
+Node: microhttpd-info conn85111
+Node: microhttpd-option conn88375
+Node: GNU-LGPL89436
+Node: GNU GPL with eCos Extension117555
+Node: GNU-FDL137425
+Node: Concept Index162530
+Node: Function and Data Index173774
+Node: Type Index173954
 
 End Tag Table

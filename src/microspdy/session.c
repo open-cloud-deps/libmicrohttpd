@@ -325,14 +325,15 @@ spdyf_handler_read_rst_stream (struct SPDY_Session *session)
 static void
 spdyf_handler_read_data (struct SPDY_Session *session)
 {
-  //just ignore the whole frame for now
+  int ret;
   struct SPDYF_Data_Frame * frame;
+  struct SPDYF_Stream * stream;
   
 	SPDYF_ASSERT(SPDY_SESSION_STATUS_WAIT_FOR_SUBHEADER == session->status
 		|| SPDY_SESSION_STATUS_WAIT_FOR_BODY == session->status,
 		"the function is called wrong");
     
-  SPDYF_DEBUG("DATA frame received (POST?). Ignoring");
+  //SPDYF_DEBUG("DATA frame received (POST?). Ignoring");
 	
   //SPDYF_SIGINT("");
   
@@ -355,9 +356,57 @@ spdyf_handler_read_data (struct SPDY_Session *session)
 	if(session->read_buffer_offset - session->read_buffer_beginning
 		>= frame->length)
 	{
-		session->read_buffer_beginning += frame->length;
-		session->status = SPDY_SESSION_STATUS_WAIT_FOR_HEADER;
-		free(frame);
+    stream = SPDYF_stream_find(frame->stream_id, session);
+    
+    if(NULL == stream || stream->is_in_closed || NULL == session->daemon->received_data_cb)
+    {
+      if(NULL == session->daemon->received_data_cb)
+      SPDYF_DEBUG("No callback for DATA frame set");
+      
+      SPDYF_DEBUG("Ignoring DATA frame!");
+      
+      //TODO send error?
+      
+      //TODO for now ignore frame
+      session->read_buffer_beginning += frame->length;
+      session->status = SPDY_SESSION_STATUS_WAIT_FOR_HEADER;
+      free(frame);
+      return;
+    }
+    
+    ret = session->daemon->freceived_data_cb(session->daemon->cls,
+                                      stream,
+                                      session->read_buffer + session->read_buffer_beginning,
+                                      frame->length,
+                                      0 == (SPDY_DATA_FLAG_FIN & frame->flags));
+        
+    session->read_buffer_beginning += frame->length;
+    
+    stream->window_size -= frame->length;  
+         
+    //TODO close in and send rst maybe
+    SPDYF_ASSERT(SPDY_YES == ret, "Cancel POST data is not yet implemented");
+    
+    if(SPDY_DATA_FLAG_FIN & frame->flags)
+    {
+      stream->is_in_closed = true;
+    }
+    else if(stream->window_size < SPDYF_INITIAL_WINDOW_SIZE / 2)
+    {
+      //very simple implementation of flow control
+      //when the window's size is under the half of the initial value,
+      //increase it again up to the initial value
+      
+      //prepare WINDOW_UPDATE
+      if(SPDY_YES == SPDYF_prepare_window_update(session, stream,
+            SPDYF_INITIAL_WINDOW_SIZE - stream->window_size))
+      {
+        stream->window_size = SPDYF_INITIAL_WINDOW_SIZE;
+      }
+      //else: do it later
+    }
+    session->status = SPDY_SESSION_STATUS_WAIT_FOR_HEADER;
+    free(frame);
 	}
 }
 
@@ -718,6 +767,47 @@ SPDYF_handler_write_rst_stream (struct SPDY_Session *session)
 	return SPDY_YES;
 }
 
+		   
+int
+SPDYF_handler_write_window_update (struct SPDY_Session *session)
+{
+	struct SPDYF_Response_Queue *response_queue = session->response_queue_head;
+	struct SPDYF_Control_Frame control_frame;
+	size_t total_size;
+	
+	SPDYF_ASSERT(NULL == session->write_buffer, "the function is called not in the correct moment");
+	
+	memcpy(&control_frame, response_queue->control_frame, sizeof(control_frame));
+	
+	total_size = sizeof(struct SPDYF_Control_Frame) //SPDY header
+		+ 4 // stream id as "subheader"
+		+ 4; // delta-window-size as "subheader"
+
+	if(NULL == (session->write_buffer = malloc(total_size)))
+	{
+		return SPDY_NO;
+	}
+	session->write_buffer_beginning = 0;
+	session->write_buffer_offset = 0;
+	session->write_buffer_size = total_size;
+	
+	control_frame.length = 8; // always for WINDOW_UPDATE
+	SPDYF_CONTROL_FRAME_HTON(&control_frame);
+	
+	//put frame headers to write buffer
+	memcpy(session->write_buffer + session->write_buffer_offset,&control_frame,sizeof(struct SPDYF_Control_Frame));
+	session->write_buffer_offset +=  sizeof(struct SPDYF_Control_Frame);
+	
+	//put stream id and delta-window-size to write buffer
+	memcpy(session->write_buffer + session->write_buffer_offset, response_queue->data, 8);
+	session->write_buffer_offset +=  8;
+	
+	SPDYF_ASSERT(0 == session->write_buffer_beginning, "bug1");
+	SPDYF_ASSERT(session->write_buffer_offset == session->write_buffer_size, "bug2");
+
+	return SPDY_YES;
+}
+
 
 void
 SPDYF_handler_ignore_frame (struct SPDY_Session *session)
@@ -1020,7 +1110,7 @@ SPDYF_session_write (struct SPDY_Session *session, bool only_one_frame)
 			}
 			
 			//set stream to closed if the frame's fin flag is set
-			SPDYF_stream_set_flags(queue_head);
+			SPDYF_stream_set_flags_on_write(queue_head);
 			
 			if(NULL != queue_head->frqcb)
 			{
@@ -1366,7 +1456,7 @@ SPDYF_session_accept(struct SPDY_Daemon *daemon)
 	free_and_fail:
 	/* something failed, so shutdown, close and free memory */
 	shutdown (new_socket_fd, SHUT_RDWR);
-	close (new_socket_fd);
+	(void)close (new_socket_fd);
 	
 	if(NULL != session)
 	{
@@ -1467,7 +1557,7 @@ SPDYF_session_destroy(struct SPDY_Session *session)
 	struct SPDYF_Stream *stream;
 	struct SPDYF_Response_Queue *response_queue;
 	
-	close (session->socket_fd);
+	(void)close (session->socket_fd);
 	SPDYF_zlib_deflate_end(&session->zlib_send_stream);
 	SPDYF_zlib_inflate_end(&session->zlib_recv_stream);
 	
@@ -1595,6 +1685,58 @@ SPDYF_prepare_rst_stream (struct SPDY_Session *session,
 	
 	response_to_queue->control_frame = control_frame;
 	response_to_queue->process_response_handler = &SPDYF_handler_write_rst_stream;
+	response_to_queue->data = data;
+	response_to_queue->data_size = 8;
+	response_to_queue->stream = stream;
+	
+	SPDYF_queue_response (response_to_queue,
+						session,
+						-1);
+
+	return SPDY_YES;
+}
+
+
+int
+SPDYF_prepare_window_update (struct SPDY_Session *session,
+					struct SPDYF_Stream * stream,
+					int32_t delta_window_size)
+{
+	struct SPDYF_Response_Queue *response_to_queue;
+	struct SPDYF_Control_Frame *control_frame;
+	uint32_t *data;
+	
+  SPDYF_ASSERT(NULL != stream, "stream cannot be NULL");
+  
+	if(NULL == (response_to_queue = malloc(sizeof(struct SPDYF_Response_Queue))))
+	{
+		return SPDY_NO;
+	}
+	memset(response_to_queue, 0, sizeof(struct SPDYF_Response_Queue));
+	
+	if(NULL == (control_frame = malloc(sizeof(struct SPDYF_Control_Frame))))
+	{
+		free(response_to_queue);
+		return SPDY_NO;
+	}
+	memset(control_frame, 0, sizeof(struct SPDYF_Control_Frame));
+	
+	if(NULL == (data = malloc(8)))
+	{
+		free(control_frame);
+		free(response_to_queue);
+		return SPDY_NO;
+	}
+	*(data) = HTON31(stream->stream_id);
+	*(data + 1) = HTON31(delta_window_size);
+	
+	control_frame->control_bit = 1;
+	control_frame->version = SPDY_VERSION;
+	control_frame->type = SPDY_CONTROL_FRAME_TYPES_WINDOW_UPDATE;
+	control_frame->flags = 0;
+	
+	response_to_queue->control_frame = control_frame;
+	response_to_queue->process_response_handler = &SPDYF_handler_write_window_update;
 	response_to_queue->data = data;
 	response_to_queue->data_size = 8;
 	response_to_queue->stream = stream;

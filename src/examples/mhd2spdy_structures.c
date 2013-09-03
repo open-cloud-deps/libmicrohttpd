@@ -16,7 +16,8 @@
 */
 
 /**
- * @file structures.h
+ * @file mhd2spdy_structures.h
+ * @brief  Common functions, macros.
  * @author Andrey Uzunov
  */
  
@@ -31,7 +32,6 @@ free_uri(struct URI * uri)
     free(uri->full_uri);
     free(uri->scheme);
     free(uri->host_and_port);
-    //free(uri->host_and_port_for_connecting);
     free(uri->host);
     free(uri->path);
     free(uri->path_and_more);
@@ -41,6 +41,7 @@ free_uri(struct URI * uri)
     free(uri);
   }
 }
+
 
 int
 init_parse_uri(regex_t * preg)
@@ -65,7 +66,9 @@ deinit_parse_uri(regex_t * preg)
 }
   
 int
-parse_uri(regex_t * preg, char * full_uri, struct URI ** uri)
+parse_uri(regex_t * preg,
+          char * full_uri,
+          struct URI ** uri)
 {
   int ret;
   char *colon;
@@ -93,22 +96,8 @@ parse_uri(regex_t * preg, char * full_uri, struct URI ** uri)
   if(NULL == colon)
   {
     (*uri)->host = strdup((*uri)->host_and_port);
-    /*if(0 == strcasecmp("http", uri->scheme))
-    {
-      uri->port = 80;
-      asprintf(&(uri->host_and_port_for_connecting), "%s:80", uri->host_and_port);
-    }
-    else if(0 == strcasecmp("https", uri->scheme))
-    {
-      uri->port = 443;
-      asprintf(&(uri->host_and_port_for_connecting), "%s:443", uri->host_and_port);
-    }
-    else
-    {
-      PRINT_INFO("no standard scheme!");
-      */(*uri)->port = 0;
-      /*uri->host_and_port_for_connecting = strdup(uri->host_and_port);
-    }*/
+    (*uri)->port = 0;
+   
     return 0;
   }
   
@@ -124,10 +113,13 @@ parse_uri(regex_t * preg, char * full_uri, struct URI ** uri)
   return 0;
 }
 
+
 void
 free_proxy(struct Proxy *proxy)
 {
-  //PRINT_INFO("free proxy called");
+  PRINT_INFO2("free proxy called for '%s'", proxy->url);
+  if(NULL != proxy->http_body && proxy->http_body_size > 0)
+    UPDATE_STAT(glob_stat.spdy_bytes_received_and_dropped, proxy->http_body_size);
   free(proxy->http_body);
   free_uri(proxy->uri);
 	free(proxy->url);
@@ -135,6 +127,7 @@ free_proxy(struct Proxy *proxy)
 	free(proxy);
 }
 
+//TODO remove this
 void *au_malloc(size_t size)
 {
   void *new_memory;
@@ -146,4 +139,24 @@ void *au_malloc(size_t size)
     memset(new_memory, 0, size);
   }
   return new_memory;
+}
+
+
+bool
+copy_buffer(const void *src, size_t src_size, void **dst, size_t *dst_size)
+{
+  if(0 == src_size)
+    return true;
+  
+  if(NULL == *dst)
+		*dst = malloc(src_size);
+	else
+		*dst = realloc(*dst, src_size + *dst_size);
+	if(NULL == *dst)
+		return false;
+
+	memcpy(*dst + *dst_size, src, src_size);
+	*dst_size += src_size;
+  
+  return true;
 }

@@ -30,6 +30,7 @@ endif
 # example programs
 noinst_PROGRAMS = \
  benchmark \
+ benchmark_https \
  minimal_example \
  dual_stack_example \
  minimal_example_comet \
@@ -64,7 +65,7 @@ noinst_PROGRAMS += \
 endif
 
 if HAVE_W32
-IBERTY=-liberty
+AM_CFLAGS += -DWINDOWS
 endif
 
 minimal_example_SOURCES = \
@@ -92,6 +93,11 @@ benchmark_SOURCES = \
 benchmark_LDADD = \
  $(top_builddir)/src/microhttpd/libmicrohttpd.la  
 
+benchmark_https_SOURCES = \
+ benchmark_https.c 
+benchmark_https_LDADD = \
+ $(top_builddir)/src/microhttpd/libmicrohttpd.la  
+
 dual_stack_example_SOURCES = \
  dual_stack_example.c 
 dual_stack_example_LDADD = \
@@ -100,8 +106,7 @@ dual_stack_example_LDADD = \
 post_example_SOURCES = \
  post_example.c 
 post_example_LDADD = \
- $(top_builddir)/src/microhttpd/libmicrohttpd.la \
- $(IBERTY)
+ $(top_builddir)/src/microhttpd/libmicrohttpd.la
 
 minimal_example_comet_SOURCES = \
  minimal_example_comet.c 

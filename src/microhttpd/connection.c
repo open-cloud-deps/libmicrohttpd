@@ -113,8 +113,9 @@
  * @param kind types of values to iterate over
  * @param iterator callback to call on each header;
  *        maybe NULL (then just count headers)
- * @param iterator_cls extra argument to iterator
+ * @param iterator_cls extra argument to @a iterator
  * @return number of entries iterated over
+ * @ingroup request
  */
 int
 MHD_get_connection_values (struct MHD_Connection *connection,
@@ -141,33 +142,29 @@ MHD_get_connection_values (struct MHD_Connection *connection,
 
 
 /**
- * This function can be used to append an entry to
- * the list of HTTP headers of a connection (so that the
- * MHD_get_connection_values function will return
- * them -- and the MHD PostProcessor will also
- * see them).  This maybe required in certain
- * situations (see Mantis #1399) where (broken)
- * HTTP implementations fail to supply values needed
- * by the post processor (or other parts of the
- * application).
- * <p>
- * This function MUST only be called from within
- * the MHD_AccessHandlerCallback (otherwise, access
- * maybe improperly synchronized).  Furthermore,
- * the client must guarantee that the key and
- * value arguments are 0-terminated strings that
- * are NOT freed until the connection is closed.
- * (The easiest way to do this is by passing only
- * arguments to permanently allocated strings.).
+ * This function can be used to add an entry to the HTTP headers of a
+ * connection (so that the #MHD_get_connection_values function will
+ * return them -- and the `struct MHD_PostProcessor` will also see
+ * them).  This maybe required in certain situations (see Mantis
+ * #1399) where (broken) HTTP implementations fail to supply values
+ * needed by the post processor (or other parts of the application).
+ * 
+ * This function MUST only be called from within the
+ * #MHD_AccessHandlerCallback (otherwise, access maybe improperly
+ * synchronized).  Furthermore, the client must guarantee that the key
+ * and value arguments are 0-terminated strings that are NOT freed
+ * until the connection is closed.  (The easiest way to do this is by
+ * passing only arguments to permanently allocated strings.).
  *
  * @param connection the connection for which a
  *  value should be set
  * @param kind kind of the value
  * @param key key for the value
  * @param value the value itself
- * @return MHD_NO if the operation could not be
+ * @return #MHD_NO if the operation could not be
  *         performed due to insufficient memory;
- *         MHD_YES on success
+ *         #MHD_YES on success
+ * @ingroup request
  */
 int
 MHD_set_connection_value (struct MHD_Connection *connection,
@@ -186,15 +183,15 @@ MHD_set_connection_value (struct MHD_Connection *connection,
   pos->next = NULL;
   /* append 'pos' to the linked list of headers */
   if (NULL == connection->headers_received_tail)
-  {
-    connection->headers_received = pos;
-    connection->headers_received_tail = pos;
-  }
+    {
+      connection->headers_received = pos;
+      connection->headers_received_tail = pos;
+    }
   else
-  {
-    connection->headers_received_tail->next = pos;
-    connection->headers_received_tail = pos;
-  }
+    {
+      connection->headers_received_tail->next = pos;
+      connection->headers_received_tail = pos;
+    }
   return MHD_YES;
 }
 
@@ -207,6 +204,7 @@ MHD_set_connection_value (struct MHD_Connection *connection,
  * @param kind what kind of value are we looking for
  * @param key the header to look for, NULL to lookup 'trailing' value without a key
  * @return NULL if no such item was found
+ * @ingroup request
  */
 const char *
 MHD_lookup_connection_value (struct MHD_Connection *connection,
@@ -550,9 +548,28 @@ add_extra_headers (struct MHD_Connection *connection)
 	add_close = MHD_YES; /* client asked for it, so add it */
 
       /* if not present, add content length */
-      if (NULL == MHD_get_response_header (connection->response,
-					   MHD_HTTP_HEADER_CONTENT_LENGTH))
+      if ( (NULL == MHD_get_response_header (connection->response,
+					     MHD_HTTP_HEADER_CONTENT_LENGTH)) &&
+	   ( (NULL == connection->method) ||
+	     (0 != strcasecmp (connection->method,
+			       MHD_HTTP_METHOD_CONNECT)) ||
+	     (0 != connection->response->total_size) ) )
 	{
+	  /* 
+	     Here we add a content-length if one is missing; however,
+	     for 'connect' methods, the responses MUST NOT include a 
+	     content-length header *if* the response code is 2xx (in
+	     which case we expect there to be no body).  Still,
+	     as we don't know the response code here in some cases, we 
+	     simply only force adding a content-length header if this
+	     is not a 'connect' or if the response is not empty
+	     (which is kind of more sane, because if some crazy
+	     application did return content with a 2xx status code,
+	     then having a content-length might again be a good idea). 
+
+	     Note that the change from 'SHOULD NOT' to 'MUST NOT' is
+	     a recent development of the HTTP 1.1 specification.
+	  */
 	  SPRINTF (buf,
 		   MHD_UNSIGNED_LONG_LONG_PRINTF,
 		   (MHD_UNSIGNED_LONG_LONG) connection->response->total_size);
@@ -783,12 +800,12 @@ transmit_error_response (struct MHD_Connection *connection,
             "Error %u (`%s') processing request, closing connection.\n",
             status_code, message);
 #endif
-  EXTRA_CHECK (connection->response == NULL);
+  EXTRA_CHECK (NULL == connection->response);
   response = MHD_create_response_from_buffer (strlen (message),
 					      (void *) message, 
 					      MHD_RESPMEM_PERSISTENT);
   MHD_queue_response (connection, status_code, response);
-  EXTRA_CHECK (connection->response != NULL);
+  EXTRA_CHECK (NULL != connection->response);
   MHD_destroy_response (response);
   if (MHD_NO == build_header_response (connection))
     {
@@ -967,7 +984,8 @@ get_next_header_line (struct MHD_Connection *connection)
   while ((pos < connection->read_buffer_offset - 1) &&
          ('\r' != rbuf[pos]) && ('\n' != rbuf[pos]))
     pos++;
-  if (pos == connection->read_buffer_offset - 1)
+  if ( (pos == connection->read_buffer_offset - 1) &&
+       ('\n' != rbuf[pos]) )
     {
       /* not found, consider growing... */
       if ( (connection->read_buffer_offset == connection->read_buffer_size) &&
@@ -1130,10 +1148,10 @@ parse_cookie_header (struct MHD_Connection *connection)
   hdr = MHD_lookup_connection_value (connection,
 				     MHD_HEADER_KIND,
 				     MHD_HTTP_HEADER_COOKIE);
-  if (hdr == NULL)
+  if (NULL == hdr)
     return MHD_YES;
   cpy = MHD_pool_allocate (connection->pool, strlen (hdr) + 1, MHD_YES);
-  if (cpy == NULL)
+  if (NULL == cpy)
     {
 #if HAVE_MESSAGES
       MHD_DLOG (connection->daemon, "Not enough memory to parse cookies!\n");
@@ -1144,9 +1162,9 @@ parse_cookie_header (struct MHD_Connection *connection)
     }
   memcpy (cpy, hdr, strlen (hdr) + 1);
   pos = cpy;
-  while (pos != NULL)
+  while (NULL != pos)
     {
-      while (*pos == ' ')
+      while (' ' == *pos)
         pos++;                  /* skip spaces */
 
       sce = pos;
@@ -1183,7 +1201,7 @@ parse_cookie_header (struct MHD_Connection *connection)
         }
       if (semicolon[0] == '\0')
         semicolon = NULL;
-      if (semicolon != NULL)
+      if (NULL != semicolon)
         {
           semicolon[0] = '\0';
           semicolon++;
@@ -1214,7 +1232,7 @@ static int
 parse_initial_message_line (struct MHD_Connection *connection, char *line)
 {
   char *uri;
-  char *httpVersion;
+  char *http_version;
   char *args;
 
   if (NULL == (uri = strchr (line, ' ')))
@@ -1224,17 +1242,16 @@ parse_initial_message_line (struct MHD_Connection *connection, char *line)
   uri++;
   while (uri[0] == ' ')
     uri++;
-  httpVersion = strchr (uri, ' ');
-  if (httpVersion != NULL)
+  http_version = strchr (uri, ' ');
+  if (NULL != http_version)
     {
-      httpVersion[0] = '\0';
-      httpVersion++;
+      http_version[0] = '\0';
+      http_version++;
     }
-  if (connection->daemon->uri_log_callback != NULL)
+  if (NULL != connection->daemon->uri_log_callback)
     connection->client_context
-      =
-      connection->daemon->uri_log_callback (connection->daemon->
-                                            uri_log_callback_cls, uri);
+      = connection->daemon->uri_log_callback (connection->daemon->uri_log_callback_cls, 
+					      uri);
   args = strchr (uri, '?');
   if (NULL != args)
     {
@@ -1246,10 +1263,10 @@ parse_initial_message_line (struct MHD_Connection *connection, char *line)
 					 connection,
 					 uri);
   connection->url = uri;
-  if (NULL == httpVersion)
+  if (NULL == http_version)
     connection->version = "";
   else
-    connection->version = httpVersion;
+    connection->version = http_version;
   return MHD_YES;
 }
 
@@ -1477,7 +1494,6 @@ do_read (struct MHD_Connection *connection)
 
   if (connection->read_buffer_size == connection->read_buffer_offset)
     return MHD_NO;
-
   bytes_read = connection->recv_cls (connection,
                                      &connection->read_buffer
                                      [connection->read_buffer_offset],
@@ -1503,11 +1519,11 @@ do_read (struct MHD_Connection *connection)
     }
   if (0 == bytes_read)
     {
-      /* other side closed connection */
+      /* other side closed connection; RFC 2616, section 8.1.4 suggests
+	 we should then shutdown ourselves as well. */
       connection->read_closed = MHD_YES;
-      /* shutdown is not required here, as the other side already
-	 knows; so flagging this internally should suffice */
-      /* SHUTDOWN (connection->socket_fd, SHUT_RD); */
+      MHD_connection_close (connection,
+			    MHD_REQUEST_TERMINATED_CLIENT_ABORT);
       return MHD_YES;
     }
   connection->read_buffer_offset += bytes_read;
@@ -1796,7 +1812,6 @@ update_last_activity (struct MHD_Connection *connection)
 }
 
 
-
 /**
  * This function handles a particular connection when it has been
  * determined that there is data to be read off a socket. 
@@ -1809,7 +1824,7 @@ int
 MHD_connection_handle_read (struct MHD_Connection *connection)
 {
   update_last_activity (connection);
-  if (connection->state == MHD_CONNECTION_CLOSED)
+  if (MHD_CONNECTION_CLOSED == connection->state)
     return MHD_YES;
   /* make sure "read" has a reasonable number of bytes
      in buffer to use per system call (if possible) */
@@ -2017,6 +2032,46 @@ MHD_connection_handle_write (struct MHD_Connection *connection)
 
 
 /**
+ * Clean up the state of the given connection and move it into the
+ * clean up queue for final disposal.
+ *
+ * @param connection handle for the connection to clean up
+ */
+static void
+cleanup_connection (struct MHD_Connection *connection)
+{
+  struct MHD_Daemon *daemon = connection->daemon;
+
+  if (NULL != connection->response)
+    {
+      MHD_destroy_response (connection->response);
+      connection->response = NULL;
+    }
+  if ( (0 != (daemon->options & MHD_USE_THREAD_PER_CONNECTION)) &&
+       (0 != pthread_mutex_lock (&daemon->cleanup_connection_mutex)) )		
+    MHD_PANIC ("Failed to acquire cleanup mutex\n");		
+  if (connection->connection_timeout == daemon->connection_timeout)
+    XDLL_remove (daemon->normal_timeout_head,
+		 daemon->normal_timeout_tail,
+		 connection);
+  else
+    XDLL_remove (daemon->manual_timeout_head,
+		 daemon->manual_timeout_tail,
+		 connection);
+  DLL_remove (daemon->connections_head,
+	      daemon->connections_tail,
+	      connection);
+  DLL_insert (daemon->cleanup_head,
+	      daemon->cleanup_tail,
+	      connection);
+  if ( (0 != (daemon->options & MHD_USE_THREAD_PER_CONNECTION)) &&
+       (0 != pthread_mutex_unlock(&daemon->cleanup_connection_mutex)) )		
+    MHD_PANIC ("Failed to release cleanup mutex\n");	    
+  connection->in_idle = MHD_NO;
+}
+
+
+/**
  * This function was created to handle per-connection processing that
  * has to happen even if the socket cannot be read or written to. 
  *
@@ -2063,7 +2118,7 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
           continue;
         case MHD_CONNECTION_URL_RECEIVED:
           line = get_next_header_line (connection);
-          if (line == NULL)
+          if (NULL == line)
             {
               if (MHD_CONNECTION_URL_RECEIVED != connection->state)
                 continue;
@@ -2114,13 +2169,13 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
           continue;
         case MHD_CONNECTION_HEADERS_RECEIVED:
           parse_connection_headers (connection);
-          if (connection->state == MHD_CONNECTION_CLOSED)
+          if (MHD_CONNECTION_CLOSED == connection->state)
             continue;
           connection->state = MHD_CONNECTION_HEADERS_PROCESSED;
           continue;
         case MHD_CONNECTION_HEADERS_PROCESSED:
           call_connection_handler (connection); /* first call */
-          if (connection->state == MHD_CONNECTION_CLOSED)
+          if (MHD_CONNECTION_CLOSED == connection->state)
             continue;
           if (need_100_continue (connection))
             {
@@ -2153,7 +2208,7 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
           if (connection->read_buffer_offset != 0)
             {
               process_request_body (connection);     /* loop call */
-              if (connection->state == MHD_CONNECTION_CLOSED)
+              if (MHD_CONNECTION_CLOSED == connection->state)
                 continue;
             }
           if ((connection->remaining_upload_size == 0) ||
@@ -2378,7 +2433,8 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
             }
           continue;
         case MHD_CONNECTION_CLOSED:
-	  goto cleanup_connection;
+	  cleanup_connection (connection);
+	  return MHD_NO;
         default:
           EXTRA_CHECK (0);
           break;
@@ -2394,6 +2450,7 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
       return MHD_YES;
     }
   MHD_connection_update_event_loop_info (connection);
+#if EPOLL_SUPPORT   
   switch (connection->event_loop_info)
     {
     case MHD_EVENT_LOOP_INFO_READ:
@@ -2407,6 +2464,15 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
 	}
       break;
     case MHD_EVENT_LOOP_INFO_WRITE:
+      if ( (connection->read_buffer_size > connection->read_buffer_offset) && 
+	   (0 != (connection->epoll_state & MHD_EPOLL_STATE_READ_READY)) &&
+	   (0 == (connection->epoll_state & MHD_EPOLL_STATE_IN_EREADY_EDLL)) )
+	{
+	  EDLL_insert (daemon->eready_head,
+		       daemon->eready_tail,
+		       connection);
+	  connection->epoll_state |= MHD_EPOLL_STATE_IN_EREADY_EDLL;
+	}
       if ( (0 != (connection->epoll_state & MHD_EPOLL_STATE_WRITE_READY)) &&
 	   (0 == (connection->epoll_state & MHD_EPOLL_STATE_IN_EREADY_EDLL)) )
 	{
@@ -2431,13 +2497,33 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
       /* This connection is finished, nothing left to do */
       break;
     }
+  return MHD_connection_epoll_update_ (connection);
+#else
+  return MHD_YES;
+#endif
+}
+
 
 #if EPOLL_SUPPORT
+/**
+ * Perform epoll() processing, possibly moving the connection back into
+ * the epoll() set if needed.
+ *
+ * @param connection connection to process
+ * @return MHD_YES if we should continue to process the
+ *         connection (not dead yet), MHD_NO if it died
+ */ 
+int
+MHD_connection_epoll_update_ (struct MHD_Connection *connection)
+{
+  struct MHD_Daemon *daemon = connection->daemon;
+
   if ( (0 != (daemon->options & MHD_USE_EPOLL_LINUX_ONLY)) &&  
        (0 == (connection->epoll_state & MHD_EPOLL_STATE_IN_EPOLL_SET)) &&
        ( (0 == (connection->epoll_state & MHD_EPOLL_STATE_WRITE_READY)) ||
 	 ( (0 == (connection->epoll_state & MHD_EPOLL_STATE_READ_READY)) &&
-	   (MHD_EVENT_LOOP_INFO_READ == connection->event_loop_info) &&
+	   ( (MHD_EVENT_LOOP_INFO_READ == connection->event_loop_info) ||
+	     (connection->read_buffer_size > connection->read_buffer_offset) ) &&
 	   (MHD_NO == connection->read_closed) ) ) )
     {
       /* add to epoll set */
@@ -2457,43 +2543,15 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
 		      STRERROR (errno));
 #endif
 	  connection->state = MHD_CONNECTION_CLOSED;
-	  goto cleanup_connection;
+	  cleanup_connection (connection);
+	  return MHD_NO;
 	}
       connection->epoll_state |= MHD_EPOLL_STATE_IN_EPOLL_SET;
     }
-#endif
   connection->in_idle = MHD_NO;
   return MHD_YES;
-
- cleanup_connection:
-  if (NULL != connection->response)
-    {
-      MHD_destroy_response (connection->response);
-      connection->response = NULL;
-    }
-  if ( (0 != (daemon->options & MHD_USE_THREAD_PER_CONNECTION)) &&
-       (0 != pthread_mutex_lock (&daemon->cleanup_connection_mutex)) )		
-    MHD_PANIC ("Failed to acquire cleanup mutex\n");		
-  if (connection->connection_timeout == daemon->connection_timeout)
-    XDLL_remove (daemon->normal_timeout_head,
-		 daemon->normal_timeout_tail,
-		 connection);
-  else
-    XDLL_remove (daemon->manual_timeout_head,
-		 daemon->manual_timeout_tail,
-		 connection);
-  DLL_remove (daemon->connections_head,
-	      daemon->connections_tail,
-	      connection);
-  DLL_insert (daemon->cleanup_head,
-	      daemon->cleanup_tail,
-	      connection);
-  if ( (0 != (daemon->options & MHD_USE_THREAD_PER_CONNECTION)) &&
-       (0 != pthread_mutex_unlock(&daemon->cleanup_connection_mutex)) )		
-    MHD_PANIC ("Failed to release cleanup mutex\n");	    
-  connection->in_idle = MHD_NO;
-  return MHD_NO;
 }
+#endif
 
 
 /**
@@ -2515,15 +2573,16 @@ MHD_set_http_callbacks_ (struct MHD_Connection *connection)
  *
  * @param connection what connection to get information about
  * @param infoType what information is desired?
- * @param ... depends on infoType
+ * @param ... depends on @a info_type
  * @return NULL if this information is not available
- *         (or if the infoType is unknown)
+ *         (or if the @a info_type is unknown)
+ * @ingroup specialized
  */
 const union MHD_ConnectionInfo *
 MHD_get_connection_info (struct MHD_Connection *connection,
-                         enum MHD_ConnectionInfoType infoType, ...)
+                         enum MHD_ConnectionInfoType info_type, ...)
 {
-  switch (infoType)
+  switch (info_type)
     {
 #if HTTPS_SUPPORT
     case MHD_CONNECTION_INFO_CIPHER_ALGO:
@@ -2559,7 +2618,8 @@ MHD_get_connection_info (struct MHD_Connection *connection,
  * @param connection connection to modify
  * @param option option to set
  * @param ... arguments to the option, depending on the option type
- * @return MHD_YES on success, MHD_NO if setting the option failed
+ * @return #MHD_YES on success, #MHD_NO if setting the option failed
+ * @ingroup specialized
  */
 int 
 MHD_set_connection_option (struct MHD_Connection *connection,
@@ -2607,13 +2667,14 @@ MHD_set_connection_option (struct MHD_Connection *connection,
 
 /**
  * Queue a response to be transmitted to the client (as soon as
- * possible but after MHD_AccessHandlerCallback returns).
+ * possible but after #MHD_AccessHandlerCallback returns).
  *
  * @param connection the connection identifying the client
- * @param status_code HTTP status code (i.e. 200 for OK)
+ * @param status_code HTTP status code (i.e. #MHD_HTTP_OK)
  * @param response response to transmit
- * @return MHD_NO on error (i.e. reply already sent),
- *         MHD_YES on success or if message has been queued
+ * @return #MHD_NO on error (i.e. reply already sent),
+ *         #MHD_YES on success or if message has been queued
+ * @ingroup response
  */
 int
 MHD_queue_response (struct MHD_Connection *connection,
@@ -2635,13 +2696,15 @@ MHD_queue_response (struct MHD_Connection *connection,
          have already sent the full message body */
       connection->response_write_position = response->total_size;
     }
-  if (MHD_CONNECTION_HEADERS_PROCESSED == connection->state)
+  if ( (MHD_CONNECTION_HEADERS_PROCESSED == connection->state) &&
+       (NULL != connection->method) &&
+       ( (0 == strcasecmp (connection->method,
+			   MHD_HTTP_METHOD_POST)) ||
+	 (0 == strcasecmp (connection->method,
+			   MHD_HTTP_METHOD_PUT))) )
     {
-      /* response was queued "early",
-         refuse to read body / footers or further
-         requests! */
-      if (0 == (connection->daemon->options & MHD_USE_EPOLL_TURBO))
-	(void) SHUTDOWN (connection->socket_fd, SHUT_RD);
+      /* response was queued "early", refuse to read body / footers or
+         further requests! */
       connection->read_closed = MHD_YES;
       connection->state = MHD_CONNECTION_FOOTERS_RECEIVED;
     }

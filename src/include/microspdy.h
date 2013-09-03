@@ -42,8 +42,17 @@
  * "platform.h" in the libmicrospdy distribution).<p>
  * 
  * All of the functions returning SPDY_YES/SPDY_NO return
- * SPDY_INPUT_ERROR when any of the parameters are invalid, e.g.,
- * required parameter is NULL.
+ * SPDY_INPUT_ERROR when any of the parameters are invalid, e.g.
+ * required parameter is NULL.<p>
+ * 
+ * The library does not check if anything at the application layer --
+ * requests and responses -- is correct. For example, it
+ * is up to the user to check if a client is sending HTTP body but the
+ * method is GET.<p>
+ * 
+ * The SPDY flow control is just partially implemented: the receiving
+ * window is updated, and the client is notified, to prevent a client
+ * from stop sending POST body data, for example.
  */
 #ifndef SPDY_MICROSPDY_H
 #define SPDY_MICROSPDY_H
@@ -628,7 +637,9 @@ typedef int
                            
 
 /**
- * Callback for received SPDY request.
+ * Callback for received SPDY request. The functions is called whenever
+ * a reqest comes, but will also be called if more headers/trailers are
+ * received.
  *
  * @param cls client-defined closure
  * @param request handler. The request object is required for
@@ -642,6 +653,13 @@ typedef int
  * @param host called host as in HTTP
  * @param scheme used ("http" or "https"). In SPDY 3 it is only "https".
  * @param headers other HTTP headers from the request
+ * @param more a flag saying if more data related to the request is
+ *        expected to be received. HTTP body may arrive (e.g. POST data);
+ *        then SPDY_NewDataCallback will be called for the connection.
+ *        It is also possible that more headers/trailers arrive;
+ *        then the same callback will be invoked. The user should detect
+ *        that it is not the first invocation of the function for that
+ *        request.
  */
 typedef void (*SPDY_NewRequestCallback) (void * cls,
 					 struct SPDY_Request * request,
@@ -651,24 +669,27 @@ typedef void (*SPDY_NewRequestCallback) (void * cls,
 					 const char * version,
 					 const char * host,
 					 const char * scheme,
-					 struct SPDY_NameValue * headers);
+					 struct SPDY_NameValue * headers,
+           bool more);
 
 
 /**
- * Callback for received new data chunk from the POST data of a given
- * request.
+ * Callback for received new data chunk (HTTP body) from a given
+ * request (e.g. POST data).
  *
  * @param cls client-defined closure
  * @param request handler
  * @param buf data chunk from the POST data
- * @param size the size of the data chunk 'buf' in bytes
- * @param more false if this is the last chunk from the POST data. Note:
+ * @param size the size of the data chunk 'buf' in bytes. Note that it
+ *             may be 0.
+ * @param more false if this is the last chunk from the data. Note:
  *             true does not mean that more data will come, exceptional
  *             situation is possible
  * @return SPDY_YES to continue calling the function,
  *         SPDY_NO to stop calling the function for this request
  */
-typedef int (*SPDY_NewPOSTDataCallback) (void * cls,
+typedef int
+(*SPDY_NewDataCallback) (void * cls,
 					 struct SPDY_Request *request,
 					 const void * buf,
 					 size_t size,
@@ -841,7 +862,7 @@ SPDY_set_panic_func (SPDY_PanicCallback cb,
  * 			established	by a client
  * @param sccb callback called when a session is closed
  * @param nrcb callback called when a client sends request
- * @param npdcb callback called when HTTP POST params are received
+ * @param npdcb callback called when HTTP body (POST data) is received
  * 			after request
  * @param cls common extra argument to all of the callbacks
  * @param ... list of options (type-value pairs,
@@ -855,7 +876,7 @@ SPDY_start_daemon (uint16_t port,
 					SPDY_NewSessionCallback nscb,
 					SPDY_SessionClosedCallback sccb,
 					SPDY_NewRequestCallback nrcb,
-					SPDY_NewPOSTDataCallback npdcb,
+					SPDY_NewDataCallback npdcb,
 					void * cls,
 					...);
 

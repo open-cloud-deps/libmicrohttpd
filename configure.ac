@@ -21,15 +21,15 @@
 #
 #
 AC_PREREQ(2.57)
-AC_INIT([libmicrohttpd], [0.9.28],[libmicrohttpd@gnu.org])
+AC_INIT([libmicrohttpd], [0.9.30],[libmicrohttpd@gnu.org])
 AM_INIT_AUTOMAKE([silent-rules])
 AC_CONFIG_HEADERS([MHD_config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AH_TOP([#define _GNU_SOURCE  1])
 
-LIB_VERSION_CURRENT=28
+LIB_VERSION_CURRENT=29
 LIB_VERSION_REVISION=0
-LIB_VERSION_AGE=18
+LIB_VERSION_AGE=19
 AC_SUBST(LIB_VERSION_CURRENT)
 AC_SUBST(LIB_VERSION_REVISION)
 AC_SUBST(LIB_VERSION_AGE)
@@ -232,6 +232,28 @@ AM_CONDITIONAL(USE_PRIVATE_PLIBC_H, test x$our_private_plibc_h = x1)
 AC_CHECK_FUNCS_ONCE(memmem)
 AC_CHECK_FUNCS_ONCE(accept4)
 
+AC_COMPILE_IFELSE(
+  [AC_LANG_PROGRAM(
+                   [
+                    #if defined HAVE_SYS_TYPES_H
+                    #  include <sys/types.h>      
+                    #endif
+                    #if defined HAVE_SYS_SOCKET_H
+                    #  include <sys/socket.h>
+                    #elif defined HAVE_WINSOCK2_H
+                    #  include <winsock2.h>
+                    #endif],
+                   [
+                    #ifndef SOCK_NONBLOCK
+                    # error do not have SOCK_NONBLOCK
+                    #endif
+                   ])
+  ],
+  [
+    AC_DEFINE([HAVE_SOCK_NONBLOCK], [1], [SOCK_NONBLOCK is defined in a socket header])
+  ])
+
+
 AC_SEARCH_LIBS([clock_gettime], [rt], [
 				AC_DEFINE(HAVE_CLOCK_GETTIME, 1, [Have clock_gettime])
 ])
@@ -319,6 +341,8 @@ then
                    enable_spdy="yes"], 
                    [AM_CONDITIONAL(HAVE_OPENSSL, false)
                    enable_spdy="no"])
+else
+ AM_CONDITIONAL(HAVE_OPENSSL, false)
 fi
 
 if test "$enable_spdy" = "yes"
@@ -534,6 +558,7 @@ libmicrohttpd.pc
 Makefile
 contrib/Makefile
 doc/Makefile
+doc/doxygen/Makefile
 doc/examples/Makefile
 m4/Makefile
 src/Makefile
