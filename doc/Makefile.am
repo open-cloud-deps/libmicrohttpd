@@ -1,6 +1,6 @@
 man_MANS = libmicrohttpd.3
 
-SUBDIRS = . examples
+SUBDIRS = . examples doxygen
 
 DISTCLEANFILES = \
   libmicrohttpd.cps \
@@ -25,5 +25,5 @@ microhttpd_TEXINFOS = \
   lgpl.texi \
   ecos.texi
 
-EXTRA_DIST = $(man_MANS) Doxyfile $(microhttpd_TEXINFOS) 
+EXTRA_DIST = $(man_MANS) $(microhttpd_TEXINFOS) performance_data.png
 

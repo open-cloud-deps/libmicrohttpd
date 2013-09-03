@@ -94,10 +94,8 @@ largepost_DEPENDENCIES =  \
 	$(top_builddir)/src/microhttpd/libmicrohttpd.la
 am_logging_OBJECTS = logging.$(OBJEXT)
 logging_OBJECTS = $(am_logging_OBJECTS)
-am__DEPENDENCIES_1 =
 logging_DEPENDENCIES =  \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
-	$(am__DEPENDENCIES_1)
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la
 am_responseheaders_OBJECTS = responseheaders.$(OBJEXT)
 responseheaders_OBJECTS = $(am_responseheaders_OBJECTS)
 responseheaders_DEPENDENCIES =  \
@@ -343,8 +341,8 @@ AM_CPPFLAGS = \
   -I$(top_srcdir)/src/include \
   @LIBGCRYPT_CFLAGS@
 
+@HAVE_W32_TRUE@AM_CFLAGS = -DWINDOWS
 @USE_COVERAGE_TRUE@AM_CFLAGS = --coverage
-@HAVE_W32_TRUE@IBERTY = -liberty
 basicauthentication_SOURCES = \
  basicauthentication.c 
 
@@ -361,8 +359,7 @@ logging_SOURCES = \
  logging.c 
 
 logging_LDADD = \
- $(top_builddir)/src/microhttpd/libmicrohttpd.la \
- $(IBERTY)
+ $(top_builddir)/src/microhttpd/libmicrohttpd.la
 
 responseheaders_SOURCES = \
  responseheaders.c 

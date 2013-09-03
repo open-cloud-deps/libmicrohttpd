@@ -16,7 +16,8 @@
 */
 
 /**
- * @file structures.h
+ * @file mhd2spdy_http.c
+ * @brief  HTTP part of the proxy. libmicrohttpd is used for the server side.
  * @author Andrey Uzunov
  */
  
@@ -25,35 +26,32 @@
 #include "mhd2spdy_spdy.h"
 
 
-void * http_log_cb(void * cls, const char * uri)
+void *
+http_cb_log(void * cls,
+const char * uri)
 {
+  (void)cls;
+  
   struct HTTP_URI * http_uri;
   
   PRINT_INFO2("log uri '%s'\n", uri);
   
+  //TODO not freed once in a while
   if(NULL == (http_uri = au_malloc(sizeof(struct HTTP_URI ))))
     DIE("no memory");
-  //memset(http_uri, 0 , sizeof(struct HTTP_URI));
   http_uri->uri = strdup(uri);
   return http_uri;
 }
 
 
-/*
 static int
-http_query_iterate_cb(void *cls,
-                           enum MHD_ValueKind kind,
-                           const char *name, const char *value)
+http_cb_iterate(void *cls,
+                 enum MHD_ValueKind kind,
+                 const char *name,
+                 const char *value)
 {
-
-}*/
-
-
-static int
-http_iterate_cb(void *cls,
-                           enum MHD_ValueKind kind,
-                           const char *name, const char *value)
-{
+  (void)kind;
+  
   static char * const forbidden[] = {"Transfer-Encoding",
     "Proxy-Connection",
     "Keep-Alive",
@@ -78,34 +76,29 @@ http_iterate_cb(void *cls,
 
 
 static ssize_t
-http_response_callback (void *cls,
-				uint64_t pos,
-				char *buffer,
-				size_t max)
+http_cb_response (void *cls,
+                        uint64_t pos,
+                        char *buffer,
+                        size_t max)
 {
+  (void)pos;
+  
 	int ret;
 	struct Proxy *proxy = (struct Proxy *)cls;
 	void *newbody;
   const union MHD_ConnectionInfo *info;
   int val = 1;
-	
-  //max=16;
-	
-	//PRINT_INFO2("response_callback, pos: %i, max is %i, len is %i",pos,max,proxy->length);
-	
-	//assert(0 != proxy->length);
-	
-	//if(MHD_CONTENT_READER_END_OF_STREAM == proxy->length)
-	//	return MHD_CONTENT_READER_END_OF_STREAM;
   
-  PRINT_INFO2("http_response_callback for %s", proxy->url);
+  PRINT_INFO2("http_cb_response for %s", proxy->url);
+  
+  if(proxy->spdy_error)
+    return MHD_CONTENT_READER_END_WITH_ERROR;
   
 	if(0 == proxy->http_body_size &&( proxy->done || !proxy->spdy_active)){
     PRINT_INFO("sent end of stream");
     return MHD_CONTENT_READER_END_OF_STREAM;
   }
 	
-	//*more = true;
 	if(!proxy->http_body_size)//nothing to write now
   {
     //flush data
@@ -143,13 +136,6 @@ http_response_callback (void *cls,
 	if(proxy->length >= 0)
 	{
 		proxy->length -= ret;
-		//printf("pr len %i", proxy->length);
-		/*if(proxy->length <= 0)
-		{
-		//	*more = false;
-			//last frame
-			proxy->length = MHD_CONTENT_READER_END_OF_STREAM;
-		}*/
 	}
 	
 	PRINT_INFO2("response_callback, size: %i",ret);
@@ -159,39 +145,15 @@ http_response_callback (void *cls,
 
 
 static void
-http_response_done_callback(void *cls)
+http_cb_response_done(void *cls)
 {
-	struct Proxy *proxy = (struct Proxy *)cls;
   
-  PRINT_INFO2("http_response_done_callback for %s", proxy->url);
-	//int ret;
-	
-	//printf("response_done_callback\n");
-	
-	//printf("answer for %s was sent\n", (char *)cls);
-	
-	/*if(SPDY_RESPONSE_RESULT_SUCCESS != status)
-	{
-		printf("answer was NOT sent, %i\n",status);
-	}*/
-	/*if(CURLM_OK != (ret = curl_multi_remove_handle(multi_handle, proxy->curl_handle)))
-	{
-		PRINT_INFO2("curl_multi_remove_handle failed (%i)", ret);
-	}
-	curl_slist_free_all(proxy->curl_headers);
-	curl_easy_cleanup(proxy->curl_handle);
-	*/
-	//SPDY_destroy_request(request);
-	//SPDY_destroy_response(response);
-      MHD_destroy_response (proxy->http_response);
-	//if(!strcmp("/close",proxy->path)) run = 0;
-	//free(proxy->path);
-  if(proxy->spdy_active)
-    proxy->http_active = false;
-  else
-    free_proxy(proxy);
+  //TODO
+	/*struct Proxy *proxy = (struct Proxy *)cls;
+  
+  PRINT_INFO2("http_cb_response_done for %s", proxy->url);
+  */
 
-  --glob_opt.responses_pending;
 }
 
 int
@@ -204,13 +166,15 @@ http_cb_request (void *cls,
                 size_t *upload_data_size,
                 void **ptr)
 {
-  //struct MHD_Response *response;
+  (void)cls;
+  (void)url;
+  (void)upload_data;
+  (void)upload_data_size;
+  
   int ret;
   struct Proxy *proxy;
-  //struct URI *spdy_uri;
-  //char **nv;
-  //int num_headers;
   struct SPDY_Headers spdy_headers;
+  bool with_body = false;
   
   //PRINT_INFO2("request cb %i; %s", *ptr,url);
 
@@ -220,14 +184,14 @@ http_cb_request (void *cls,
     
   if(NULL == http_uri->proxy)
   {  
-    if (0 != strcmp (method, MHD_HTTP_METHOD_GET))
+    if (0 != strcmp (method, MHD_HTTP_METHOD_GET) && 0 != strcmp (method, MHD_HTTP_METHOD_POST))
     {
       free(http_uri->uri);
       free(http_uri);
       PRINT_INFO2("unexpected method %s", method);
-      return MHD_NO;              /* unexpected method */
+      return MHD_NO;
     }
-  
+    
     if(NULL == (proxy = au_malloc(sizeof(struct Proxy))))
     {
       PRINT_INFO("No memory");
@@ -235,64 +199,79 @@ http_cb_request (void *cls,
     }
     
     ++glob_opt.responses_pending;
-    //memset(proxy, 0, sizeof(struct Proxy));
     proxy->id = rand();
     proxy->http_active = true;
-    //PRINT_INFO2("proxy obj with id %i created (%i)", proxy->id, proxy);
     proxy->http_connection = connection;
     http_uri->proxy = proxy;
     return MHD_YES;
   }
   
   proxy = http_uri->proxy;
-  //*ptr = NULL;                  /* reset when done */
 
   if(proxy->spdy_active)
   {
+    if(0 == strcmp (method, MHD_HTTP_METHOD_POST))
+    {
+        PRINT_INFO("POST processing");
+        
+      int rc= spdylay_session_resume_data(proxy->spdy_connection->session, proxy->stream_id);
+      PRINT_INFO2("rc is %i stream is %i", rc, proxy->stream_id);
+      proxy->spdy_connection->want_io |= WANT_WRITE;
+      
+      if(0 == *upload_data_size)
+      {
+      PRINT_INFO("POST http EOF");
+        proxy->receiving_done = true;
+        return MHD_YES;
+      }
+      
+      if(!copy_buffer(upload_data, *upload_data_size, &proxy->received_body, &proxy->received_body_size))
+      {
+        //TODO handle it better?
+        PRINT_INFO("not enough memory (malloc/realloc returned NULL)");
+        return MHD_NO;
+      }
+      /*
+      if(NULL == proxy->received_body)
+        proxy->received_body = malloc(*upload_data_size);
+      else
+        proxy->received_body = realloc(proxy->received_body, proxy->received_body_size + *upload_data_size);
+      if(NULL == proxy->received_body)
+      {
+        //TODO handle it better?
+        PRINT_INFO("not enough memory (realloc returned NULL)");
+        return MHD_NO;
+      }
+
+      memcpy(proxy->received_body + proxy->received_body_size, upload_data, *upload_data_size);
+      proxy->received_body_size += *upload_data_size;
+        */
+      *upload_data_size = 0;
+      
+      //raise(SIGINT);
+                               
+      return MHD_YES;
+    }
+  
     //already handled
     PRINT_INFO("unnecessary call to http_cb_request");
     return MHD_YES;
   }
 
-  PRINT_INFO2("received request for '%s %s %s'\n", method, http_uri->uri, version);
-  /*
-  proxy->http_response = MHD_create_response_from_callback (MHD_SIZE_UNKNOWN,
-                         8096,
-                         &http_response_callback,
-                         proxy,
-                         &http_response_done_callback);
-  
-  if (proxy->http_response == NULL)
-    DIE("no response");
-    */ 
+  PRINT_INFO2("received request for '%s %s %s'", method, http_uri->uri, version);
 
   proxy->url = http_uri->uri;
-  //if(NULL == (proxy->url = strdup(http_uri->uri)))
-  //  DIE("no memory");
-
-//TODO HTTP headers
-  /*MHD_get_connection_values (connection,
-                       MHD_HEADER_KIND,
-                       &http_iterate_cb,
-                       proxy);
-  */                     
-  //proxy->url = strdup(url);
-  //if(NULL ==  (spdy_uri = au_malloc(sizeof(struct URI))))
-  //  DIE("no memory");
+  
+  with_body = 0 == strcmp (method, MHD_HTTP_METHOD_POST) && 0 != strcmp ("0",
+    MHD_lookup_connection_value(connection, MHD_HEADER_KIND, MHD_HTTP_HEADER_CONTENT_LENGTH));
+    
+  PRINT_INFO2("body will be sent %i", with_body);
     
   ret = parse_uri(&glob_opt.uri_preg, proxy->url, &proxy->uri);
   if(ret != 0)
     DIE("parse_uri failed");
-  //proxy->uri = spdy_uri;
   proxy->http_uri = http_uri;
   proxy->spdy_active = true;
-
-  //proxy->spdy_request = au_malloc(sizeof(struct SPDY_Request));
-  //if(NULL == proxy->spdy_request)
-  //  DIE("no memory");
-  //memset(proxy->spdy_request,0,sizeof(struct SPDY_Request));
-  //spdy_request_init(proxy->spdy_request, &spdy_uri);
-  //spdy_submit_request(spdy_connection, proxy);
 
   spdy_headers.num = MHD_get_connection_values (connection,
                        MHD_HEADER_KIND,
@@ -300,7 +279,7 @@ http_cb_request (void *cls,
                        NULL);
   if(NULL == (spdy_headers.nv = au_malloc(((spdy_headers.num + 5) * 2 + 1) * sizeof(char *))))
     DIE("no memory");
-  spdy_headers.nv[0] = ":method";     spdy_headers.nv[1] = "GET";
+  spdy_headers.nv[0] = ":method";     spdy_headers.nv[1] = method;
   spdy_headers.nv[2] = ":path";       spdy_headers.nv[3] = proxy->uri->path_and_more;
   spdy_headers.nv[4] = ":version";    spdy_headers.nv[5] = (char *)version;
   spdy_headers.nv[6] = ":scheme";     spdy_headers.nv[7] = proxy->uri->scheme;
@@ -309,23 +288,17 @@ http_cb_request (void *cls,
   spdy_headers.cnt = 10;
   MHD_get_connection_values (connection,
                        MHD_HEADER_KIND,
-                       &http_iterate_cb,
+                       &http_cb_iterate,
                        &spdy_headers);
                        
   spdy_headers.nv[spdy_headers.cnt] = NULL;
   if(NULL == spdy_headers.nv[9])
     spdy_headers.nv[9] = proxy->uri->host_and_port;
 
-  /*int i;
-  for(i=0; i<spdy_headers.cnt; i+=2)
-    printf("%s: %s\n", spdy_headers.nv[i], spdy_headers.nv[i+1]);
-  */
-  if(0 != spdy_request(spdy_headers.nv, proxy))
+  if(0 != spdy_request(spdy_headers.nv, proxy, with_body))
   {
-    //--glob_opt.responses_pending;
     free(spdy_headers.nv);
-    //MHD_destroy_response (proxy->http_response);
-    free_proxy(proxy);//TODO call it here or in done_callback
+    free_proxy(proxy);
     
     return MHD_NO;
   }
@@ -333,9 +306,9 @@ http_cb_request (void *cls,
   
   proxy->http_response = MHD_create_response_from_callback (MHD_SIZE_UNKNOWN,
                          4096,
-                         &http_response_callback,
+                         &http_cb_response,
                          proxy,
-                         &http_response_done_callback);
+                         &http_cb_response_done);
 
   if (proxy->http_response == NULL)
     DIE("no response");
@@ -350,60 +323,19 @@ http_cb_request (void *cls,
                  "Keep-Alive", "timeout=5, max=100"))
     PRINT_INFO("SPDY_name_value_add failed: ");
     
-    /*
-  const  union MHD_ConnectionInfo *info;
-  info = MHD_get_connection_info (connection,
-			 MHD_CONNECTION_INFO_CONNECTION_FD);
-  int val = 1;
-  int rv;
-  rv = setsockopt(info->connect_fd, IPPROTO_TCP, TCP_NODELAY, &val, (socklen_t)sizeof(val));
-  if(rv == -1) {
-    DIE("setsockopt");
-  }*/
   return MHD_YES;
 }
 
+
 void
-http_create_response(struct Proxy* proxy, char **nv)
+http_create_response(struct Proxy* proxy,
+                     char **nv)
 {
   size_t i;
-  //uint64_t response_size=MHD_SIZE_UNKNOWN;
-
-  /*for(i = 0; nv[i]; i += 2) {
-    if(0 == strcmp("content-length", nv[i]))
-    {
-      response_size = atoi(nv[i+1]);
-      break;
-    }
-  }*/
-    /*
-  proxy->http_response = MHD_create_response_from_callback (MHD_SIZE_UNKNOWN,
-                         4096,
-                         &http_response_callback,
-                         proxy,
-                         &http_response_done_callback);
-
-  if (proxy->http_response == NULL)
-    DIE("no response");
   
-  if(MHD_NO == MHD_add_response_header (proxy->http_response,
-                 "Proxy-Connection", "keep-alive"))
-    PRINT_INFO("SPDY_name_value_add failed: ");
-  if(MHD_NO == MHD_add_response_header (proxy->http_response,
-                 "Connection", "Keep-Alive"))
-    PRINT_INFO("SPDY_name_value_add failed: ");
-  if(MHD_NO == MHD_add_response_header (proxy->http_response,
-                 "Keep-Alive", "timeout=5, max=100"))
-    PRINT_INFO("SPDY_name_value_add failed: ");
-    */
   for(i = 0; nv[i]; i += 2) {
-    //printf("       %s: %s\n", nv[i], nv[i+1]);
-    //int j;
-
     if(0 == strcmp(":status", nv[i]))
     {
-      //raise(SIGINT);
-      //proxy->status_msg = nv[i+1];
       char tmp[4];
       memcpy(&tmp,nv[i+1],3);
       tmp[3]=0;
@@ -417,34 +349,52 @@ http_create_response(struct Proxy* proxy, char **nv)
     }
     else if(0 == strcmp("content-length", nv[i]))
     {
-      //proxy->length = atoi(nv[i+1]);
-      //response_size = atoi(nv[i+1]);
       continue;
     }
 
-    //for(j=0; j<strlen(nv[i]) && ':'==nv[i][j]; ++j);
-
     char *header = *(nv+i);
-    //header[0] = toupper(header[0]);
     if(MHD_NO == MHD_add_response_header (proxy->http_response,
                    header, nv[i+1]))
     {
       PRINT_INFO2("SPDY_name_value_add failed: '%s' '%s'", header, nv[i+1]);
-      //abort();
     }
     PRINT_INFO2("adding '%s: %s'",header, nv[i+1]);
   }
   
-  //PRINT_INFO2("%i", MHD_get_response_headers(proxy->http_response, NULL, NULL));
-  //PRINT_INFO2("state before %i", proxy->http_connection->state);
-  //PRINT_INFO2("loop before %i", proxy->http_connection->event_loop_info);
   if(MHD_NO == MHD_queue_response (proxy->http_connection, proxy->status, proxy->http_response)){
     PRINT_INFO("No queue");
     abort();
   }
-  //PRINT_INFO2("state after %i", proxy->http_connection->state);
-  //PRINT_INFO2("loop after %i", proxy->http_connection->event_loop_info);
-  //MHD_destroy_response (proxy->http_response);
-  //PRINT_INFO2("state after %i", proxy->http_connection->state);
-  //PRINT_INFO2("loop after %i", proxy->http_connection->event_loop_info);
+  
+  MHD_destroy_response (proxy->http_response);
+}
+
+void
+http_cb_request_completed (void *cls,
+                                   struct MHD_Connection *connection,
+                                   void **con_cls,
+                                   enum MHD_RequestTerminationCode toe)
+{
+  struct HTTP_URI *http_uri = (struct HTTP_URI *)*con_cls;
+  if(NULL == http_uri) return;
+  struct Proxy *proxy = (struct Proxy *)http_uri->proxy;
+  
+  PRINT_INFO2("http_cb_request_completed %i for %s",toe, http_uri->uri);
+  
+  if(proxy->spdy_active)
+  {
+    proxy->http_active = false;
+    if(MHD_REQUEST_TERMINATED_COMPLETED_OK != toe)
+    {
+      proxy->http_error = true;
+      assert(proxy->stream_id > 0);
+      //send RST_STREAM_STATUS_CANCEL
+      PRINT_INFO("send rst_stream" );
+      spdylay_submit_rst_stream(proxy->spdy_connection->session, proxy->stream_id, 5);
+    }
+  }
+  else
+    free_proxy(proxy);
+    
+  --glob_opt.responses_pending;
 }
