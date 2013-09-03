@@ -9,8 +9,7 @@ libmicrohttpd.so.10 libmicrohttpd10 #MINVER#
  MHD_add_response_header@Base 0.9.20
  MHD_basic_auth_get_username_password@Base 0.9.20
  MHD_connection_close@Base 0.9.20
- MHD_connection_get_fdset@Base 0.9.20
- MHD_connection_get_pollfd@Base 0.9.20
+ MHD_connection_epoll_update_@Base 0.9.30
  MHD_connection_handle_idle@Base 0.9.20
  MHD_connection_handle_read@Base 0.9.20
  MHD_connection_handle_write@Base 0.9.20
