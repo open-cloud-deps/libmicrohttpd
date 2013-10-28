@@ -29,13 +29,14 @@
 #include "microhttpd.h"
 #include "internal.h"
 #include "tls_test_common.h"
+#include <gcrypt.h>
 
 extern const char srv_key_pem[];
 extern const char srv_self_signed_cert_pem[];
 
 static const int TIME_OUT = 3;
 
-char *http_get_req = "GET / HTTP/1.1\r\n\r\n";
+static const char *http_get_req = "GET / HTTP/1.1\r\n\r\n";
 
 static int
 test_tls_session_time_out (gnutls_session_t session)
@@ -62,6 +63,7 @@ test_tls_session_time_out (gnutls_session_t session)
   if (ret < 0)
     {
       fprintf (stderr, "Error: %s\n", MHD_E_FAILED_TO_CONNECT);
+      close (sd);
       return -1;
     }
 
@@ -69,6 +71,7 @@ test_tls_session_time_out (gnutls_session_t session)
   if (ret < 0)
     {
       fprintf (stderr, "Handshake failed\n");
+      close (sd);
       return -1;
     }
 
@@ -79,12 +82,14 @@ test_tls_session_time_out (gnutls_session_t session)
   if (send (sd, "", 1, 0) == 0)
     {
       fprintf (stderr, "Connection failed to time-out\n");
+      close (sd);
       return -1;
     }
 
   close (sd);
   return 0;
 }
+
 
 int
 main (int argc, char *const *argv)
@@ -96,6 +101,11 @@ main (int argc, char *const *argv)
   gnutls_datum_t cert;
   gnutls_certificate_credentials_t xcred;
 
+
+  gcry_control (GCRYCTL_ENABLE_QUICK_RANDOM, 0);
+#ifdef GCRYCTL_INITIALIZATION_FINISHED
+  gcry_control (GCRYCTL_INITIALIZATION_FINISHED, 0);
+#endif
   gnutls_global_init ();
   gnutls_global_set_log_level (11);
 

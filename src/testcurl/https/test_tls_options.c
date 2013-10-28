@@ -75,20 +75,36 @@ test_unmatching_ssl_version (void * cls, const char *cipher_suite,
   return 0;
 }
 
+
 /* setup a temporary transfer test file */
 int
 main (int argc, char *const *argv)
 {
   unsigned int errorCount = 0;
-
+  const char *ssl_version;
   int daemon_flags =
     MHD_USE_THREAD_PER_CONNECTION | MHD_USE_SSL | MHD_USE_DEBUG;
+
   gcry_control (GCRYCTL_DISABLE_SECMEM, 0);
   gcry_control (GCRYCTL_ENABLE_QUICK_RANDOM, 0);
-  if (curl_check_version (MHD_REQ_CURL_VERSION))
+#ifdef GCRYCTL_INITIALIZATION_FINISHED
+  gcry_control (GCRYCTL_INITIALIZATION_FINISHED, 0);
+#endif
+ if (curl_check_version (MHD_REQ_CURL_VERSION))
     {
       return 0;
     }
+  ssl_version = curl_version_info (CURLVERSION_NOW)->ssl_version;
+  if (NULL == ssl_version)
+  {
+    fprintf (stderr, "Curl does not support SSL.  Cannot run the test.\n");
+    return 0;
+  }
+  if (NULL != strcasestr (ssl_version, "openssl"))
+  {
+    fprintf (stderr, "Refusing to run test with OpenSSL.  Please install libcurl-gnutls\n");
+    return 0;
+  }
 
   if (0 != curl_global_init (CURL_GLOBAL_ALL))
     {

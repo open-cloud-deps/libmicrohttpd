@@ -1,3 +1,40 @@
+Sat Oct 19 16:40:32 CEST 2013
+	Releasing libmicrohttpd 0.9.31. -CG
+
+Mon Sep 23 20:24:48 CEST 2013
+	Fixing build issues on OS X with CLOCK_MONOTONIC not being
+	implemented on OS X. -CG
+
+Mon Sep 23 14:15:00 CEST 2013
+	Make libmicrohttpd play nicely with upcoming libgcrypt 1.6.0. -CG
+
+Fri Sep 20 17:01:37 CEST 2013
+	Improved configure checks for cURL. -CG
+
+Wed Sep 18 18:29:24 CEST 2013
+	Signal connection termination as OK (and not as ERROR) if the
+	stream was terminated by the callback returning
+	MHD_CONTENT_READER_END_OF_STREAM. Also, release response
+	mutex before calling the termination callback, to avoid
+	possible deadlock if the client destroys the response in
+	the termination callback (due to non-recursiveness of the
+	lock). -CG
+
+Wed Sep 18 14:31:35 CEST 2013
+	Adding #define MHD_HTTP_HEADER_ACCESS_CONTROL_ALLOW_ORIGIN. -CG
+
+Tue Sep 17 21:32:47 CEST 2013
+	Also pass MHD connection handle in URI log callback. -CG
+
+Fri Sep  6 10:00:44 CEST 2013
+	Improved check for proper OpenSSL version for
+	libmicrospdy. -CG
+
+Wed Sep  4 17:23:15 CEST 2013
+	Set IPV6_V6ONLY socket option correctly when IPv6 is
+	enabled (MHD_USE_IPv6) but not dual stack
+	(MHD_USE_DUAL_STACK) -MW
+
 Mon Sep  2 22:59:45 CEST 2013
 	Fix use-after-free in epoll()-mode on read error.
 	Releasing libmicrohttpd 0.9.30. -CG

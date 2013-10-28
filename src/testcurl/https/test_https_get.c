@@ -103,9 +103,10 @@ main (int argc, char *const *argv)
   const char *aes256_sha_sslv3   = "AES256-SHA";
   const char *des_cbc3_sha_tlsv1 = "DES-CBC3-SHA";
 
-
-  if (!gcry_check_version (GCRYPT_VERSION))
-    abort ();
+  gcry_control (GCRYCTL_ENABLE_QUICK_RANDOM, 0);
+#ifdef GCRYCTL_INITIALIZATION_FINISHED
+  gcry_control (GCRYCTL_INITIALIZATION_FINISHED, 0);
+#endif
   if (0 != curl_global_init (CURL_GLOBAL_ALL))
     {
       fprintf (stderr, "Error: %s\n", strerror (errno));

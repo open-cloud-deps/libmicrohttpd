@@ -2231,12 +2231,8 @@ C.1 hellobrowser.c
         you see fit (Public Domain) */
 
      #include <sys/types.h>
-     #ifndef _WIN32
      #include <sys/select.h>
      #include <sys/socket.h>
-     #else
-     #include <winsock2.h>
-     #endif
      #include <string.h>
      #include <microhttpd.h>
      #include <stdio.h>
@@ -2262,7 +2258,6 @@ C.1 hellobrowser.c
        return ret;
      }
 
-
      int
      main ()
      {
@@ -2273,7 +2268,7 @@ C.1 hellobrowser.c
        if (NULL == daemon)
          return 1;
 
-       (void) getchar ();
+       getchar ();
 
        MHD_stop_daemon (daemon);
        return 0;
@@ -2289,12 +2284,8 @@ C.2 logging.c
         you see fit (Public Domain) */
 
      #include <sys/types.h>
-     #ifndef _WIN32
      #include <sys/select.h>
      #include <sys/socket.h>
-     #else
-     #include <winsock2.h>
-     #endif
      #include <microhttpd.h>
      #include <stdio.h>
 
@@ -2308,7 +2299,6 @@ C.2 logging.c
        printf ("%s: %s\n", key, value);
        return MHD_YES;
      }
-
 
      static int
      answer_to_connection (void *cls, struct MHD_Connection *connection,
@@ -2324,7 +2314,6 @@ C.2 logging.c
        return MHD_NO;
      }
 
-
      int
      main ()
      {
@@ -2335,7 +2324,7 @@ C.2 logging.c
        if (NULL == daemon)
          return 1;
 
-       (void) getchar ();
+       getchar ();
 
        MHD_stop_daemon (daemon);
        return 0;
@@ -2351,12 +2340,8 @@ C.3 responseheaders.c
         you see fit (Public Domain) */
 
      #include <sys/types.h>
-     #ifndef _WIN32
      #include <sys/select.h>
      #include <sys/socket.h>
-     #else
-     #include <winsock2.h>
-     #endif
      #include <microhttpd.h>
      #include <time.h>
      #include <sys/stat.h>
@@ -2386,8 +2371,7 @@ C.3 responseheaders.c
             (0 != fstat (fd, &sbuf)) )
          {
            /* error accessing file */
-           if (fd != -1)
-     	(void) close (fd);
+           if (fd != -1) close (fd);
            const char *errorstr =
              "<html><body>An internal server error has occured!\
                                    </body></html>";
@@ -2427,7 +2411,7 @@ C.3 responseheaders.c
        if (NULL == daemon)
          return 1;
 
-       (void) getchar ();
+       getchar ();
 
        MHD_stop_daemon (daemon);
 
@@ -2444,12 +2428,8 @@ C.4 basicauthentication.c
         you see fit (Public Domain) */
 
      #include <sys/types.h>
-     #ifndef _WIN32
      #include <sys/select.h>
      #include <sys/socket.h>
-     #else
-     #include <winsock2.h>
-     #endif
      #include <microhttpd.h>
      #include <time.h>
      #include <string.h>
@@ -2518,7 +2498,7 @@ C.4 basicauthentication.c
        if (NULL == daemon)
          return 1;
 
-       (void) getchar ();
+       getchar ();
 
        MHD_stop_daemon (daemon);
        return 0;
@@ -2534,12 +2514,8 @@ C.5 simplepost.c
         you see fit (Public Domain) */
 
      #include <sys/types.h>
-     #ifndef _WIN32
      #include <sys/select.h>
      #include <sys/socket.h>
-     #else
-     #include <winsock2.h>
-     #endif
      #include <microhttpd.h>
      #include <stdio.h>
      #include <string.h>
@@ -2717,7 +2693,7 @@ C.5 simplepost.c
        if (NULL == daemon)
          return 1;
 
-       (void) getchar ();
+       getchar ();
 
        MHD_stop_daemon (daemon);
 
@@ -2734,12 +2710,8 @@ C.6 largepost.c
         you see fit (Public Domain) */
 
      #include <sys/types.h>
-     #ifndef _WIN32
      #include <sys/select.h>
      #include <sys/socket.h>
-     #else
-     #include <winsock2.h>
-     #endif
      #include <stdio.h>
      #include <stdlib.h>
      #include <string.h>
@@ -2942,10 +2914,7 @@ C.6 largepost.c
            else
      	{
      	  if (NULL != con_info->fp)
-     	  {
      	    fclose (con_info->fp);
-     	    con_info->fp = NULL;
-     	  }
      	  /* Now it is safe to open and inspect the file before calling send_page with a response */
      	  return send_page (connection, con_info->answerstring,
      			    con_info->answercode);
@@ -2968,7 +2937,7 @@ C.6 largepost.c
                                   NULL, MHD_OPTION_END);
        if (NULL == daemon)
          return 1;
-       (void) getchar ();
+       getchar ();
        MHD_stop_daemon (daemon);
        return 0;
      }
@@ -2985,52 +2954,13 @@ C.7 sessions.c
      /* needed for asprintf */
      #define _GNU_SOURCE
 
+
      #include <stdlib.h>
      #include <string.h>
      #include <stdio.h>
      #include <errno.h>
      #include <time.h>
      #include <microhttpd.h>
-
-     #if defined _WIN32 && !defined(__MINGW64_VERSION_MAJOR)
-     static int
-     asprintf (char **resultp, const char *format, ...)
-     {
-       va_list argptr;
-       char *result = NULL;
-       int len = 0;
-
-       if (format == NULL)
-         return -1;
-
-       va_start (argptr, format);
-
-       len = _vscprintf ((char *) format, argptr);
-       if (len >= 0)
-       {
-         len += 1;
-         result = (char *) malloc (sizeof (char *) * len);
-         if (result != NULL)
-         {
-           int len2 = _vscprintf ((char *) format, argptr);
-           if (len2 != len - 1 || len2 <= 0)
-           {
-             free (result);
-             result = NULL;
-             len = -1;
-           }
-           else
-           {
-             len = len2;
-             if (resultp)
-               *resultp = result;
-           }
-         }
-       }
-       va_end (argptr);
-       return len;
-     }
-     #endif
 
      /**
       * Invalid method page.
@@ -3183,10 +3113,10 @@ C.7 sessions.c
        snprintf (ret->sid,
      	    sizeof (ret->sid),
      	    "%X%X%X%X",
-     	    (unsigned int) rand (),
-     	    (unsigned int) rand (),
-     	    (unsigned int) rand (),
-     	    (unsigned int) rand ());
+     	    (unsigned int) random (),
+     	    (unsigned int) random (),
+     	    (unsigned int) random (),
+     	    (unsigned int) random ());
        ret->rc++;
        ret->start = time (NULL);
        ret->next = sessions;
@@ -3503,7 +3433,6 @@ C.7 sessions.c
       *
       * @param cls argument given together with the function
       *        pointer when the handler was registered with MHD
-      * @param connection handle to connection which is being processed
       * @param url the requested url
       * @param method the HTTP method used ("GET", "PUT", etc.)
       * @param version the HTTP version string (i.e. "HTTP/1.1")
@@ -3517,7 +3446,7 @@ C.7 sessions.c
       * @param upload_data_size set initially to the size of the
       *        upload_data provided; the method must update this
       *        value to the number of bytes NOT processed;
-      * @param ptr pointer that the callback can set to some
+      * @param con_cls pointer that the callback can set to some
       *        address and that will be preserved by MHD for future
       *        calls for this request; since the access handler may
       *        be called many times (i.e., for a PUT/POST operation
@@ -3704,7 +3633,7 @@ C.7 sessions.c
        fd_set ws;
        fd_set es;
        int max;
-       MHD_UNSIGNED_LONG_LONG mhd_timeout;
+       unsigned MHD_LONG_LONG mhd_timeout;
 
        if (argc != 2)
          {
@@ -3712,7 +3641,7 @@ C.7 sessions.c
            return 1;
          }
        /* initialize PRNG */
-       srand ((unsigned int) time (NULL));
+       srandom ((unsigned int) time (NULL));
        d = MHD_start_daemon (MHD_USE_DEBUG,
                              atoi (argv[1]),
                              NULL, NULL,
@@ -3739,14 +3668,7 @@ C.7 sessions.c
      	}
            else
      	tvp = NULL;
-           if (-1 == select (max + 1, &rs, &ws, &es, tvp))
-     	{
-     	  if (EINTR != errno)
-     	    fprintf (stderr,
-     		     "Aborting due to error during select: %s\n",
-     		     strerror (errno));
-     	  break;
-     	}
+           select (max + 1, &rs, &ws, &es, tvp);
            MHD_run (d);
          }
        MHD_stop_daemon (d);
@@ -3763,12 +3685,8 @@ C.8 tlsauthentication.c
         you see fit (Public Domain) */
 
      #include <sys/types.h>
-     #ifndef _WIN32
      #include <sys/select.h>
      #include <sys/socket.h>
-     #else
-     #include <winsock2.h>
-     #endif
      #include <microhttpd.h>
      #include <string.h>
      #include <stdio.h>
@@ -4022,7 +3940,7 @@ C.8 tlsauthentication.c
            return 1;
          }
 
-       (void) getchar ();
+       getchar ();
 
        MHD_stop_daemon (daemon);
        free (key_pem);
@@ -4048,12 +3966,12 @@ Node: Bibliography66394
 Node: License text67589
 Node: Example programs92764
 Node: hellobrowser.c93077
-Node: logging.c94620
-Node: responseheaders.c96203
-Node: basicauthentication.c98827
-Node: simplepost.c101366
-Node: largepost.c107046
-Node: sessions.c114411
-Node: tlsauthentication.c136756
+Node: logging.c94542
+Node: responseheaders.c96046
+Node: basicauthentication.c98580
+Node: simplepost.c101042
+Node: largepost.c106645
+Node: sessions.c113882
+Node: tlsauthentication.c135072
 
 End Tag Table

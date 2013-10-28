@@ -32,6 +32,7 @@
 #include <sys/stat.h>
 #include <limits.h>
 #include <curl/curl.h>
+#include <gcrypt.h>
 #include "tls_test_common.h"
 
 extern const char srv_key_pem[];
@@ -130,6 +131,10 @@ main (int argc, char *const *argv)
 
   /* initialize random seed used by curl clients */
   unsigned int iseed = (unsigned int) time (NULL);
+
+#ifdef GCRYCTL_INITIALIZATION_FINISHED
+  gcry_control (GCRYCTL_INITIALIZATION_FINISHED, 0);
+#endif
   srand (iseed);
   ssl_version = curl_version_info (CURLVERSION_NOW)->ssl_version;
   if (NULL == ssl_version)

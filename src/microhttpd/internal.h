@@ -18,7 +18,7 @@
 */
 
 /**
- * @file internal.h
+ * @file microhttpd/internal.h
  * @brief  internal shared structures
  * @author Daniel Pittman
  * @author Christian Grothoff
@@ -838,9 +838,12 @@ struct MHD_Connection
  *
  * @param cls closure
  * @param uri uri being accessed
+ * @param con connection handle
  * @return new closure
  */
-typedef void * (*LogCallback)(void * cls, const char * uri);
+typedef void * (*LogCallback)(void * cls, 
+			      const char * uri,
+			      struct MHD_Connection *con);
 
 /**
  * Signature of function called to unescape URIs.  See also

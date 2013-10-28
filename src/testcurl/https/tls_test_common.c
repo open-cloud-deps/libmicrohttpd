@@ -40,8 +40,8 @@ setup_ca_cert ()
                ca_cert_file_name, strerror (errno));
       return NULL;
     }
-  if (fwrite (ca_cert_pem, sizeof (char), strlen (ca_cert_pem), cert_fd)
-      != strlen (ca_cert_pem))
+  if (fwrite (ca_cert_pem, sizeof (char), strlen (ca_cert_pem) + 1, cert_fd)
+      != strlen (ca_cert_pem) + 1)
     {
       fprintf (stderr, "Error: failed to write `%s. %s'\n",
                ca_cert_file_name, strerror (errno));
@@ -63,7 +63,8 @@ setup_ca_cert ()
  * test HTTPS transfer
  */
 int
-test_daemon_get (void *cls, char *cipher_suite, int proto_version,
+test_daemon_get (void *cls,
+		 const char *cipher_suite, int proto_version,
 		 int port,
 		 int ver_peer)
 {
@@ -393,17 +394,17 @@ setup_session (gnutls_session_t * session,
   const char *err_pos;
 
   gnutls_certificate_allocate_credentials (xcred);
-  key->size = strlen (srv_key_pem);
+  key->size = strlen (srv_key_pem) + 1;
   key->data = malloc (key->size);
-  if (key->data == NULL) 
+  if (NULL == key->data) 
      {
        gnutls_certificate_free_credentials (*xcred);
 	return -1;
      }
   memcpy (key->data, srv_key_pem, key->size);
-  cert->size = strlen (srv_self_signed_cert_pem);
+  cert->size = strlen (srv_self_signed_cert_pem) + 1;
   cert->data = malloc (cert->size);
-  if (cert->data == NULL)
+  if (NULL == cert->data)
     {
         gnutls_certificate_free_credentials (*xcred);
 	free (key->data); 
