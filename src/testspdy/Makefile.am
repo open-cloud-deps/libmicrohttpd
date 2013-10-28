@@ -21,19 +21,33 @@ if !HAVE_W32
 PERF_GET_CONCURRENT=perf_get_concurrent
 endif
 
+if ENABLE_SPDY
+if HAVE_OPENSSL
 check_PROGRAMS = \
   test_daemon_start_stop \
   test_daemon_start_stop_many \
-  test_struct_namevalue \
-  test_new_connection \
+  test_struct_namevalue
+
+if HAVE_SPDYLAY  
+check_PROGRAMS += \
+  test_new_connection  \
   test_request_response \
   test_notls \
   test_request_response_with_callback \
-  test_requests_with_assets \
   test_misc \
   test_session_timeout
+  #test_requests_with_assets 
+if HAVE_CURL_BINARY
+check_PROGRAMS +=  \
+  test_proxies
+endif 
+endif
+endif 
+endif 
+
 
 TESTS = $(check_PROGRAMS)
+
 
 SPDY_SOURCES= \
  common.h common.c
@@ -60,6 +74,7 @@ test_struct_namevalue_SOURCES = \
  $(SPDY_SOURCES) 
 test_struct_namevalue_LDADD = $(SPDY_LDADD)
 
+if HAVE_SPDYLAY
 test_new_connection_SOURCES = \
  test_new_connection.c  \
  $(SPDY_SOURCES) 
@@ -83,10 +98,10 @@ test_request_response_with_callback_SOURCES = \
  $(SPDY_SOURCES) 
 test_request_response_with_callback_LDADD = $(SPDY_LDADD)
 
-test_requests_with_assets_SOURCES = \
- test_requests_with_assets.c  \
- $(SPDY_SOURCES) 
-test_requests_with_assets_LDADD = $(SPDY_LDADD)
+#test_requests_with_assets_SOURCES = \
+# test_requests_with_assets.c  \
+# $(SPDY_SOURCES) 
+#test_requests_with_assets_LDADD = $(SPDY_LDADD)
 
 test_misc_SOURCES = \
  test_misc.c  \
@@ -98,11 +113,7 @@ test_session_timeout_SOURCES = \
  $(SPDY_SOURCES) 
 test_session_timeout_LDADD = $(SPDY_LDADD)
 
-if HAVE_CURL_BINARY
 
-check_PROGRAMS +=  \
-  test_proxies
-  
 test_proxies_SOURCES = \
  test_proxies.c \
  $(SPDY_SOURCES) 

@@ -121,7 +121,7 @@ extern "C"
  * Current version of the library.
  * 0x01093001 = 1.9.30-1.
  */
-#define MHD_VERSION 0x00093000
+#define MHD_VERSION 0x00093100
 
 /**
  * MHD-internal return code for "YES".
@@ -314,6 +314,7 @@ extern "C"
 #define MHD_HTTP_HEADER_VIA "Via"
 #define MHD_HTTP_HEADER_WARNING "Warning"
 #define MHD_HTTP_HEADER_WWW_AUTHENTICATE "WWW-Authenticate"
+#define MHD_HTTP_HEADER_ACCESS_CONTROL_ALLOW_ORIGIN "Access-Control-Allow-Origin"
 
 /** @} */ /* end of group headers */
 
@@ -611,7 +612,7 @@ enum MHD_OPTION
    * logging.  This option should be followed by two arguments, the first
    * one must be of the form
    * 
-   *     void * my_logger(void *cls, const char *uri)
+   *     void * my_logger(void *cls, const char *uri, struct MHD_Connection *con)
    * 
    * where the return value will be passed as
    * (`* con_cls`) in calls to the #MHD_AccessHandlerCallback
@@ -623,6 +624,11 @@ enum MHD_OPTION
    * "cls" will be set to the second argument following
    * #MHD_OPTION_URI_LOG_CALLBACK.  Finally, uri will
    * be the 0-terminated URI of the request.
+   *
+   * Note that during the time of this call, most of the connection's
+   * state is not initialized (as we have not yet parsed he headers).
+   * However, information about the connecting client (IP, socket)
+   * is available.
    */
   MHD_OPTION_URI_LOG_CALLBACK = 7,
 
@@ -1091,7 +1097,7 @@ typedef int
  *        with plenty of upload data) this allows the application
  *        to easily associate some request-specific state.
  *        If necessary, this state can be cleaned up in the
- *        global #MHD_RequestCompleted callback (which
+ *        global #MHD_RequestCompletedCallback (which
  *        can be set with the #MHD_OPTION_NOTIFY_COMPLETED).
  *        Initially, `*con_cls` will be NULL.
  * @return #MHD_YES if the connection was handled successfully,
@@ -1764,7 +1770,7 @@ enum MHD_UpgradeEventMask
  * the local platform), to wait for the 'external' select loop to
  * trigger another round.  It is also possible to specify "no events"
  * to terminate the connection; in this case, the
- * MHD_RequestCompletedCallback will be called and all resources of
+ * #MHD_RequestCompletedCallback will be called and all resources of
  * the connection will be released.
  *
  * Except when in 'thread-per-connection' mode, implementations
@@ -1777,7 +1783,7 @@ enum MHD_UpgradeEventMask
  *                   to inspect the original HTTP request
  * @param con_cls value as set by the last call to the
  *                MHD_AccessHandlerCallback; will afterwards
- *                be also given to the MHD_RequestCompletedCallback
+ *                be also given to the #MHD_RequestCompletedCallback
  * @param data_in_size available data for reading, set to data read
  * @param data_in data read from the socket
  * @param data_out_size available buffer for writing, set to bytes 
@@ -1952,7 +1958,7 @@ MHD_create_post_processor (struct MHD_Connection *connection,
  * Parse and process POST data.  Call this function when POST data is
  * available (usually during an #MHD_AccessHandlerCallback) with the
  * "upload_data" and "upload_data_size".  Whenever possible, this will
- * then cause calls to the #MHD_IncrementalKeyValueIterator.
+ * then cause calls to the #MHD_PostDataIterator.
  *
  * @param pp the post processor
  * @param post_data @a post_data_len bytes of POST data

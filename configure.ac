@@ -21,15 +21,15 @@
 #
 #
 AC_PREREQ(2.57)
-AC_INIT([libmicrohttpd], [0.9.30],[libmicrohttpd@gnu.org])
+AC_INIT([libmicrohttpd], [0.9.31],[libmicrohttpd@gnu.org])
 AM_INIT_AUTOMAKE([silent-rules])
 AC_CONFIG_HEADERS([MHD_config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AH_TOP([#define _GNU_SOURCE  1])
 
-LIB_VERSION_CURRENT=29
+LIB_VERSION_CURRENT=30
 LIB_VERSION_REVISION=0
-LIB_VERSION_AGE=19
+LIB_VERSION_AGE=20
 AC_SUBST(LIB_VERSION_CURRENT)
 AC_SUBST(LIB_VERSION_REVISION)
 AC_SUBST(LIB_VERSION_AGE)
@@ -306,15 +306,17 @@ curl=0
 if test "$enable_curl" = "yes"
 then
   LIBCURL_CHECK_CONFIG(,,curl=1,curl=0)
+  AC_CHECK_HEADERS([curl/curl.h],[
 # Lib cURL & cURL - OpenSSL versions
-  MHD_REQ_CURL_VERSION=7.16.4
-  MHD_REQ_CURL_OPENSSL_VERSION=0.9.8
-  MHD_REQ_CURL_GNUTLS_VERSION=2.8.6
-  MHD_REQ_CURL_NSS_VERSION=3.12.0
-  AC_DEFINE_UNQUOTED([MHD_REQ_CURL_VERSION], "$MHD_REQ_CURL_VERSION", [required cURL version to run tests])
-  AC_DEFINE_UNQUOTED([MHD_REQ_CURL_OPENSSL_VERSION], "$MHD_REQ_CURL_OPENSSL_VERSION", [required cURL SSL version to run tests])
-  AC_DEFINE_UNQUOTED([MHD_REQ_CURL_GNUTLS_VERSION], "$MHD_REQ_CURL_GNUTLS_VERSION", [gnuTLS lib version - used in conjunction with cURL])
-  AC_DEFINE_UNQUOTED([MHD_REQ_CURL_NSS_VERSION], "$MHD_REQ_CURL_NSS_VERSION", [NSS lib version - used in conjunction with cURL])
+   MHD_REQ_CURL_VERSION=7.16.4
+   MHD_REQ_CURL_OPENSSL_VERSION=0.9.8
+   MHD_REQ_CURL_GNUTLS_VERSION=2.8.6
+   MHD_REQ_CURL_NSS_VERSION=3.12.0
+   AC_DEFINE_UNQUOTED([MHD_REQ_CURL_VERSION], "$MHD_REQ_CURL_VERSION", [required cURL version to run tests])
+   AC_DEFINE_UNQUOTED([MHD_REQ_CURL_OPENSSL_VERSION], "$MHD_REQ_CURL_OPENSSL_VERSION", [required cURL SSL version to run tests])
+   AC_DEFINE_UNQUOTED([MHD_REQ_CURL_GNUTLS_VERSION], "$MHD_REQ_CURL_GNUTLS_VERSION", [gnuTLS lib version - used in conjunction with cURL])
+   AC_DEFINE_UNQUOTED([MHD_REQ_CURL_NSS_VERSION], "$MHD_REQ_CURL_NSS_VERSION", [NSS lib version - used in conjunction with cURL])
+ ],[curl=0])
 fi
 
 AC_MSG_CHECKING(for magic_open -lmagic)
@@ -337,8 +339,11 @@ AC_MSG_RESULT($enable_spdy)
 if test "$enable_spdy" = "yes"
 then
  AC_CHECK_HEADERS([openssl/err.h], 
-                   [AM_CONDITIONAL(HAVE_OPENSSL, true)
-                   enable_spdy="yes"], 
+                   AC_CHECK_LIB(ssl, SSL_CTX_set_next_protos_advertised_cb,
+                    [AM_CONDITIONAL(HAVE_OPENSSL, true)
+                     enable_spdy="yes"], 
+                    [AM_CONDITIONAL(HAVE_OPENSSL, false)
+                    enable_spdy="no"]),
                    [AM_CONDITIONAL(HAVE_OPENSSL, false)
                    enable_spdy="no"])
 else

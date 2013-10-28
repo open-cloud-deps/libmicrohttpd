@@ -401,7 +401,7 @@ testUnknownPortGet (int poll_flag)
   if (di == NULL)
     return 65536;
 
-  if (0 != getsockname(di->listen_fd, &addr, &addr_len))
+  if (0 != getsockname(di->listen_fd, (struct sockaddr *) &addr, &addr_len))
     return 131072;
 
   if (addr.sin_family != AF_INET)
@@ -472,6 +472,7 @@ testStopRace (int poll_flag)
     if (CONNECT (fd, (struct sockaddr *)(&sin), sizeof(sin)) < 0)
     {
        fprintf(stderr, "connect: %m\n");
+       CLOSE (fd);
        return 512;
     }
     

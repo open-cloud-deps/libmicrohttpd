@@ -24,14 +24,14 @@
  *      TODO:
  * - test all options!
  * - don't abort on lack of memory
- * - Memory leak: in rare cases the proxy object is not freed (and there
- * is a lot of data pointed from it)
  * - Correct recapitalizetion of header names before giving the headers
  * to curl.
  * - curl does not close sockets when connection is closed and no
  * new sockets are opened (they stay in CLOSE_WAIT)
  * - add '/' when a user requests http://example.com . Now this is a bad
  * request
+ * - curl returns 0 or 1 ms for timeout even when nothing will be done;
+ * thus the loop uses CPU for nothing
  * @author Andrey Uzunov
  */
  
@@ -173,11 +173,15 @@ struct Proxy
 	size_t received_body_size;
 	//ssize_t length;
 	int status;
-  bool done;
+  //bool done;
   bool receiving_done;
   bool is_curl_read_paused;
   bool is_with_body_data;
-  bool error;
+  //bool error;
+  bool curl_done;
+  bool curl_error;
+  bool spdy_done;
+  bool spdy_error;
 };
 
 
@@ -244,12 +248,29 @@ parse_uri(regex_t * preg, const char * full_uri, struct URI ** uri)
     
   (*uri)->full_uri = strdup(full_uri);
   
-  asprintf(&((*uri)->scheme), "%.*s",pmatch[2].rm_eo - pmatch[2].rm_so, &full_uri[pmatch[2].rm_so]);
-  asprintf(&((*uri)->host_and_port), "%.*s",pmatch[4].rm_eo - pmatch[4].rm_so, &full_uri[pmatch[4].rm_so]);
-  asprintf(&((*uri)->path), "%.*s",pmatch[5].rm_eo - pmatch[5].rm_so, &full_uri[pmatch[5].rm_so]);
-  asprintf(&((*uri)->path_and_more), "%.*s",pmatch[9].rm_eo - pmatch[5].rm_so, &full_uri[pmatch[5].rm_so]);
-  asprintf(&((*uri)->query), "%.*s",pmatch[7].rm_eo - pmatch[7].rm_so, &full_uri[pmatch[7].rm_so]);
-  asprintf(&((*uri)->fragment), "%.*s",pmatch[9].rm_eo - pmatch[9].rm_so, &full_uri[pmatch[9].rm_so]);
+  asprintf(&((*uri)->scheme),
+	   "%.*s", 
+	   (int) (pmatch[2].rm_eo - pmatch[2].rm_so), 
+	   &full_uri[pmatch[2].rm_so]);
+  asprintf(&((*uri)->host_and_port), "%.*s", 
+	   (int) (pmatch[4].rm_eo - pmatch[4].rm_so),
+	   &full_uri[pmatch[4].rm_so]);
+  asprintf(&((*uri)->path),
+	   "%.*s",
+	   (int) (pmatch[5].rm_eo - pmatch[5].rm_so), 
+	   &full_uri[pmatch[5].rm_so]);
+  asprintf(&((*uri)->path_and_more), 
+	   "%.*s",
+	   (int) (pmatch[9].rm_eo - pmatch[5].rm_so), 
+	   &full_uri[pmatch[5].rm_so]);
+  asprintf(&((*uri)->query),
+	   "%.*s",
+	   (int) (pmatch[7].rm_eo - pmatch[7].rm_so),
+	   &full_uri[pmatch[7].rm_so]);
+  asprintf(&((*uri)->fragment), 
+	   "%.*s",
+	   (int) (pmatch[9].rm_eo - pmatch[9].rm_so),
+	   &full_uri[pmatch[9].rm_so]);
   
   colon = strrchr((*uri)->host_and_port, ':');
   if(NULL == colon)
@@ -427,7 +448,9 @@ response_callback (void *cls,
   
   *more = true;
   
-  if(proxy->error)
+  assert(!proxy->spdy_error);
+  
+  if(proxy->curl_error)
   {
     PRINT_VERBOSE("tell spdy about the error");
     return -1;
@@ -435,7 +458,8 @@ response_callback (void *cls,
 	
 	if(!proxy->http_body_size)//nothing to write now
   {
-    if(proxy->done) *more = false;
+    PRINT_VERBOSE("nothing to write now");
+    if(proxy->curl_done || proxy->curl_error) *more = false;
 		return 0;
   }
 	
@@ -443,14 +467,38 @@ response_callback (void *cls,
   if(ret < 0)
   {
     PRINT_INFO("no memory");
+    //TODO error?
     return -1;
   }
   
-  if(proxy->done && 0 == proxy->http_body_size) *more = false;
+  if((proxy->curl_done || proxy->curl_error) && 0 == proxy->http_body_size) *more = false;
   
   PRINT_VERBOSE2("given bytes to microspdy: %zd", ret);
 	
 	return ret;
+}
+
+
+static void
+cleanup(struct Proxy *proxy)
+{
+  int ret;
+  
+  //fprintf(stderr, "free proxy for %s\n", proxy->url);
+  
+	if(CURLM_OK != (ret = curl_multi_remove_handle(multi_handle, proxy->curl_handle)))
+	{
+		PRINT_INFO2("curl_multi_remove_handle failed (%i)", ret);
+    DIE("bug in cleanup");
+	}
+  debug_num_curls--;
+  //TODO bug on ku6.com or amazon.cn
+  // after curl_multi_remove_handle returned CURLM_BAD_EASY_HANDLE
+	curl_slist_free_all(proxy->curl_headers);
+	curl_easy_cleanup(proxy->curl_handle);
+	
+	free(proxy->url);
+	free(proxy);
 }
 
 
@@ -463,26 +511,16 @@ response_done_callback(void *cls,
 {
 	(void)streamopened;
 	struct Proxy *proxy = (struct Proxy *)cls;
-	int ret;
 	
 	if(SPDY_RESPONSE_RESULT_SUCCESS != status)
 	{
-		PRINT_VERBOSE2("answer was NOT sent, %i\n",status);
     free(proxy->http_body);
     proxy->http_body = NULL;
+    proxy->spdy_error = true;
 	}
-	if(CURLM_OK != (ret = curl_multi_remove_handle(multi_handle, proxy->curl_handle)))
-	{
-		PRINT_INFO2("curl_multi_remove_handle failed (%i)", ret);
-	}
-  debug_num_curls--;
-	curl_slist_free_all(proxy->curl_headers);
-	curl_easy_cleanup(proxy->curl_handle);
-	
+	cleanup(proxy);
 	SPDY_destroy_request(request);
 	SPDY_destroy_response(response);
-	free(proxy->url);
-	free(proxy);
 }
 
 
@@ -506,13 +544,15 @@ curl_header_cb(void *ptr, size_t size, size_t nmemb, void *userp)
   if(!*(proxy->session_alive))
   {
     PRINT_VERBOSE("headers received, but session is dead");
+    proxy->spdy_error = true;
+    proxy->curl_error = true;
     return 0;
   }
   
   //trailer
   if(NULL != proxy->response) return 0;
 
-	if('\r' == line[0])
+	if('\r' == line[0] || '\n' == line[0])
 	{
 		//all headers were already handled; prepare spdy frames
 		if(NULL == (proxy->response = SPDY_build_response_with_callback(proxy->status,
@@ -526,8 +566,11 @@ curl_header_cb(void *ptr, size_t size, size_t nmemb, void *userp)
 			DIE("no response");
     
 		SPDY_name_value_destroy(proxy->headers);
+    proxy->headers = NULL;
 		free(proxy->status_msg);
+    proxy->status_msg = NULL;
 		free(proxy->version);
+    proxy->version = NULL;
 		
 		if(SPDY_YES != SPDY_queue_response(proxy->request,
 							proxy->response,
@@ -535,10 +578,14 @@ curl_header_cb(void *ptr, size_t size, size_t nmemb, void *userp)
 							false,
 							&response_done_callback,
 							proxy))
-              {
+    {
 			//DIE("no queue");
       //TODO right?
-      proxy->error = true;
+      proxy->spdy_error = true;
+      proxy->curl_error = true;
+      PRINT_VERBOSE2("no queue in curl_header_cb for %s", proxy->url);
+      SPDY_destroy_response(proxy->response);
+      proxy->response = NULL;
       return 0;
     }
 		
@@ -560,16 +607,16 @@ curl_header_cb(void *ptr, size_t size, size_t nmemb, void *userp)
 		pos = i+1;
 		
 		//status (number)
-		for(i=pos; i<realsize && ' '!=line[i] && '\r'!=line[i]; ++i);
+		for(i=pos; i<realsize && ' '!=line[i] && '\r'!=line[i] && '\n'!=line[i]; ++i);
 		if(NULL == (status = strndup(&(line[pos]), i - pos)))
         DIE("No memory");
 		proxy->status = atoi(status);
 		free(status);
-		if(i<realsize && '\r'!=line[i])
+		if(i<realsize && '\r'!=line[i] && '\n'!=line[i])
 		{
 			//status (message)
 			pos = i+1;
-			for(i=pos; i<realsize && '\r'!=line[i]; ++i);
+			for(i=pos; i<realsize && '\r'!=line[i] && '\n'!=line[i]; ++i);
 			if(NULL == (proxy->status_msg = strndup(&(line[pos]), i - pos)))
         DIE("No memory");
 		}
@@ -579,7 +626,7 @@ curl_header_cb(void *ptr, size_t size, size_t nmemb, void *userp)
 	
 	//other lines
 	//header name
-	for(i=pos; i<realsize && ':'!=line[i] && '\r'!=line[i]; ++i)
+	for(i=pos; i<realsize && ':'!=line[i] && '\r'!=line[i] && '\n'!=line[i]; ++i)
 		line[i] = tolower(line[i]); //spdy requires lower case
 	if(NULL == (name = strndup(line, i - pos)))
         DIE("No memory");
@@ -592,7 +639,7 @@ curl_header_cb(void *ptr, size_t size, size_t nmemb, void *userp)
 		free(name);
 		return realsize;
 	}
-	if(i == realsize || '\r'==line[i])
+	if(i == realsize || '\r'==line[i] || '\n'==line[i])
 	{
 		//no value. is it possible?
 		if(SPDY_YES != SPDY_name_value_add(proxy->headers, name, ""))
@@ -603,7 +650,7 @@ curl_header_cb(void *ptr, size_t size, size_t nmemb, void *userp)
 	//header value
 	pos = i+1;
 	while(pos<realsize && isspace(line[pos])) ++pos; //remove leading space
-	for(i=pos; i<realsize && '\r'!=line[i]; ++i);
+	for(i=pos; i<realsize && '\r'!=line[i] && '\n'!=line[i]; ++i);
 	if(NULL == (value = strndup(&(line[pos]), i - pos)))
         DIE("No memory");
   PRINT_VERBOSE2("Adding header: '%s': '%s'", name, value);
@@ -642,12 +689,15 @@ curl_write_cb(void *contents, size_t size, size_t nmemb, void *userp)
   if(!*(proxy->session_alive))
   {
     PRINT_VERBOSE("data received, but session is dead");
+      proxy->spdy_error = true;
+      proxy->curl_error = true;
     return 0;
   }
   
   if(!store_in_buffer(contents, realsize, &proxy->http_body, &proxy->http_body_size))
 	{
 		PRINT_INFO("not enough memory (malloc/realloc returned NULL)");
+      proxy->curl_error = true;
 		return 0;
 	}
   /*
@@ -811,6 +861,8 @@ standard_request_handler(void *cls,
 	if(NULL == (proxy = malloc(sizeof(struct Proxy))))
     DIE("No memory");
 	memset(proxy, 0, sizeof(struct Proxy));
+  
+  //fprintf(stderr, "new  proxy for %s\n", path);
   
   session = SPDY_get_session_for_request(request);
   assert(NULL != session);
@@ -1112,38 +1164,54 @@ run ()
         proxy = (struct Proxy *)curl_private;
         if(CURLE_OK == msg->data.result)
         {
-          proxy->done = true;
+          proxy->curl_done = true;
           call_spdy_run = true;
+          //TODO what happens with proxy when the client resets a stream
+          //and response_done is not yet set for the last frame? is it
+          //possible?
         }
         else
         {
           PRINT_VERBOSE2("bad curl result (%i) for '%s'", msg->data.result, proxy->url);
-          if(NULL == proxy->response)
+          if(proxy->spdy_done || proxy->spdy_error || (NULL == proxy->response && !*(proxy->session_alive)))
           {
+            PRINT_VERBOSE("cleaning");
             SPDY_name_value_destroy(proxy->headers);
-            if(!*(proxy->session_alive))
+            SPDY_destroy_request(proxy->request);
+            SPDY_destroy_response(proxy->response);
+            cleanup(proxy);
+          }
+          else if(NULL == proxy->response && *(proxy->session_alive))
+          {
+            //generate error for the client
+            PRINT_VERBOSE("will send Bad Gateway");
+            SPDY_name_value_destroy(proxy->headers);
+            proxy->headers = NULL;
+            if(NULL == (proxy->response = SPDY_build_response(SPDY_HTTP_BAD_GATEWAY,
+                  NULL,
+                  SPDY_HTTP_VERSION_1_1,
+                  NULL,
+                  ERROR_RESPONSE,
+                  strlen(ERROR_RESPONSE))))
+              DIE("no response");
+            if(SPDY_YES != SPDY_queue_response(proxy->request,
+                      proxy->response,
+                      true,
+                      false,
+                      &response_done_callback,
+                      proxy))
             {
-              free(proxy->http_body);
-              proxy->http_body = NULL;
-
-              if(CURLM_OK != (ret = curl_multi_remove_handle(multi_handle, proxy->curl_handle)))
-              {
-                PRINT_INFO2("curl_multi_remove_handle failed (%i)", ret);
-              }
-              debug_num_curls--;
-              curl_slist_free_all(proxy->curl_headers);
-              curl_easy_cleanup(proxy->curl_handle);
-              
+              //clean and forget
+              PRINT_VERBOSE("cleaning");
               SPDY_destroy_request(proxy->request);
-              //SPDY_destroy_response(proxy->response);
-              free(proxy->url);
-              free(proxy);
+              SPDY_destroy_response(proxy->response);
+              cleanup(proxy);
             }
-            else
-              proxy->error = true;
           }
           else
-            proxy->error = true;
+          {
+            proxy->curl_error = true;
+          }
           call_spdy_run = true;
           //TODO spdy should be notified to send RST_STREAM
         }
@@ -1161,10 +1229,17 @@ run ()
     if(glob_opt.verbose)
     {
       
+#ifdef HAVE_CLOCK_GETTIME
+#ifdef CLOCK_MONOTONIC    
     struct timespec ts;
-    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0)
-    PRINT_VERBOSE2("time now %lld %lld", (unsigned long long)ts.tv_sec, (unsigned long long)ts.tv_nsec);
+
+    if (0 == clock_gettime(CLOCK_MONOTONIC, &ts))
+    PRINT_VERBOSE2 ("time now %lld %lld",
+		    (unsigned long long) ts.tv_sec,
+		    (unsigned long long) ts.tv_nsec);
     }
+#endif
+#endif
   }
   while(loop);
 

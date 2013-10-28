@@ -27,6 +27,7 @@ CURL_FORK_TEST = test_get_response_cleanup
 endif
 endif
 
+if HAVE_CURL
 check_PROGRAMS = \
   test_start_stop \
   $(TEST_QUIESCE) \
@@ -54,7 +55,6 @@ check_PROGRAMS = \
   perf_get $(PERF_GET_CONCURRENT)
 
 
-
 if HAVE_POSTPROCESSOR
  check_PROGRAMS += \
   test_post \
@@ -76,6 +76,7 @@ endif
 TESTS = $(check_PROGRAMS)
 
 noinst_LIBRARIES = libcurl_version_check.a
+endif
 
 libcurl_version_check_a_SOURCES = \
   curl_version_check.c
@@ -126,13 +127,13 @@ test_digestauth_SOURCES = \
   test_digestauth.c
 test_digestauth_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@
+  @LIBCURL@ @LIBGCRYPT_LIBS@
 
 test_digestauth_with_arguments_SOURCES = \
   test_digestauth_with_arguments.c
 test_digestauth_with_arguments_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@
+  @LIBCURL@ @LIBGCRYPT_LIBS@
 
 test_get_sendfile_SOURCES = \
   test_get_sendfile.c
@@ -185,7 +186,7 @@ test_postform_SOURCES = \
   test_postform.c
 test_postform_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@  @LIBGCRYPT_LIBS@
 
 test_post_loop_SOURCES = \
   test_post_loop.c
@@ -227,7 +228,7 @@ test_postform11_SOURCES = \
   test_postform.c
 test_postform11_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@  @LIBGCRYPT_LIBS@
 
 test_post_loop11_SOURCES = \
   test_post_loop.c

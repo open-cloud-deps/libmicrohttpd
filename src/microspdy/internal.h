@@ -17,7 +17,7 @@
 */
 
 /**
- * @file structures.h
+ * @file microspdy/internal.h
  * @brief  internal functions and macros for the framing layer
  * @author Andrey Uzunov
  */
@@ -73,10 +73,10 @@ extern void *spdyf_panic_cls;
 /**
  * Asserts the validity of an expression.
  *
- * @param expression (bool)
+ * @param expr (bool)
  * @param msg message to print on error (const char *)
  */
-#define SPDYF_ASSERT(expr,msg) \
+#define SPDYF_ASSERT(expr, msg) \
 	if(!(expr)){\
 		SPDYF_PANIC(msg);\
 		abort();\

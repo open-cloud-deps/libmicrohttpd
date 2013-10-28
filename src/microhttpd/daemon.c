@@ -19,7 +19,7 @@
 */
 
 /**
- * @file daemon.c
+ * @file microhttpd/daemon.c
  * @brief  A minimal-HTTP server library
  * @author Daniel Pittman
  * @author Christian Grothoff
@@ -3030,6 +3030,7 @@ MHD_start_daemon_va (unsigned int flags,
     }
 #ifndef WINDOWS
   if ( (0 == (flags & MHD_USE_POLL)) &&
+       (1 == use_pipe) &&
        (daemon->wpipe[0] >= FD_SETSIZE) )
     {
 #if HAVE_MESSAGES
@@ -3232,7 +3233,7 @@ MHD_start_daemon_va (unsigned int flags,
       daemon->socket_fd = socket_fd;
 
       if ( (0 != (flags & MHD_USE_IPv6)) &&
-	   (MHD_USE_DUAL_STACK == (flags & MHD_USE_DUAL_STACK)) )
+	   (MHD_USE_DUAL_STACK != (flags & MHD_USE_DUAL_STACK)) )
 	{
 #ifdef IPPROTO_IPV6
 #ifdef IPV6_V6ONLY
@@ -3840,7 +3841,9 @@ MHD_get_version (void)
 #endif  // __GNUC__
 
 #if HTTPS_SUPPORT
+#if GCRYPT_VERSION_NUMBER < 0x010600
 GCRY_THREAD_OPTION_PTHREAD_IMPL;
+#endif
 #endif
 
 
@@ -3857,7 +3860,10 @@ MHD_init ()
   plibc_init ("GNU", "libmicrohttpd");
 #endif
 #if HTTPS_SUPPORT
+#if GCRYPT_VERSION_NUMBER < 0x010600
   gcry_control (GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
+#endif
+  gcry_check_version (NULL);
   gnutls_global_init ();
 #endif
 }

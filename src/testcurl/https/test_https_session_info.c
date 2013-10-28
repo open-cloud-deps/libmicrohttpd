@@ -27,7 +27,7 @@
 #include "platform.h"
 #include "microhttpd.h"
 #include <curl/curl.h>
-
+#include <gcrypt.h>
 #include "tls_test_common.h"
 
 extern int curl_check_version (const char *req_version, ...);
@@ -156,6 +156,10 @@ main (int argc, char *const *argv)
 {
   unsigned int errorCount = 0;
 
+  gcry_control (GCRYCTL_ENABLE_QUICK_RANDOM, 0);
+#ifdef GCRYCTL_INITIALIZATION_FINISHED
+  gcry_control (GCRYCTL_INITIALIZATION_FINISHED, 0);
+#endif
   if (0 != curl_global_init (CURL_GLOBAL_ALL))
     {
       fprintf (stderr, "Error (code: %u)\n", errorCount);

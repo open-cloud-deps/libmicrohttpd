@@ -23,7 +23,6 @@
  * @brief  Testcase for libmicrohttpd Digest Auth with arguments
  * @author Amr Ali
  */
-
 #include "MHD_config.h"
 #include "platform.h"
 #include <curl/curl.h>
@@ -31,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <gcrypt.h>
 
 #ifndef WINDOWS
 #include <sys/socket.h>
@@ -43,7 +43,7 @@
 
 #define DENIED "<html><head><title>libmicrohttpd demo</title></head><body>Access denied</body></html>"
 
-#define OPAQUE "11733b200778ce33060f31c9af70a870ba96ddd4"
+#define MY_OPAQUE "11733b200778ce33060f31c9af70a870ba96ddd4"
 
 struct CBC
 {
@@ -87,7 +87,7 @@ ahc_echo (void *cls,
 						 DENIED,
 						 MHD_RESPMEM_PERSISTENT);  
       ret = MHD_queue_auth_fail_response(connection, realm,
-					 OPAQUE,
+					 MY_OPAQUE,
 					 response,
 					 MHD_NO);    
       MHD_destroy_response(response);  
@@ -107,7 +107,7 @@ ahc_echo (void *cls,
       if (NULL == response) 
 	return MHD_NO;
       ret = MHD_queue_auth_fail_response(connection, realm,
-					 OPAQUE,
+					 MY_OPAQUE,
 					 response,
 					 (ret == MHD_INVALID_NONCE) ? MHD_YES : MHD_NO);  
       MHD_destroy_response(response);  
@@ -221,11 +221,16 @@ testDigestAuth ()
   return 0;
 }
 
+
 int
 main (int argc, char *const *argv)
 {
   unsigned int errorCount = 0;
 
+  gcry_control (GCRYCTL_ENABLE_QUICK_RANDOM, 0);
+#ifdef GCRYCTL_INITIALIZATION_FINISHED
+  gcry_control (GCRYCTL_INITIALIZATION_FINISHED, 0);
+#endif
   if (0 != curl_global_init (CURL_GLOBAL_WIN32))
     return 2;
   errorCount += testDigestAuth ();

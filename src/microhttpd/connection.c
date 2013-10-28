@@ -174,7 +174,7 @@ MHD_set_connection_value (struct MHD_Connection *connection,
   struct MHD_HTTP_Header *pos;
 
   pos = MHD_pool_allocate (connection->pool,
-                           sizeof (struct MHD_HTTP_Header), MHD_NO);
+                           sizeof (struct MHD_HTTP_Header), MHD_YES);
   if (NULL == pos)
     return MHD_NO;
   pos->header = (char *) key;
@@ -314,10 +314,12 @@ connection_close_error (struct MHD_Connection *connection,
  * sending.  Assumes that the response mutex is
  * already held.  If the transmission is complete,
  * this function may close the socket (and return
- * MHD_NO).
+ * #MHD_NO).
  *
  * @param connection the connection
- * @return MHD_NO if readying the response failed
+ * @return #MHD_NO if readying the response failed (the
+ *  lock on the response will have been released already
+ *  in this case).
  */
 static int
 try_ready_normal_body (struct MHD_Connection *connection)
@@ -364,10 +366,13 @@ try_ready_normal_body (struct MHD_Connection *connection)
     {
       /* either error or http 1.0 transfer, close socket! */
       response->total_size = connection->response_write_position;
-      CONNECTION_CLOSE_ERROR (connection,
-			      (ret == MHD_CONTENT_READER_END_OF_STREAM) 
-			      ? "Closing connection (end of response)\n"
-			      : "Closing connection (stream error)\n");
+      if (NULL != response->crc)
+	pthread_mutex_unlock (&response->mutex);
+      if (MHD_CONTENT_READER_END_OF_STREAM == ret) 
+	MHD_connection_close (connection, MHD_REQUEST_TERMINATED_COMPLETED_OK);
+      else
+	CONNECTION_CLOSE_ERROR (connection,
+				"Closing connection (stream error)\n");
       return MHD_NO;
     }
   response->data_start = connection->response_write_position;
@@ -375,6 +380,8 @@ try_ready_normal_body (struct MHD_Connection *connection)
   if (0 == ret)
     {
       connection->state = MHD_CONNECTION_NORMAL_BODY_UNREADY;
+      if (NULL != response->crc)
+	pthread_mutex_unlock (&response->mutex);
       return MHD_NO;
     }
   return MHD_YES;
@@ -388,7 +395,7 @@ try_ready_normal_body (struct MHD_Connection *connection)
  * return MHD_NO).
  *
  * @param connection the connection
- * @return MHD_NO if readying the response failed
+ * @return #MHD_NO if readying the response failed
  */
 static int
 try_ready_chunked_body (struct MHD_Connection *connection)
@@ -624,7 +631,7 @@ get_date_string (char *date)
  * point.
  *
  * @param connection the connection
- * @return MHD_YES on success, MHD_NO on failure
+ * @return #MHD_YES on success, #MHD_NO on failure
  */
 static int
 try_grow_read_buffer (struct MHD_Connection *connection)
@@ -655,6 +662,7 @@ try_grow_read_buffer (struct MHD_Connection *connection)
  * HTTPd's response.
  *
  * @param connection the connection
+ * @return #MHD_YES on success, #MHD_NO on failure (out of memory)
  */
 static int
 build_header_response (struct MHD_Connection *connection)
@@ -671,7 +679,7 @@ build_header_response (struct MHD_Connection *connection)
   int must_add_close;
 
   EXTRA_CHECK (NULL != connection->version);
-  if (0 == strlen(connection->version))
+  if (0 == strlen (connection->version))
     {
       data = MHD_pool_allocate (connection->pool, 0, MHD_YES);
       connection->write_buffer = data;
@@ -725,7 +733,7 @@ build_header_response (struct MHD_Connection *connection)
     if (pos->kind == kind)
       size += strlen (pos->header) + strlen (pos->value) + 4; /* colon, space, linefeeds */
   /* produce data */
-  data = MHD_pool_allocate (connection->pool, size + 1, MHD_YES);
+  data = MHD_pool_allocate (connection->pool, size + 1, MHD_NO);
   if (NULL == data)
     {
 #if HAVE_MESSAGES
@@ -970,6 +978,9 @@ MHD_connection_update_event_loop_info (struct MHD_Connection *connection)
  * far too long, close the connection.  If no line is
  * found (incomplete, buffer too small, line too long),
  * return NULL.  Otherwise return a pointer to the line.
+ *
+ * @param connection connection we're processing
+ * @return NULL if no full line is available
  */
 static char *
 get_next_header_line (struct MHD_Connection *connection)
@@ -1020,7 +1031,7 @@ get_next_header_line (struct MHD_Connection *connection)
  * @param kind kind of the value
  * @param key key for the value
  * @param value the value itself
- * @return MHD_NO on failure (out of memory), MHD_YES for success
+ * @return #MHD_NO on failure (out of memory), #MHD_YES for success
  */
 static int
 connection_add_header (struct MHD_Connection *connection,
@@ -1049,7 +1060,7 @@ connection_add_header (struct MHD_Connection *connection,
  * @param kind header kind to use for adding to the connection
  * @param connection connection to add headers to
  * @param args argument URI string (after "?" in URI)
- * @return MHD_NO on failure (out of memory), MHD_YES for success
+ * @return #MHD_NO on failure (out of memory), #MHD_YES for success
  */
 static int
 parse_arguments (enum MHD_ValueKind kind,
@@ -1130,7 +1141,7 @@ parse_arguments (enum MHD_ValueKind kind,
 /**
  * Parse the cookie header (see RFC 2109).
  *
- * @return MHD_YES for success, MHD_NO for failure (malformed, out of memory)
+ * @return #MHD_YES for success, #MHD_NO for failure (malformed, out of memory)
  */
 static int
 parse_cookie_header (struct MHD_Connection *connection)
@@ -1226,7 +1237,7 @@ parse_cookie_header (struct MHD_Connection *connection)
  *
  * @param connection the connection (updated)
  * @param line the first line
- * @return MHD_YES if the line is ok, MHD_NO if it is malformed
+ * @return #MHD_YES if the line is ok, #MHD_NO if it is malformed
  */
 static int
 parse_initial_message_line (struct MHD_Connection *connection, char *line)
@@ -1251,7 +1262,8 @@ parse_initial_message_line (struct MHD_Connection *connection, char *line)
   if (NULL != connection->daemon->uri_log_callback)
     connection->client_context
       = connection->daemon->uri_log_callback (connection->daemon->uri_log_callback_cls, 
-					      uri);
+					      uri,
+					      connection);
   args = strchr (uri, '?');
   if (NULL != args)
     {
@@ -1275,6 +1287,8 @@ parse_initial_message_line (struct MHD_Connection *connection, char *line)
  * Call the handler of the application for this
  * connection.  Handles chunking of the upload
  * as well as normal uploads.
+ *
+ * @param connection connection we're processing
  */
 static void
 call_connection_handler (struct MHD_Connection *connection)
@@ -1307,6 +1321,8 @@ call_connection_handler (struct MHD_Connection *connection)
  * Call the handler of the application for this
  * connection.  Handles chunking of the upload
  * as well as normal uploads.
+ *
+ * @param connection connection we're processing
  */
 static void
 process_request_body (struct MHD_Connection *connection)
@@ -1461,7 +1477,7 @@ process_request_body (struct MHD_Connection *connection)
 		   , NULL
 #endif
 		   );
-      if (processed != 0)
+      if (0 != processed)
         instant_retry = MHD_NO; /* client did not process everything */
       used -= processed;
       if (connection->have_chunked_upload == MHD_YES)
@@ -1483,8 +1499,9 @@ process_request_body (struct MHD_Connection *connection)
  * Try reading data from the socket into the
  * read buffer of the connection.
  *
- * @return MHD_YES if something changed,
- *         MHD_NO if we were interrupted or if
+ * @param connection connection we're processing
+ * @return #MHD_YES if something changed,
+ *         #MHD_NO if we were interrupted or if
  *                no space was available
  */
 static int
@@ -1534,8 +1551,9 @@ do_read (struct MHD_Connection *connection)
  * Try writing data to the socket from the
  * write buffer of the connection.
  *
- * @return MHD_YES if something changed,
- *         MHD_NO if we were interrupted
+ * @param connection connection we're processing
+ * @return #MHD_YES if something changed,
+ *         #MHD_NO if we were interrupted
  */
 static int
 do_write (struct MHD_Connection *connection)
@@ -1583,7 +1601,7 @@ do_write (struct MHD_Connection *connection)
  *
  * @param connection connection to check write status for
  * @param next_state the next state to transition to
- * @return MHY_NO if we are not done, MHD_YES if we are
+ * @return #MHD_NO if we are not done, #MHD_YES if we are
  */
 static int
 check_write_done (struct MHD_Connection *connection,
@@ -1595,7 +1613,8 @@ check_write_done (struct MHD_Connection *connection,
   connection->write_buffer_append_offset = 0;
   connection->write_buffer_send_offset = 0;
   connection->state = next_state;
-  MHD_pool_reallocate (connection->pool, connection->write_buffer,
+  MHD_pool_reallocate (connection->pool, 
+		       connection->write_buffer,
                        connection->write_buffer_size, 0);
   connection->write_buffer = NULL;
   connection->write_buffer_size = 0;
@@ -1607,6 +1626,10 @@ check_write_done (struct MHD_Connection *connection,
  * We have received (possibly the beginning of) a line in the
  * header (or footer).  Validate (check for ":") and prepare
  * to process.
+ *
+ * @param connection connection we're processing
+ * @param line line from the header to process
+ * @return #MHD_YES on success, #MHD_NO on error (malformed @a line)
  */
 static int
 process_header_line (struct MHD_Connection *connection, char *line)
@@ -1615,7 +1638,7 @@ process_header_line (struct MHD_Connection *connection, char *line)
 
   /* line should be normal header line, find colon */
   colon = strchr (line, ':');
-  if (colon == NULL)
+  if (NULL == colon)
     {
       /* error in header line, die hard */
       CONNECTION_CLOSE_ERROR (connection, 
@@ -1646,7 +1669,7 @@ process_header_line (struct MHD_Connection *connection, char *line)
  * @param line the current input line
  * @param kind if the line is complete, add a header
  *        of the given kind
- * @return MHD_YES if the line was processed successfully
+ * @return #MHD_YES if the line was processed successfully
  */
 static int
 process_broken_line (struct MHD_Connection *connection,
@@ -1668,11 +1691,20 @@ process_broken_line (struct MHD_Connection *connection,
       while ((tmp[0] == ' ') || (tmp[0] == '\t'))
         tmp++;                  
       tmp_len = strlen (tmp);
+      /* FIXME: we might be able to do this better (faster!), as most
+	 likely 'last' and 'line' should already be adjacent in
+	 memory; however, doing this right gets tricky if we have a
+	 value continued over multiple lines (in which case we need to
+	 record how often we have done this so we can check for
+	 adjaency); also, in the case where these are not adjacent
+	 (not sure how it can happen!), we would want to allocate from
+	 the end of the pool, so as to not destroy the read-buffer's
+	 ability to grow nicely. */
       last = MHD_pool_reallocate (connection->pool,
                                   last,
                                   last_len + 1,
                                   last_len + tmp_len + 1);
-      if (last == NULL)
+      if (NULL == last)
         {
           transmit_error_response (connection,
                                    MHD_HTTP_REQUEST_ENTITY_TOO_LARGE,
@@ -1683,7 +1715,7 @@ process_broken_line (struct MHD_Connection *connection,
       connection->last = last;
       return MHD_YES;           /* possibly more than 2 lines... */
     }
-  EXTRA_CHECK ((last != NULL) && (connection->colon != NULL));
+  EXTRA_CHECK ((NULL != last) && (NULL != connection->colon));
   if ((MHD_NO == connection_add_header (connection,
                                         last, connection->colon, kind)))
     {
@@ -1692,7 +1724,7 @@ process_broken_line (struct MHD_Connection *connection,
       return MHD_NO;
     }
   /* we still have the current line to deal with... */
-  if (strlen (line) != 0)
+  if (0 != strlen (line))
     {
       if (MHD_NO == process_header_line (connection, line))
         {
@@ -1709,6 +1741,8 @@ process_broken_line (struct MHD_Connection *connection,
  * Parse the various headers; figure out the size
  * of the upload and make sure the headers follow
  * the protocol.  Advance to the appropriate state.
+ *
+ * @param connection connection we're processing
  */
 static void
 parse_connection_headers (struct MHD_Connection *connection)
@@ -1817,7 +1851,7 @@ update_last_activity (struct MHD_Connection *connection)
  * determined that there is data to be read off a socket. 
  *
  * @param connection connection to handle
- * @return always MHD_YES (we should continue to process the
+ * @return always #MHD_YES (we should continue to process the
  *         connection)
  */
 int
@@ -1879,7 +1913,7 @@ MHD_connection_handle_read (struct MHD_Connection *connection)
  * been determined that the socket can be written to.
  *
  * @param connection connection to handle
- * @return always MHD_YES (we should continue to process the
+ * @return always #MHD_YES (we should continue to process the
  *         connection)
  */
 int
@@ -1950,12 +1984,8 @@ MHD_connection_handle_write (struct MHD_Connection *connection)
           response = connection->response;
           if (response->crc != NULL)
             pthread_mutex_lock (&response->mutex);
-          if (MHD_YES != try_ready_normal_body (connection))
-            {
-              if (response->crc != NULL)
-                pthread_mutex_unlock (&response->mutex);
-              break;
-            }
+          if (MHD_YES != try_ready_normal_body (connection))            
+	    break;            
 	  ret = connection->send_cls (connection,
 				      &response->data
 				      [connection->response_write_position
@@ -2076,8 +2106,8 @@ cleanup_connection (struct MHD_Connection *connection)
  * has to happen even if the socket cannot be read or written to. 
  *
  * @param connection connection to handle
- * @return MHD_YES if we should continue to process the
- *         connection (not dead yet), MHD_NO if it died
+ * @return #MHD_YES if we should continue to process the
+ *         connection (not dead yet), #MHD_NO if it died
  */
 int
 MHD_connection_handle_idle (struct MHD_Connection *connection)
@@ -2146,7 +2176,7 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
           continue;
         case MHD_CONNECTION_HEADER_PART_RECEIVED:
           line = get_next_header_line (connection);
-          if (line == NULL)
+          if (NULL == line)
             {
               if (connection->state != MHD_CONNECTION_HEADER_PART_RECEIVED)
                 continue;
@@ -2161,7 +2191,7 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
           if (MHD_NO ==
               process_broken_line (connection, line, MHD_HEADER_KIND))
             continue;
-          if (strlen (line) == 0)
+          if (0 == strlen (line))
             {
               connection->state = MHD_CONNECTION_HEADERS_RECEIVED;
               continue;
@@ -2323,13 +2353,11 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
             }
           if (MHD_YES == try_ready_normal_body (connection))
             {
-              if (connection->response->crc != NULL)
-                pthread_mutex_unlock (&connection->response->mutex);
+	      if (NULL != connection->response->crc)
+		pthread_mutex_unlock (&connection->response->mutex);
               connection->state = MHD_CONNECTION_NORMAL_BODY_READY;
               break;
             }
-          if (connection->response->crc != NULL)
-            pthread_mutex_unlock (&connection->response->mutex);
           /* not ready, no socket action */
           break;
         case MHD_CONNECTION_CHUNKED_BODY_READY:
@@ -2510,8 +2538,8 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
  * the epoll() set if needed.
  *
  * @param connection connection to process
- * @return MHD_YES if we should continue to process the
- *         connection (not dead yet), MHD_NO if it died
+ * @return #MHD_YES if we should continue to process the
+ *         connection (not dead yet), #MHD_NO if it died
  */ 
 int
 MHD_connection_epoll_update_ (struct MHD_Connection *connection)
@@ -2572,7 +2600,7 @@ MHD_set_http_callbacks_ (struct MHD_Connection *connection)
  * Obtain information about the given connection.
  *
  * @param connection what connection to get information about
- * @param infoType what information is desired?
+ * @param info_type what information is desired?
  * @param ... depends on @a info_type
  * @return NULL if this information is not available
  *         (or if the @a info_type is unknown)
