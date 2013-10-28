@@ -1,11 +1,13 @@
-libmicrohttpd (0.9.30-1) unstable; urgency=low
+libmicrohttpd (0.9.31-1) unstable; urgency=low
 
-  * Imported Upstream version 0.9.30
+  * Imported Upstream version 0.9.31
   * Refresh the only patch.
   * debian/libmicrohttpd10.symbols: Remove 2 unused symbols, add a new one
     from 0.9.30.
+  * debian/rules: remove an old cleaning rule after install.
+  * debian/rules: copy a missing png for the info file.
 
- -- Bertrand Marc <beberking@gmail.com>  Tue, 03 Sep 2013 22:31:19 +0200
+ -- Bertrand Marc <beberking@gmail.com>  Mon, 28 Oct 2013 15:06:08 +0100
 
 libmicrohttpd (0.9.27-2) unstable; urgency=low
 
