@@ -8,8 +8,6 @@ override_dh_auto_install:
 
 	# Removing useless files
 	rm -f debian/tmp/usr/lib/*/*.la
-	# Copy the missing data for the info file
-	cp doc/performance_data.png debian/tmp/usr/share/info/
 
 override_dh_auto_test:
 	# disabled
