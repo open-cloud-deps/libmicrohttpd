@@ -49,6 +49,7 @@ libmicrohttpd.so.10 libmicrohttpd10 #MINVER#
  MHD_queue_basic_auth_fail_response@Base 0.9.20
  MHD_queue_response@Base 0.9.20
  MHD_quiesce_daemon@Base 0.9.27
+ MHD_resume_connection@Base 0.9.32
  MHD_run@Base 0.9.20
  MHD_run_from_select@Base 0.9.27
  MHD_set_connection_option@Base 0.9.20
@@ -59,5 +60,6 @@ libmicrohttpd.so.10 libmicrohttpd10 #MINVER#
  MHD_start_daemon@Base 0.9.20
  MHD_start_daemon_va@Base 0.9.20
  MHD_stop_daemon@Base 0.9.20
+ MHD_suspend_connection@Base 0.9.32
  mhd_panic@Base 0.9.20
  mhd_panic_cls@Base 0.9.20
