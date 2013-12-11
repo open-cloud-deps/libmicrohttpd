@@ -1,3 +1,65 @@
+Tue Dec  3 21:25:56 CET 2013
+	Security fix: do not read past 0-terminator when unescaping
+	strings (thanks to Florian Weimer for reporting).
+	Releasing 0.9.32. -CG
+
+Tue Dec  3 21:05:38 CET 2013
+	Signaling n times for shutdown works, but for resume we need to
+	wake up the correct daemon. Even if we signal n times in that
+	case also, there's no guarantee that some daemon can't run
+	through its select loop more than once before the daemon we want
+	to wake up gets a chance to read.  Thus we need a signal pipe
+	per thread in the thread pool IF MHD_suspend_connection is used.
+	This introduces a new flag MHD_USE_SUSPEND_RESUME to add those
+	additional pipes and only allow MHD_suspend_connection to be
+	used in conjunction with this flag.
+
+	Also, as MHD_resume_connection() will be called on a non-daemon
+	thread, but none of the queue insert/delete calls are thread safe,
+	we need to be concerned about (a) corrupting the queue, and (b)
+	having to add mutex protection around every access to the queues,
+	including loops through timer queues, etc. This wasn't a problem
+	before adding resume; even suspend should be safe since it happens
+	in a callback from the daemon.
+
+	I think it's easier to (a) have MHD_suspend_connection() move the
+	connection to a suspended queue, (b) have MHD_resume_connection()
+	mark the connection as resuming, and then (c) do all the actual
+	queue manipulations in MHD_select (poll, epoll, etc.) to move the
+	resumed connections back to their normal queues, in response to
+	the wake up. The changes are simpler & cleaner. There is a cost to
+	the basic select loop that is avoided by making suspend/resume a
+	startup option. The per-worker pipes can then also be enabled only
+	with that option set. -MH
+
+Fri Nov 29 20:17:03 CET 2013
+	Eliminating theoretical stack overflow by limiting length
+	of URIs in authentication headers to 32k (only applicable
+	if the application explicitly raised the memroy limits,
+	and only applies to MHD_digest_auth_check). Issue was
+	reported by Florian Weimer. -CG
+
+Tue Nov 26 01:26:15 CET 2013
+	Fix race on shutdown signal with thread pool on non-Linux
+	systems by signalling n times for n threads. -CG
+
+Sun Nov 24 13:41:15 CET 2013
+	Introduce state to mark connections in suspended state (with
+	epoll); add missing locking operations in MHD_suspend_connection.
+	Fix definition of MHD_TLS_CONNECTION_INIT.  -MH/JC
+
+Wed Oct 30 09:34:20 CET 2013
+	Fixing issue in PostProcessor when getting partial boundary
+	at the beginning, expanding test suite. -CG
+
+Sun Oct 27 15:19:44 CET 2013
+	Implementing faster processing of upload data in multipart
+	encoding (thanks to performance analysis by Adam Homolya). -CG
+
+Thu Oct 24 10:40:03 CEST 2013
+	Adding support for connection flow control via
+	MHD_suspend_connection and MHD_resume_connection. -CG
+
 Sat Oct 19 16:40:32 CEST 2013
 	Releasing libmicrohttpd 0.9.31. -CG
 
