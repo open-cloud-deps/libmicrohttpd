@@ -1,17 +1,17 @@
 /*
   This file is part of libmicrohttpd
   (C) 2007-2013 Daniel Pittman and Christian Grothoff
-  
+
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
   License as published by the Free Software Foundation; either
   version 2.1 of the License, or (at your option) any later version.
-  
+
   This library is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   Lesser General Public License for more details.
-  
+
   You should have received a copy of the GNU Lesser General Public
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
@@ -31,6 +31,9 @@
 #include "microhttpd.h"
 #if HTTPS_SUPPORT
 #include <gnutls/gnutls.h>
+#if GNUTLS_VERSION_MAJOR >= 3
+#include <gnutls/abstract.h>
+#endif
 #endif
 #if EPOLL_SUPPORT
 #include <sys/epoll.h>
@@ -70,14 +73,14 @@ extern void *mhd_panic_cls;
 #if HAVE_MESSAGES
 /**
  * Trigger 'panic' action based on fatal errors.
- * 
+ *
  * @param msg error message (const char *)
  */
 #define MHD_PANIC(msg) mhd_panic (mhd_panic_cls, __FILE__, __LINE__, msg)
 #else
 /**
  * Trigger 'panic' action based on fatal errors.
- * 
+ *
  * @param msg error message (const char *)
  */
 #define MHD_PANIC(msg) mhd_panic (mhd_panic_cls, __FILE__, __LINE__, NULL)
@@ -142,12 +145,12 @@ enum MHD_ConnectionEventLoopInfo
 
     /**
      * We are waiting for the application to provide data.
-     */ 
+     */
     MHD_EVENT_LOOP_INFO_BLOCK = 2,
 
     /**
      * We are finished and are awaiting cleanup.
-     */ 
+     */
     MHD_EVENT_LOOP_INFO_CLEANUP = 3
   };
 
@@ -165,9 +168,9 @@ enum MHD_ConnectionEventLoopInfo
  * A structure representing the internal holder of the
  * nonce-nc map.
  */
-struct MHD_NonceNc 
+struct MHD_NonceNc
 {
-  
+
   /**
    * Nonce counter, a value that increases for each subsequent
    * request for the same nonce.
@@ -175,7 +178,7 @@ struct MHD_NonceNc
   unsigned long int nc;
 
   /**
-   * Nonce value: 
+   * Nonce value:
    */
   char nonce[MAX_NONCE_LENGTH];
 
@@ -186,8 +189,8 @@ struct MHD_NonceNc
  * fprintf-like helper function for logging debug
  * messages.
  */
-void 
-MHD_DLOG (const struct MHD_Daemon *daemon, 
+void
+MHD_DLOG (const struct MHD_Daemon *daemon,
 	  const char *format, ...);
 #endif
 
@@ -202,7 +205,7 @@ MHD_DLOG (const struct MHD_Daemon *daemon,
  * @return length of the resulting val (strlen(val) maybe
  *  shorter afterwards due to elimination of escape sequences)
  */
-size_t 
+size_t
 MHD_http_unescape (void *cls,
 		   struct MHD_Connection *connection,
 		   char *val);
@@ -833,6 +836,7 @@ struct MHD_Connection
    * even though the socket is not?
    */
   int tls_read_ready;
+#endif
 
   /**
    * Is the connection suspended?
@@ -843,7 +847,6 @@ struct MHD_Connection
    * Is the connection wanting to resume?
    */
   int resuming;
-#endif
 };
 
 /**
@@ -854,7 +857,7 @@ struct MHD_Connection
  * @param con connection handle
  * @return new closure
  */
-typedef void * (*LogCallback)(void * cls, 
+typedef void * (*LogCallback)(void * cls,
 			      const char * uri,
 			      struct MHD_Connection *con);
 
@@ -1088,7 +1091,7 @@ struct MHD_Daemon
   int epoll_fd;
 
   /**
-   * MHD_YES if the listen socket is in the 'epoll' set, 
+   * MHD_YES if the listen socket is in the 'epoll' set,
    * MHD_NO if not.
    */
   int listen_socket_in_epoll;
@@ -1160,6 +1163,14 @@ struct MHD_Daemon
    * Diffie-Hellman parameters
    */
   gnutls_dh_params_t dh_params;
+
+#if GNUTLS_VERSION_MAJOR >= 3
+  /**
+   * Function that can be used to obtain the certificate.  Needed
+   * for SNI support.  See #MHD_OPTION_HTTPS_CERT_CALLBACK.
+   */
+  gnutls_certificate_retrieve_function2 *cert_callback;
+#endif
 
   /**
    * Pointer to our SSL/TLS key (in ASCII) in memory.
