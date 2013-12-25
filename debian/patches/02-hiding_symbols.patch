@@ -1,0 +1,459 @@
+Author: Christian Grothoff <christian@grothoff.org> 
+Description: Hide uneeded exported symbols in libmicrohttpd.
+Origin: upstream, svn revisions from r31729 to r31737.
+--- a/src/include/platform.h
++++ b/src/include/platform.h
+@@ -111,5 +111,14 @@
+ 
+ #include <plibc.h>
+ 
++#define GCC_VERSION (__GNUC__ * 10000                 \
++                     + __GNUC_MINOR__ * 100           \
++                     + __GNUC_PATCHLEVEL__)
++#if GCC_VERSION > 40000
++#define HIDDEN_SYMBOL __attribute__ ((visibility ("hidden")))
++#else
++#define HIDDEN_SYMBOL
++#endif
++
+ 
+ #endif
+--- a/src/microhttpd/md5.h
++++ b/src/microhttpd/md5.h
+@@ -29,7 +29,7 @@
+ 
+ #define MD5_DIGEST_SIZE 16
+ 
+-struct MD5Context 
++struct MD5Context
+ {
+   uint32_t buf[4];
+   uint32_t bits[2];
+@@ -37,15 +37,16 @@
+ };
+ 
+ 
+-void 
++void  HIDDEN_SYMBOL
+ MD5Init(struct MD5Context *ctx);
+ 
+-void
++void HIDDEN_SYMBOL
+ MD5Update(struct MD5Context *ctx,
+ 	  const void *buf,
+ 	  unsigned len);
+ 
+-void MD5Final(unsigned char digest[MD5_DIGEST_SIZE],
+-	      struct MD5Context *ctx);
++void HIDDEN_SYMBOL
++MD5Final(unsigned char digest[MD5_DIGEST_SIZE],
++         struct MD5Context *ctx);
+ 
+ #endif /* !MD5_H */
+--- a/src/microhttpd/response.c
++++ b/src/microhttpd/response.c
+@@ -469,7 +469,7 @@
+ }
+ 
+ 
+-void
++void HIDDEN_SYMBOL
+ MHD_increment_response_rc (struct MHD_Response *response)
+ {
+   pthread_mutex_lock (&response->mutex);
+--- a/src/microhttpd/connection.c
++++ b/src/microhttpd/connection.c
+@@ -257,7 +257,7 @@
+  * @param connection connection to close
+  * @param termination_code termination reason to give
+  */
+-void
++void HIDDEN_SYMBOL
+ MHD_connection_close (struct MHD_Connection *connection,
+                       enum MHD_RequestTerminationCode termination_code)
+ {
+@@ -1850,6 +1850,7 @@
+  * @return always #MHD_YES (we should continue to process the
+  *         connection)
+  */
++HIDDEN_SYMBOL
+ int
+ MHD_connection_handle_read (struct MHD_Connection *connection)
+ {
+@@ -1912,6 +1913,7 @@
+  * @return always #MHD_YES (we should continue to process the
+  *         connection)
+  */
++HIDDEN_SYMBOL
+ int
+ MHD_connection_handle_write (struct MHD_Connection *connection)
+ {
+@@ -2112,6 +2114,7 @@
+  * @return #MHD_YES if we should continue to process the
+  *         connection (not dead yet), #MHD_NO if it died
+  */
++HIDDEN_SYMBOL
+ int
+ MHD_connection_handle_idle (struct MHD_Connection *connection)
+ {
+@@ -2548,6 +2551,7 @@
+  * @return #MHD_YES if we should continue to process the
+  *         connection (not dead yet), #MHD_NO if it died
+  */
++HIDDEN_SYMBOL
+ int
+ MHD_connection_epoll_update_ (struct MHD_Connection *connection)
+ {
+@@ -2595,6 +2599,7 @@
+  *
+  * @param connection connection to initialize
+  */
++HIDDEN_SYMBOL
+ void
+ MHD_set_http_callbacks_ (struct MHD_Connection *connection)
+ {
+--- a/src/microhttpd/memorypool.c
++++ b/src/microhttpd/memorypool.c
+@@ -83,6 +83,7 @@
+  * @param max maximum size of the pool
+  * @return NULL on error
+  */
++HIDDEN_SYMBOL
+ struct MemoryPool *
+ MHD_pool_create (size_t max)
+ {
+@@ -126,7 +127,7 @@
+  *
+  * @param pool memory pool to destroy
+  */
+-void
++void HIDDEN_SYMBOL
+ MHD_pool_destroy (struct MemoryPool *pool)
+ {
+   if (pool == NULL)
+@@ -150,6 +151,7 @@
+  * @return NULL if the pool cannot support size more
+  *         bytes
+  */
++HIDDEN_SYMBOL
+ void *
+ MHD_pool_allocate (struct MemoryPool *pool,
+ 		   size_t size, int from_end)
+@@ -193,6 +195,7 @@
+  *         NULL if the pool cannot support @a new_size
+  *         bytes (old continues to be valid for @a old_size)
+  */
++HIDDEN_SYMBOL
+ void *
+ MHD_pool_reallocate (struct MemoryPool *pool,
+                      void *old,
+@@ -247,6 +250,7 @@
+  * @param size how many bytes need to be kept at this address
+  * @return addr new address of @a keep (if it had to change)
+  */
++HIDDEN_SYMBOL
+ void *
+ MHD_pool_reset (struct MemoryPool *pool,
+ 		void *keep,
+--- a/src/microhttpd/daemon.c
++++ b/src/microhttpd/daemon.c
+@@ -121,11 +121,13 @@
+ /**
+  * Handler for fatal errors.
+  */
++HIDDEN_SYMBOL
+ MHD_PanicCallback mhd_panic;
+ 
+ /**
+  * Closure argument for "mhd_panic".
+  */
++HIDDEN_SYMBOL
+ void *mhd_panic_cls;
+ 
+ 
+--- a/src/microhttpd/response.h
++++ b/src/microhttpd/response.h
+@@ -31,7 +31,8 @@
+  * Increment response RC.  Should this be part of the
+  * public API?
+  */
+-void MHD_increment_response_rc (struct MHD_Response *response);
++void HIDDEN_SYMBOL
++MHD_increment_response_rc (struct MHD_Response *response);
+ 
+ 
+ #endif
+--- a/src/microhttpd/connection.h
++++ b/src/microhttpd/connection.h
+@@ -88,7 +88,7 @@
+  * @param connection connection to close
+  * @param termination_code termination reason to give
+  */
+-void 
++void HIDDEN_SYMBOL
+ MHD_connection_close (struct MHD_Connection *connection,
+ 		      enum MHD_RequestTerminationCode termination_code);
+ 
+--- a/src/microhttpd/memorypool.h
++++ b/src/microhttpd/memorypool.h
+@@ -44,6 +44,7 @@
+  * @param max maximum size of the pool
+  * @return NULL on error
+  */
++HIDDEN_SYMBOL
+ struct MemoryPool *
+ MHD_pool_create (size_t max);
+ 
+@@ -53,7 +54,7 @@
+  *
+  * @param pool memory pool to destroy
+  */
+-void 
++void HIDDEN_SYMBOL
+ MHD_pool_destroy (struct MemoryPool *pool);
+ 
+ 
+@@ -68,6 +69,7 @@
+  * @return NULL if the pool cannot support size more
+  *         bytes
+  */
++HIDDEN_SYMBOL
+ void *
+ MHD_pool_allocate (struct MemoryPool *pool,
+ 		   size_t size, int from_end);
+@@ -90,10 +92,11 @@
+  *         NULL if the pool cannot support new_size
+  *         bytes (old continues to be valid for old_size)
+  */
++HIDDEN_SYMBOL
+ void *
+ MHD_pool_reallocate (struct MemoryPool *pool,
+ 		     void *old,
+-		     size_t old_size, 
++		     size_t old_size,
+ 		     size_t new_size);
+ 
+ 
+@@ -106,9 +109,10 @@
+  * @param size how many bytes need to be kept at this address
+  * @return addr new address of "keep" (if it had to change)
+  */
++HIDDEN_SYMBOL
+ void *
+ MHD_pool_reset (struct MemoryPool *pool,
+-		void *keep, 
++		void *keep,
+ 		size_t size);
+ 
+ #endif
+--- a/src/microhttpd/internal.c
++++ b/src/microhttpd/internal.c
+@@ -31,6 +31,7 @@
+ /**
+  * State to string dictionary.
+  */
++HIDDEN_SYMBOL
+ const char *
+ MHD_state_to_string (enum MHD_CONNECTION_STATE state)
+ {
+@@ -90,7 +91,7 @@
+  * fprintf-like helper function for logging debug
+  * messages.
+  */
+-void
++void HIDDEN_SYMBOL
+ MHD_DLOG (const struct MHD_Daemon *daemon, const char *format, ...)
+ {
+   va_list va;
+@@ -115,6 +116,7 @@
+  * @return length of the resulting val (strlen(val) maybe
+  *  shorter afterwards due to elimination of escape sequences)
+  */
++HIDDEN_SYMBOL
+ size_t
+ MHD_http_unescape (void *cls,
+ 		   struct MHD_Connection *connection,
+@@ -165,6 +167,7 @@
+ }
+ 
+ 
++HIDDEN_SYMBOL
+ time_t
+ MHD_monotonic_time (void)
+ {
+--- a/src/microhttpd/connection_https.c
++++ b/src/microhttpd/connection_https.c
+@@ -170,6 +170,7 @@
+  *
+  * @param connection which callbacks should be modified
+  */
++HIDDEN_SYMBOL
+ void
+ MHD_set_https_callbacks (struct MHD_Connection *connection)
+ {
+--- a/src/microhttpd/internal.h
++++ b/src/microhttpd/internal.h
+@@ -189,7 +189,7 @@
+  * fprintf-like helper function for logging debug
+  * messages.
+  */
+-void
++void HIDDEN_SYMBOL
+ MHD_DLOG (const struct MHD_Daemon *daemon,
+ 	  const char *format, ...);
+ #endif
+--- a/src/microhttpd/base64.c
++++ b/src/microhttpd/base64.c
+@@ -26,14 +26,15 @@
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+ 
+ 
+-char * 
+-BASE64Decode(const char* src) 
++HIDDEN_SYMBOL
++char *
++BASE64Decode(const char* src)
+ {
+   size_t in_len = strlen (src);
+   char* dest;
+   char* result;
+-  
+-  if (in_len % 4) 
++
++  if (in_len % 4)
+     {
+       /* Wrong base64 string length */
+       return NULL;
+--- a/src/microhttpd/md5.c
++++ b/src/microhttpd/md5.c
+@@ -150,7 +150,7 @@
+  * Start MD5 accumulation.  Set bit count to 0 and buffer to mysterious
+  * initialization constants.
+  */
+-void
++void HIDDEN_SYMBOL
+ MD5Init(struct MD5Context *ctx)
+ {
+     ctx->buf[0] = 0x67452301;
+@@ -166,7 +166,7 @@
+  * Update context to reflect the concatenation of another buffer full
+  * of bytes.
+  */
+-void
++void HIDDEN_SYMBOL
+ MD5Update(struct MD5Context *ctx,
+ 	  const void *data,
+ 	  unsigned len)
+@@ -215,49 +215,49 @@
+ }
+ 
+ /*
+- * Final wrapup - pad to 64-byte boundary with the bit pattern 
++ * Final wrapup - pad to 64-byte boundary with the bit pattern
+  * 1 0* (64-bit count of bits processed, MSB-first)
+  */
+-void 
+-MD5Final(unsigned char digest[16],
+-	 struct MD5Context *ctx)
++void HIDDEN_SYMBOL
++MD5Final (unsigned char digest[16],
++          struct MD5Context *ctx)
+ {
+   unsigned count;
+   unsigned char *p;
+ 
+   /* Compute number of bytes mod 64 */
+   count = (ctx->bits[0] >> 3) & 0x3F;
+-  
++
+   /* Set the first char of padding to 0x80.  This is safe since there is
+      always at least one byte free */
+   p = ctx->in + count;
+   *p++ = 0x80;
+-  
++
+   /* Bytes of padding needed to make 64 bytes */
+   count = 64 - 1 - count;
+-  
++
+   /* Pad out to 56 mod 64 */
+-  if (count < 8) 
++  if (count < 8)
+     {
+       /* Two lots of padding:  Pad the first block to 64 bytes */
+       memset(p, 0, count);
+       byteReverse(ctx->in, 16);
+       MD5Transform(ctx->buf, (uint32_t *) ctx->in);
+-      
++
+       /* Now fill the next block with 56 bytes */
+       memset(ctx->in, 0, 56);
+-    } 
+-  else 
++    }
++  else
+     {
+       /* Pad block to 56 bytes */
+       memset(p, 0, count - 8);
+     }
+   byteReverse(ctx->in, 14);
+-  
++
+   /* Append length in bits and transform */
+   ((uint32_t *) ctx->in)[14] = ctx->bits[0];
+   ((uint32_t *) ctx->in)[15] = ctx->bits[1];
+-  
++
+   MD5Transform(ctx->buf, (uint32_t *) ctx->in);
+   byteReverse((unsigned char *) ctx->buf, 4);
+   memcpy(digest, ctx->buf, 16);
+--- a/src/microhttpd/reason_phrase.c
++++ b/src/microhttpd/reason_phrase.c
+@@ -24,7 +24,7 @@
+  * @author Elliot Glaysher
+  * @author Christian Grothoff (minor code clean up)
+  */
+-
++#include "platform.h"
+ #include "reason_phrase.h"
+ 
+ #ifndef NULL
+@@ -148,11 +148,13 @@
+   BLOCK (five_hundred),
+ };
+ 
++
++HIDDEN_SYMBOL
+ const char *
+ MHD_get_reason_phrase_for (unsigned int code)
+ {
+-  if ( (code >= 100) && 
+-       (code < 600) && 
++  if ( (code >= 100) &&
++       (code < 600) &&
+        (reasons[code / 100].max > (code % 100)) )
+     return reasons[code / 100].data[code % 100];
+   return "Unknown";
+--- a/src/microhttpd/base64.h
++++ b/src/microhttpd/base64.h
+@@ -11,7 +11,8 @@
+ 
+ #include "platform.h"
+ 
+-char * 
++HIDDEN_SYMBOL
++char *
+ BASE64Decode(const char* src);
+ 
+ #endif /* !BASE64_H */
+===================================================================
+--- a/src/microhttpd/Makefile.am
++++ b/src/microhttpd/Makefile.am
+@@ -23,6 +23,7 @@
+   response.c response.h
+ libmicrohttpd_la_LDFLAGS = \
+   $(MHD_LIB_LDFLAGS) \
++  -export-symbols $(top_srcdir)/src/microhttpd/EXPORT.sym \
+   -version-info @LIB_VERSION_CURRENT@:@LIB_VERSION_REVISION@:@LIB_VERSION_AGE@
+ 
+ if USE_COVERAGE
