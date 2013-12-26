@@ -1,3 +1,15 @@
+libmicrohttpd (0.9.20-1+deb7u1) wheezy; urgency=medium
+
+  * Fix various security issues (closes: #731933):
+    + out-of-bounds read in MHD_http_unescape(), patch picked upstream,
+    CVE-2013-7038.
+    + stack overflow in MHD_digest_auth_check(), patch picked upstream,
+    CVE-2013-7039.
+    + handle case that original allocation request was zero and fix theoretical
+    overflow issue reported by Florian Weimer, patch picked upstream.
+
+ -- Bertrand Marc <beberking@gmail.com>  Thu, 26 Dec 2013 15:41:39 +0100
+
 libmicrohttpd (0.9.20-1) unstable; urgency=low
 
   * debian/control: add Vcs-Git and Vcs-browser fields.
