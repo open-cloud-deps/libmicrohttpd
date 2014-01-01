@@ -1,4 +1,4 @@
-libmicrohttpd (0.9.33-1) UNRELEASED; urgency=medium
+libmicrohttpd (0.9.33-1) unstable; urgency=medium
 
   [ Bertrand Marc ]
   * Imported Upstream version 0.9.33
@@ -16,7 +16,7 @@ libmicrohttpd (0.9.33-1) UNRELEASED; urgency=medium
   [ Ivo De Decker ]
   * Add missing build-dep on texinfo.
 
- -- Bertrand Marc <beberking@gmail.com>  Wed, 25 Dec 2013 12:44:24 +0100
+ -- Ivo De Decker <ivo.dedecker@ugent.be>  Wed, 01 Jan 2014 16:58:30 +0100
 
 libmicrohttpd (0.9.32-1) unstable; urgency=medium
 
