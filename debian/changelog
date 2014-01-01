@@ -1,5 +1,6 @@
-libmicrohttpd (0.9.33-1) unstable; urgency=medium
+libmicrohttpd (0.9.33-1) UNRELEASED; urgency=medium
 
+  [ Bertrand Marc ]
   * Imported Upstream version 0.9.33
   * Make uscan check the archive signature:
     + add the upstream key to debian/upstream-signing-key.pgp.
@@ -11,6 +12,9 @@ libmicrohttpd (0.9.33-1) unstable; urgency=medium
     + remove every unwanted symbols from libmicrohttpd10.symbols.
   * Standards version 3.9.5:
     + remove dependency on dpkg (>= 1.15.4) | install-info.
+
+  [ Ivo De Decker ]
+  * Add missing build-dep on texinfo.
 
  -- Bertrand Marc <beberking@gmail.com>  Wed, 25 Dec 2013 12:44:24 +0100
 
