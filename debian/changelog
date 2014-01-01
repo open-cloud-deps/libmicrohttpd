@@ -6,7 +6,7 @@ libmicrohttpd (0.9.33-1) unstable; urgency=medium
     + add the binary key to debian/source/include-binaries.
     + add pgpsigurlmangle to debian/watch.
   * Hide uneeded exported symbols according to microhttpd.h and EXPORT.sym.
-    This fixes building on kfreebsd.
+    This fixes building on kfreebsd (Closes: #733184).
     + cherry pick 02-hiding_symbols from upstream svn.
     + remove every unwanted symbols from libmicrohttpd10.symbols.
   * Standards version 3.9.5:
