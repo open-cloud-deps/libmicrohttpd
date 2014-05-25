@@ -1,15 +1,12 @@
 SUBDIRS  = .
 
-if USE_PRIVATE_PLIBC_H
- PLIBC_INCLUDE = -I$(top_srcdir)/src/include/plibc
-endif
-
 AM_CPPFLAGS = \
-  $(PLIBC_INCLUDE) \
   -I$(top_srcdir)/src/include \
-  @LIBGCRYPT_CFLAGS@
+  -DDATA_DIR=\"$(top_srcdir)/src/datadir/\"
 
-AM_CFLAGS = -DDATA_DIR=\"$(top_srcdir)/src/datadir/\"
+AM_CFLAGS = @LIBGCRYPT_CFLAGS@
+
+CPU_COUNT_DEF = -DCPU_COUNT=$(CPU_COUNT)
 
 if USE_COVERAGE
   AM_CFLAGS += --coverage
@@ -47,10 +44,10 @@ noinst_PROGRAMS += https_fileserver_example
 endif
 if HAVE_POSTPROCESSOR
 noinst_PROGRAMS += \
-  post_example 
+  post_example
 if HAVE_MAGIC
 bin_PROGRAMS = \
-  demo 
+  demo
 endif
 endif
 
@@ -74,10 +71,14 @@ minimal_example_LDADD = \
  $(top_builddir)/src/microhttpd/libmicrohttpd.la 
 
 demo_SOURCES = \
- demo.c 
+ demo.c
+demo_CFLAGS = \
+ $(PTHREAD_CFLAGS) $(AM_CFLAGS)
+demo_CPPFLAGS = \
+ $(AM_CPPFLAGS) $(CPU_COUNT_DEF)
 demo_LDADD = \
  $(top_builddir)/src/microhttpd/libmicrohttpd.la  \
- -lmagic
+ $(PTHREAD_LIBS) -lmagic
 
 mhd2spdy_SOURCES = \
  mhd2spdy.c \
@@ -90,11 +91,15 @@ mhd2spdy_LDADD = \
 
 benchmark_SOURCES = \
  benchmark.c 
+benchmark_CPPFLAGS = \
+ $(AM_CPPFLAGS) $(CPU_COUNT_DEF)
 benchmark_LDADD = \
  $(top_builddir)/src/microhttpd/libmicrohttpd.la  
 
 benchmark_https_SOURCES = \
  benchmark_https.c 
+benchmark_https_CPPFLAGS = \
+ $(AM_CPPFLAGS) $(CPU_COUNT_DEF)
 benchmark_https_LDADD = \
  $(top_builddir)/src/microhttpd/libmicrohttpd.la  
 
@@ -150,6 +155,8 @@ fileserver_example_external_select_LDADD = \
 
 https_fileserver_example_SOURCES = \
 https_fileserver_example.c
+https_fileserver_example_CPPFLAGS = \
+ $(AM_CPPFLAGS) $(GNUTLS_CPPFLAGS)
 https_fileserver_example_LDADD = \
  $(top_builddir)/src/microhttpd/libmicrohttpd.la
 
@@ -158,25 +165,16 @@ spdy_event_loop_SOURCES = \
  spdy_event_loop.c 
 spdy_event_loop_LDADD = \
   $(top_builddir)/src/microspdy/libmicrospdy.la \
- -lssl \
- -lcrypto \
- -lz \
- -ldl
+ -lz
 
 spdy_fileserver_SOURCES = \
  spdy_fileserver.c 
 spdy_fileserver_LDADD = \
   $(top_builddir)/src/microspdy/libmicrospdy.la \
- -lssl \
- -lcrypto \
- -lz \
- -ldl
+ -lz
 
 spdy_response_with_callback_SOURCES = \
  spdy_response_with_callback.c 
 spdy_response_with_callback_LDADD = \
   $(top_builddir)/src/microspdy/libmicrospdy.la \
- -lssl \
- -lcrypto \
- -lz \
- -ldl
+ -lz

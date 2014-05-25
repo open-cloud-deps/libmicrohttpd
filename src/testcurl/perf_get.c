@@ -50,6 +50,13 @@
 #include <sys/socket.h>
 #endif
 
+#if defined(CPU_COUNT) && (CPU_COUNT+0) < 2
+#undef CPU_COUNT
+#endif
+#if !defined(CPU_COUNT)
+#define CPU_COUNT 2
+#endif
+
 /**
  * How many rounds of operations do we do for each
  * test?
@@ -82,7 +89,7 @@ now ()
 {
   struct timeval tv;
 
-  GETTIMEOFDAY (&tv, NULL);
+  gettimeofday (&tv, NULL);
   return (((unsigned long long) tv.tv_sec * 1000LL) +
 	  ((unsigned long long) tv.tv_usec / 1000LL));
 }
@@ -306,7 +313,7 @@ testMultithreadedPoolGet (int port, int poll_flag)
   cbc.size = 2048;
   d = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG | poll_flag,
                         port, NULL, NULL, &ahc_echo, "GET",
-                        MHD_OPTION_THREAD_POOL_SIZE, 4, MHD_OPTION_END);
+                        MHD_OPTION_THREAD_POOL_SIZE, CPU_COUNT, MHD_OPTION_END);
   if (d == NULL)
     return 16;
   start_timer ();
@@ -361,7 +368,7 @@ testExternalGet (int port)
   fd_set rs;
   fd_set ws;
   fd_set es;
-  int max;
+  MHD_socket max;
   int running;
   struct CURLMsg *msg;
   time_t start;

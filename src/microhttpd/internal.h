@@ -29,6 +29,7 @@
 
 #include "platform.h"
 #include "microhttpd.h"
+#include "platform_interface.h"
 #if HTTPS_SUPPORT
 #include <gnutls/gnutls.h>
 #if GNUTLS_VERSION_MAJOR >= 3
@@ -37,6 +38,10 @@
 #endif
 #if EPOLL_SUPPORT
 #include <sys/epoll.h>
+#endif
+#if HAVE_NETINET_TCP_H
+/* for TCP_FASTOPEN */
+#include <netinet/tcp.h>
 #endif
 
 
@@ -282,7 +287,7 @@ struct MHD_Response
    * Mutex to synchronize access to data/size and
    * reference counts.
    */
-  pthread_mutex_t mutex;
+  MHD_mutex_ mutex;
 
   /**
    * Set to MHD_SIZE_UNKNOWN if size is not known.
@@ -632,10 +637,10 @@ struct MHD_Connection
   struct sockaddr *addr;
 
   /**
-   * Thread for this connection (if we are using
+   * Thread handle for this connection (if we are using
    * one thread per connection).
    */
-  pthread_t pid;
+  MHD_thread_handle_ pid;
 
   /**
    * Size of read_buffer (in bytes).  This value indicates
@@ -711,11 +716,11 @@ struct MHD_Connection
   int client_aware;
 
   /**
-   * Socket for this connection.  Set to -1 if
+   * Socket for this connection.  Set to MHD_INVALID_SOCKET if
    * this connection has died (daemon should clean
    * up in that case).
    */
-  int socket_fd;
+  MHD_socket socket_fd;
 
   /**
    * Has this socket been closed for reading (i.e.  other side closed
@@ -782,13 +787,13 @@ struct MHD_Connection
    * otherwise, this is the size of the current chunk.  A value of
    * zero is also used when we're at the end of the chunks.
    */
-  unsigned int current_chunk_size;
+  size_t current_chunk_size;
 
   /**
    * If we are receiving with chunked encoding, where are we currently
    * with respect to the current chunk (at what offset / position)?
    */
-  unsigned int current_chunk_offset;
+  size_t current_chunk_offset;
 
   /**
    * Handler used for processing read connection operations
@@ -1065,24 +1070,24 @@ struct MHD_Daemon
   unsigned int worker_pool_size;
 
   /**
-   * PID of the select thread (if we have internal select)
+   * The select thread handle (if we have internal select)
    */
-  pthread_t pid;
+  MHD_thread_handle_ pid;
 
   /**
    * Mutex for per-IP connection counts.
    */
-  pthread_mutex_t per_ip_connection_mutex;
+  MHD_mutex_ per_ip_connection_mutex;
 
   /**
    * Mutex for (modifying) access to the "cleanup" connection DLL.
    */
-  pthread_mutex_t cleanup_connection_mutex;
+  MHD_mutex_ cleanup_connection_mutex;
 
   /**
    * Listen socket.
    */
-  int socket_fd;
+  MHD_socket socket_fd;
 
 #if EPOLL_SUPPORT
   /**
@@ -1101,9 +1106,10 @@ struct MHD_Daemon
    * Pipe we use to signal shutdown, unless
    * 'HAVE_LISTEN_SHUTDOWN' is defined AND we have a listen
    * socket (which we can then 'shutdown' to stop listening).
-   * On W32 this is a socketpair, not a pipe.
+   * MHD can be build with usage of socketpair instead of
+   * pipe (forced on W32).
    */
-  int wpipe[2];
+  MHD_pipe wpipe[2];
 
   /**
    * Are we shutting down?
@@ -1188,6 +1194,16 @@ struct MHD_Daemon
   const char *https_mem_trust;
 
   /**
+   * Our Diffie-Hellman parameters in memory.
+   */
+  gnutls_dh_params_t https_mem_dhparams;
+
+  /**
+   * #MHD_YES if we have initialized @e https_mem_dhparams.
+   */
+  int have_dhparams;
+
+  /**
    * For how many connections do we have 'tls_read_ready' set to MHD_YES?
    * Used to avoid O(n) traversal over all connections when determining
    * event-loop timeout (as it needs to be zero if there is any connection
@@ -1212,12 +1228,12 @@ struct MHD_Daemon
   /**
    * A rw-lock for synchronizing access to `nnc'.
    */
-  pthread_mutex_t nnc_lock;
+  MHD_mutex_ nnc_lock;
 
   /**
    * Size of `digest_auth_random.
    */
-  unsigned int digest_auth_rand_size;
+  size_t digest_auth_rand_size;
 
   /**
    * Size of the nonce-nc array.
@@ -1226,6 +1242,12 @@ struct MHD_Daemon
 
 #endif
 
+#ifdef TCP_FASTOPEN
+  /**
+   * The queue size for incoming SYN + DATA packets.
+   */
+  unsigned int fastopen_queue_size;
+#endif
 };
 
 

@@ -32,8 +32,16 @@
 #include <sys/stat.h>
 #include <limits.h>
 #include <curl/curl.h>
+#include <pthread.h>
 #include <gcrypt.h>
 #include "tls_test_common.h"
+
+#if defined(CPU_COUNT) && (CPU_COUNT+0) < 4
+#undef CPU_COUNT
+#endif
+#if !defined(CPU_COUNT)
+#define CPU_COUNT 4
+#endif
 
 extern const char srv_key_pem[];
 extern const char srv_self_signed_cert_pem[];
@@ -94,7 +102,7 @@ test_parallel_clients (void *cls, const char *cipher_suite,
                        int curl_proto_version)
 {
   int i;
-  int client_count = 3;
+  int client_count = (CPU_COUNT - 1);
   void *client_thread_ret;
   pthread_t client_arr[client_count];
   struct https_test_data client_args =
@@ -142,9 +150,9 @@ main (int argc, char *const *argv)
     fprintf (stderr, "Curl does not support SSL.  Cannot run the test.\n");
     return 0;
   }
-  if (NULL != strcasestr (ssl_version, "openssl"))
+  if (0 != strncmp (ssl_version, "GnuTLS", 6))
   {
-    fprintf (stderr, "Refusing to run test with OpenSSL.  Please install libcurl-gnutls\n");
+    fprintf (stderr, "This test can be run only with libcurl-gnutls.\n");
     return 0;
   }
   if (0 != curl_global_init (CURL_GLOBAL_ALL))

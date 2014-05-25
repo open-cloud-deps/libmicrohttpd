@@ -26,17 +26,25 @@
 
 #include "MHD_config.h"
 #include "platform.h"
+#include "platform_interface.h"
 #include <curl/curl.h>
 #include <microhttpd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <sys/types.h>
-#include <sys/wait.h>
+#include <pthread.h>
 
 #ifndef WINDOWS
 #include <unistd.h>
 #include <sys/socket.h>
+#endif
+
+#if defined(CPU_COUNT) && (CPU_COUNT+0) < 2
+#undef CPU_COUNT
+#endif
+#if !defined(CPU_COUNT)
+#define CPU_COUNT 2
 #endif
 
 static int oneone;
@@ -105,17 +113,19 @@ request_completed (void *cls, struct MHD_Connection *connection,
 }
 
 
-static void
-ServeOneRequest(int fd)
+static void *
+ServeOneRequest(void *param)
 {
   struct MHD_Daemon *d;
   fd_set rs;
   fd_set ws;
   fd_set es;
-  int max;
+  MHD_socket fd, max;
   time_t start;
   struct timeval tv;
   int done = 0;
+
+  fd = (MHD_socket) (intptr_t) param;
 
   d = MHD_start_daemon (MHD_USE_DEBUG,
                         1082, NULL, NULL, &ahc_echo, "GET",
@@ -123,7 +133,7 @@ ServeOneRequest(int fd)
                         MHD_OPTION_NOTIFY_COMPLETED, &request_completed, &done,
                         MHD_OPTION_END);
   if (d == NULL)
-    _exit(1);
+    return "MHD_start_daemon() failed";
 
   start = time (NULL);
   while ((time (NULL) - start < 5) && done == 0)
@@ -135,17 +145,17 @@ ServeOneRequest(int fd)
       if (MHD_YES != MHD_get_fdset (d, &rs, &ws, &es, &max))
         {
           MHD_stop_daemon (d);
-          close(fd);
-          _exit(4096);
+          MHD_socket_close_(fd);
+          return "MHD_get_fdset() failed";
         }
       tv.tv_sec = 0;
       tv.tv_usec = 1000;
-      select (max + 1, &rs, &ws, &es, &tv);
+      MHD_SYS_select_ (max + 1, &rs, &ws, &es, &tv);
       MHD_run (d);
     }
   MHD_stop_daemon (d);
-  close(fd);
-  _exit(0);
+  MHD_socket_close_(fd);
+  return NULL;
 }
 
 
@@ -182,7 +192,9 @@ testGet (int type, int pool_count, int poll_flag)
   char buf[2048];
   struct CBC cbc;
   CURLcode errornum;
-  int fd;
+  MHD_socket fd;
+  pthread_t thrd;
+  const char *thrdRet;
 
   cbc.buf = buf;
   cbc.size = 2048;
@@ -223,10 +235,12 @@ testGet (int type, int pool_count, int poll_flag)
   }
 
   fd = MHD_quiesce_daemon (d);
-  if (fork() == 0) 
+  if (0 != pthread_create(&thrd, NULL, &ServeOneRequest, (void*)(intptr_t) fd))
     {
-      ServeOneRequest (fd);
-      _exit(1);
+      fprintf (stderr, "pthread_create failed\n");
+      curl_easy_cleanup (c);
+      MHD_stop_daemon (d);
+      return 16;
     }
 
   cbc.pos = 0;
@@ -240,22 +254,35 @@ testGet (int type, int pool_count, int poll_flag)
       return 2;
     }
 
-  waitpid(-1, NULL, 0);
+  if (0 != pthread_join(thrd, (void**)&thrdRet))
+    {
+      fprintf (stderr, "pthread_join failed\n");
+      curl_easy_cleanup (c);
+      MHD_stop_daemon (d);
+      return 16;
+    }
+  if (NULL != thrdRet)
+    {
+      fprintf (stderr, "ServeOneRequest() error: %s\n", thrdRet);
+      curl_easy_cleanup (c);
+      MHD_stop_daemon (d);
+      return 16;
+    }
 
-  if (cbc.pos != strlen ("/hello_world")) 
+  if (cbc.pos != strlen ("/hello_world"))
     {
       fprintf(stderr, "%s\n", cbc.buf);
       curl_easy_cleanup (c);
       MHD_stop_daemon (d);
-      close(fd);
+      MHD_socket_close_(fd);
       return 4;
     }
-  if (0 != strncmp ("/hello_world", cbc.buf, strlen ("/hello_world"))) 
+  if (0 != strncmp ("/hello_world", cbc.buf, strlen ("/hello_world")))
     {
       fprintf(stderr, "%s\n", cbc.buf);
       curl_easy_cleanup (c);
       MHD_stop_daemon (d);
-      close(fd);
+      MHD_socket_close_(fd);
       return 8;
     }
 
@@ -267,12 +294,12 @@ testGet (int type, int pool_count, int poll_flag)
       fprintf (stderr, "curl_easy_perform should fail\n");
       curl_easy_cleanup (c);
       MHD_stop_daemon (d);
-      close(fd);
+      MHD_socket_close_(fd);
       return 2;
     }
   curl_easy_cleanup (c);
   MHD_stop_daemon (d);
-  close(fd);
+  MHD_socket_close_(fd);
 
   return 0;
 }
@@ -290,13 +317,13 @@ testExternalGet ()
   fd_set rs;
   fd_set ws;
   fd_set es;
-  int max;
-  int running; 
+  MHD_socket max;
+  int running;
   struct CURLMsg *msg;
   time_t start;
   struct timeval tv;
   int i;
-  int fd;
+  MHD_socket fd;
 
   multi = NULL;
   cbc.buf = buf;
@@ -384,9 +411,9 @@ testExternalGet ()
       if (i == 0) {
         /* quiesce the daemon on the 1st iteration, so the 2nd should fail */
         fd = MHD_quiesce_daemon(d);
-	if (-1 == fd)
+	if (MHD_INVALID_SOCKET == fd)
 	  abort ();
-        close (fd);
+	MHD_socket_close_ (fd);
         c = setupCURL (&cbc);
         multi = curl_multi_init ();
         mret = curl_multi_add_handle (multi, c);
@@ -417,16 +444,16 @@ main (int argc, char *const *argv)
     return 2;
   errorCount += testGet (MHD_USE_SELECT_INTERNALLY, 0, 0);
   errorCount += testGet (MHD_USE_THREAD_PER_CONNECTION, 0, 0);
-  errorCount += testGet (MHD_USE_SELECT_INTERNALLY, 4, 0);
+  errorCount += testGet (MHD_USE_SELECT_INTERNALLY, CPU_COUNT, 0);
   errorCount += testExternalGet ();
 #ifndef WINDOWS
   errorCount += testGet (MHD_USE_SELECT_INTERNALLY, 0, MHD_USE_POLL);
   errorCount += testGet (MHD_USE_THREAD_PER_CONNECTION, 0, MHD_USE_POLL);
-  errorCount += testGet (MHD_USE_SELECT_INTERNALLY, 4, MHD_USE_POLL);
+  errorCount += testGet (MHD_USE_SELECT_INTERNALLY, CPU_COUNT, MHD_USE_POLL);
 #endif
 #if EPOLL_SUPPORT
   errorCount += testGet (MHD_USE_SELECT_INTERNALLY, 0, MHD_USE_EPOLL_LINUX_ONLY);
-  errorCount += testGet (MHD_USE_SELECT_INTERNALLY, 4, MHD_USE_EPOLL_LINUX_ONLY);
+  errorCount += testGet (MHD_USE_SELECT_INTERNALLY, CPU_COUNT, MHD_USE_EPOLL_LINUX_ONLY);
 #endif
   if (errorCount != 0)
     fprintf (stderr, "Error (code: %u)\n", errorCount);
