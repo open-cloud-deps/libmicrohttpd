@@ -26,6 +26,7 @@
 
 #include "MHD_config.h"
 #include "platform.h"
+#include "platform_interface.h"
 #include <curl/curl.h>
 #include <microhttpd.h>
 #include <stdlib.h>
@@ -37,6 +38,13 @@
 #ifndef WINDOWS
 #include <sys/socket.h>
 #include <unistd.h>
+#endif
+
+#if defined(CPU_COUNT) && (CPU_COUNT+0) < 2
+#undef CPU_COUNT
+#endif
+#if !defined(CPU_COUNT)
+#define CPU_COUNT 2
 #endif
 
 #define TESTSTR "This is the content of the test file we are sending using sendfile (if available)"
@@ -93,7 +101,7 @@ ahc_echo (void *cls,
     {
       fprintf (stderr, "Failed to open `%s': %s\n",
 	       sourcefile,
-	       STRERROR (errno));
+	       MHD_strerror_ (errno));
       exit (1);
     }
   response = MHD_create_response_from_fd (strlen (TESTSTR), fd);
@@ -217,7 +225,7 @@ testMultithreadedPoolGet ()
   cbc.pos = 0;
   d = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
                         1081, NULL, NULL, &ahc_echo, "GET",
-                        MHD_OPTION_THREAD_POOL_SIZE, 4, MHD_OPTION_END);
+                        MHD_OPTION_THREAD_POOL_SIZE, CPU_COUNT, MHD_OPTION_END);
   if (d == NULL)
     return 16;
   c = curl_easy_init ();
@@ -265,7 +273,7 @@ testExternalGet ()
   fd_set rs;
   fd_set ws;
   fd_set es;
-  int max;
+  MHD_socket max;
   int running;
   struct CURLMsg *msg;
   time_t start;
@@ -457,13 +465,13 @@ main (int argc, char *const *argv)
   FILE *f;
 
   if ( (NULL == (tmp = getenv ("TMPDIR"))) &&
-       (NULL == (tmp = getenv ("TMP"))) )
+       (NULL == (tmp = getenv ("TMP"))) &&
+       (NULL == (tmp = getenv ("TEMP"))) )
     tmp = "/tmp";
   sourcefile = malloc (strlen (tmp) + 32);
   sprintf (sourcefile,
-	   "%s%s%s",
+	   "%s/%s",
 	   tmp,
-	   DIR_SEPARATOR_STR,
 	   "test-mhd-sendfile");
   f = fopen (sourcefile, "w");
   if (NULL == f)
@@ -485,7 +493,7 @@ main (int argc, char *const *argv)
   if (errorCount != 0)
     fprintf (stderr, "Error (code: %u)\n", errorCount);
   curl_global_cleanup ();
-  UNLINK (sourcefile);
+  unlink (sourcefile);
   free (sourcefile);
   return errorCount != 0;       /* 0 == pass */
 }

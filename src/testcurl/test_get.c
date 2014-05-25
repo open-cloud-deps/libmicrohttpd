@@ -27,19 +27,30 @@
 
 #include "MHD_config.h"
 #include "platform.h"
+#include "platform_interface.h"
 #include <curl/curl.h>
 #include <microhttpd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
-#ifdef __MINGW32__
-#define usleep(usec) (Sleep ((usec) / 1000),0)
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN 1
+#endif /* !WIN32_LEAN_AND_MEAN */
+#include <windows.h>
 #endif
 
 #ifndef WINDOWS
 #include <unistd.h>
 #include <sys/socket.h>
+#endif
+
+#if defined(CPU_COUNT) && (CPU_COUNT+0) < 2
+#undef CPU_COUNT
+#endif
+#if !defined(CPU_COUNT)
+#define CPU_COUNT 2
 #endif
 
 static int oneone;
@@ -210,7 +221,7 @@ testMultithreadedPoolGet (int poll_flag)
   cbc.pos = 0;
   d = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG | poll_flag,
                         1081, NULL, NULL, &ahc_echo, "GET",
-                        MHD_OPTION_THREAD_POOL_SIZE, 4, MHD_OPTION_END);
+                        MHD_OPTION_THREAD_POOL_SIZE, CPU_COUNT, MHD_OPTION_END);
   if (d == NULL)
     return 16;
   c = curl_easy_init ();
@@ -259,7 +270,7 @@ testExternalGet ()
   fd_set rs;
   fd_set ws;
   fd_set es;
-  int max;
+  MHD_socket max;
   int running; 
   struct CURLMsg *msg;
   time_t start;
@@ -448,7 +459,7 @@ static int
 testStopRace (int poll_flag)
 {
     struct sockaddr_in sin;
-    int fd;
+    MHD_socket fd;
     struct MHD_Daemon *d;
     
     d = MHD_start_daemon (MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG | poll_flag,
@@ -457,10 +468,10 @@ testStopRace (int poll_flag)
     if (d == NULL)
        return 16;
     
-    fd = SOCKET (PF_INET, SOCK_STREAM, 0);
-    if (fd < 0)
+    fd = socket (PF_INET, SOCK_STREAM, 0);
+    if (fd == MHD_INVALID_SOCKET)
     {
-       fprintf(stderr, "socket: %m\n");
+       fprintf(stderr, "socket error\n");
        return 256;
     }
     
@@ -469,10 +480,10 @@ testStopRace (int poll_flag)
     sin.sin_port = htons(1081);
     sin.sin_addr.s_addr = htonl(0x7f000001);
     
-    if (CONNECT (fd, (struct sockaddr *)(&sin), sizeof(sin)) < 0)
+    if (connect (fd, (struct sockaddr *)(&sin), sizeof(sin)) < 0)
     {
-       fprintf(stderr, "connect: %m\n");
-       CLOSE (fd);
+       fprintf(stderr, "connect error\n");
+       MHD_socket_close_ (fd);
        return 512;
     }
     
@@ -483,7 +494,7 @@ testStopRace (int poll_flag)
     /* printf("Stopping daemon\n"); */
     MHD_stop_daemon (d);
  
-    CLOSE (fd);
+    MHD_socket_close_ (fd);
     
     /* printf("good\n"); */
     return 0;

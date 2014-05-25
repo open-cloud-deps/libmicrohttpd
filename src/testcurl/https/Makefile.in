@@ -53,26 +53,29 @@ host_triplet = @host@
 check_PROGRAMS = test_tls_options$(EXEEXT) \
 	test_tls_authentication$(EXEEXT) \
 	test_https_multi_daemon$(EXEEXT) test_https_get$(EXEEXT) \
-	test_https_sni$(EXEEXT) test_https_get_select$(EXEEXT) \
-	test_https_get_parallel$(EXEEXT) \
-	test_https_get_parallel_threads$(EXEEXT) \
+	$(am__EXEEXT_1) test_https_get_select$(EXEEXT) $(am__EXEEXT_2) \
 	test_https_session_info$(EXEEXT) test_https_time_out$(EXEEXT) \
 	test_empty_response$(EXEEXT)
 TESTS = test_tls_options$(EXEEXT) test_https_multi_daemon$(EXEEXT) \
-	test_https_get$(EXEEXT) test_https_sni$(EXEEXT) \
-	test_https_get_select$(EXEEXT) \
-	test_https_get_parallel$(EXEEXT) \
-	test_https_get_parallel_threads$(EXEEXT) \
+	test_https_get$(EXEEXT) $(am__EXEEXT_1) \
+	test_https_get_select$(EXEEXT) $(am__EXEEXT_2) \
 	test_https_session_info$(EXEEXT) test_https_time_out$(EXEEXT) \
 	test_tls_authentication$(EXEEXT) test_empty_response$(EXEEXT)
 subdir = src/testcurl/https
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4/libcurl.m4 \
-	$(top_srcdir)/m4/libgcrypt.m4 $(top_srcdir)/m4/libtool.m4 \
-	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
-	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \
-	$(top_srcdir)/m4/openssl.m4 $(top_srcdir)/acinclude.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/m4/ax_append_compile_flags.m4 \
+	$(top_srcdir)/m4/ax_append_flag.m4 \
+	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
+	$(top_srcdir)/m4/ax_check_openssl.m4 \
+	$(top_srcdir)/m4/ax_count_cpus.m4 \
+	$(top_srcdir)/m4/ax_have_epoll.m4 \
+	$(top_srcdir)/m4/ax_pthread.m4 \
+	$(top_srcdir)/m4/ax_require_defined.m4 \
+	$(top_srcdir)/m4/libcurl.m4 $(top_srcdir)/m4/libgcrypt.m4 \
+	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltoptions.m4 \
+	$(top_srcdir)/m4/ltsugar.m4 $(top_srcdir)/m4/ltversion.m4 \
+	$(top_srcdir)/m4/lt~obsolete.m4 $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -80,12 +83,18 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/MHD_config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
+@HAVE_GNUTLS_SNI_TRUE@am__EXEEXT_1 = test_https_sni$(EXEEXT)
+@HAVE_POSIX_THREADS_TRUE@am__EXEEXT_2 =  \
+@HAVE_POSIX_THREADS_TRUE@	test_https_get_parallel$(EXEEXT) \
+@HAVE_POSIX_THREADS_TRUE@	test_https_get_parallel_threads$(EXEEXT)
 am_test_empty_response_OBJECTS = test_empty_response.$(OBJEXT) \
 	tls_test_common.$(OBJEXT)
 test_empty_response_OBJECTS = $(am_test_empty_response_OBJECTS)
+am__DEPENDENCIES_1 =
 test_empty_response_DEPENDENCIES =  \
 	$(top_builddir)/src/testcurl/libcurl_version_check.a \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -94,67 +103,89 @@ am_test_https_get_OBJECTS = test_https_get.$(OBJEXT) \
 test_https_get_OBJECTS = $(am_test_https_get_OBJECTS)
 test_https_get_DEPENDENCIES =  \
 	$(top_builddir)/src/testcurl/libcurl_version_check.a \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_test_https_get_parallel_OBJECTS =  \
-	test_https_get_parallel.$(OBJEXT) tls_test_common.$(OBJEXT)
+	test_https_get_parallel-test_https_get_parallel.$(OBJEXT) \
+	test_https_get_parallel-tls_test_common.$(OBJEXT)
 test_https_get_parallel_OBJECTS =  \
 	$(am_test_https_get_parallel_OBJECTS)
 test_https_get_parallel_DEPENDENCIES =  \
 	$(top_builddir)/src/testcurl/libcurl_version_check.a \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
-am_test_https_get_parallel_threads_OBJECTS =  \
-	test_https_get_parallel_threads.$(OBJEXT) \
-	tls_test_common.$(OBJEXT)
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
+test_https_get_parallel_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(test_https_get_parallel_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
+am_test_https_get_parallel_threads_OBJECTS = test_https_get_parallel_threads-test_https_get_parallel_threads.$(OBJEXT) \
+	test_https_get_parallel_threads-tls_test_common.$(OBJEXT)
 test_https_get_parallel_threads_OBJECTS =  \
 	$(am_test_https_get_parallel_threads_OBJECTS)
 test_https_get_parallel_threads_DEPENDENCIES =  \
 	$(top_builddir)/src/testcurl/libcurl_version_check.a \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
+test_https_get_parallel_threads_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(test_https_get_parallel_threads_CFLAGS) $(CFLAGS) \
+	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 am_test_https_get_select_OBJECTS = test_https_get_select.$(OBJEXT) \
 	tls_test_common.$(OBJEXT)
 test_https_get_select_OBJECTS = $(am_test_https_get_select_OBJECTS)
 test_https_get_select_DEPENDENCIES =  \
 	$(top_builddir)/src/testcurl/libcurl_version_check.a \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_test_https_multi_daemon_OBJECTS =  \
 	test_https_multi_daemon.$(OBJEXT) tls_test_common.$(OBJEXT)
 test_https_multi_daemon_OBJECTS =  \
 	$(am_test_https_multi_daemon_OBJECTS)
 test_https_multi_daemon_DEPENDENCIES =  \
 	$(top_builddir)/src/testcurl/libcurl_version_check.a \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_test_https_session_info_OBJECTS =  \
 	test_https_session_info.$(OBJEXT) tls_test_common.$(OBJEXT)
 test_https_session_info_OBJECTS =  \
 	$(am_test_https_session_info_OBJECTS)
 test_https_session_info_DEPENDENCIES =  \
 	$(top_builddir)/src/testcurl/libcurl_version_check.a \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
-am_test_https_sni_OBJECTS = test_https_sni.$(OBJEXT) \
-	tls_test_common.$(OBJEXT)
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+am__test_https_sni_SOURCES_DIST = test_https_sni.c tls_test_common.c
+@HAVE_GNUTLS_SNI_TRUE@am_test_https_sni_OBJECTS =  \
+@HAVE_GNUTLS_SNI_TRUE@	test_https_sni-test_https_sni.$(OBJEXT) \
+@HAVE_GNUTLS_SNI_TRUE@	test_https_sni-tls_test_common.$(OBJEXT)
 test_https_sni_OBJECTS = $(am_test_https_sni_OBJECTS)
-test_https_sni_DEPENDENCIES =  \
-	$(top_builddir)/src/testcurl/libcurl_version_check.a \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
+@HAVE_GNUTLS_SNI_TRUE@test_https_sni_DEPENDENCIES = $(top_builddir)/src/testcurl/libcurl_version_check.a \
+@HAVE_GNUTLS_SNI_TRUE@	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
+@HAVE_GNUTLS_SNI_TRUE@	$(am__DEPENDENCIES_1) \
+@HAVE_GNUTLS_SNI_TRUE@	$(am__DEPENDENCIES_1)
 am_test_https_time_out_OBJECTS = test_https_time_out.$(OBJEXT) \
 	tls_test_common.$(OBJEXT)
 test_https_time_out_OBJECTS = $(am_test_https_time_out_OBJECTS)
 test_https_time_out_DEPENDENCIES =  \
 	$(top_builddir)/src/testcurl/libcurl_version_check.a \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_test_tls_authentication_OBJECTS =  \
 	test_tls_authentication.$(OBJEXT) tls_test_common.$(OBJEXT)
 test_tls_authentication_OBJECTS =  \
 	$(am_test_tls_authentication_OBJECTS)
 test_tls_authentication_DEPENDENCIES =  \
 	$(top_builddir)/src/testcurl/libcurl_version_check.a \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_test_tls_options_OBJECTS = test_tls_options.$(OBJEXT) \
 	tls_test_common.$(OBJEXT)
 test_tls_options_OBJECTS = $(am_test_tls_options_OBJECTS)
 test_tls_options_DEPENDENCIES =  \
 	$(top_builddir)/src/testcurl/libcurl_version_check.a \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -194,7 +225,8 @@ DIST_SOURCES = $(test_empty_response_SOURCES) \
 	$(test_https_get_parallel_threads_SOURCES) \
 	$(test_https_get_select_SOURCES) \
 	$(test_https_multi_daemon_SOURCES) \
-	$(test_https_session_info_SOURCES) $(test_https_sni_SOURCES) \
+	$(test_https_session_info_SOURCES) \
+	$(am__test_https_sni_SOURCES_DIST) \
 	$(test_https_time_out_SOURCES) \
 	$(test_tls_authentication_SOURCES) $(test_tls_options_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
@@ -259,6 +291,7 @@ CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
+CPU_COUNT = @CPU_COUNT@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -270,14 +303,14 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
-EXT_LIBS = @EXT_LIBS@
-EXT_LIB_PATH = @EXT_LIB_PATH@
 FGREP = @FGREP@
+GNUTLS_CPPFLAGS = @GNUTLS_CPPFLAGS@
+GNUTLS_LDFLAGS = @GNUTLS_LDFLAGS@
+GNUTLS_LIBS = @GNUTLS_LIBS@
 GREP = @GREP@
 HAVE_CURL_BINARY = @HAVE_CURL_BINARY@
 HAVE_MAKEINFO_BINARY = @HAVE_MAKEINFO_BINARY@
-HAVE_SOCAT = @HAVE_SOCAT@
-HAVE_ZZUF = @HAVE_ZZUF@
+HIDDEN_VISIBILITY_CFLAGS = @HIDDEN_VISIBILITY_CFLAGS@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -305,12 +338,18 @@ LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MANIFEST_TOOL = @MANIFEST_TOOL@
 MHD_LIBDEPS = @MHD_LIBDEPS@
+MHD_LIB_CFLAGS = @MHD_LIB_CFLAGS@
+MHD_LIB_CPPFLAGS = @MHD_LIB_CPPFLAGS@
 MHD_LIB_LDFLAGS = @MHD_LIB_LDFLAGS@
 MKDIR_P = @MKDIR_P@
+MS_LIB_TOOL = @MS_LIB_TOOL@
 NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
+OPENSSL_INCLUDES = @OPENSSL_INCLUDES@
+OPENSSL_LDFLAGS = @OPENSSL_LDFLAGS@
+OPENSSL_LIBS = @OPENSSL_LIBS@
 OTOOL = @OTOOL@
 OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
@@ -320,18 +359,22 @@ PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
+PACKAGE_VERSION_MAJOR = @PACKAGE_VERSION_MAJOR@
+PACKAGE_VERSION_MINOR = @PACKAGE_VERSION_MINOR@
+PACKAGE_VERSION_SUBMINOR = @PACKAGE_VERSION_SUBMINOR@
 PATH_SEPARATOR = @PATH_SEPARATOR@
-PLIBC_CPPFLAGS = @PLIBC_CPPFLAGS@
-PLIBC_LDFLAGS = @PLIBC_LDFLAGS@
-PLIBC_LIBS = @PLIBC_LIBS@
-PTHREAD_CPPFLAGS = @PTHREAD_CPPFLAGS@
-PTHREAD_LDFLAGS = @PTHREAD_LDFLAGS@
+PKG_CONFIG = @PKG_CONFIG@
+PTHREAD_CC = @PTHREAD_CC@
+PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
 PTHREAD_LIBS = @PTHREAD_LIBS@
 RANLIB = @RANLIB@
+RC = @RC@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SPDY_LIBDEPS = @SPDY_LIBDEPS@
+SPDY_LIB_CFLAGS = @SPDY_LIB_CFLAGS@
+SPDY_LIB_CPPFLAGS = @SPDY_LIB_CPPFLAGS@
 SPDY_LIB_LDFLAGS = @SPDY_LIB_LDFLAGS@
 STRIP = @STRIP@
 VERSION = @VERSION@
@@ -348,6 +391,7 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+ax_pthread_config = @ax_pthread_config@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -360,6 +404,8 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+have_socat = @have_socat@
+have_zzuf = @have_zzuf@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -373,6 +419,7 @@ libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
+lt_cv_objdir = @lt_cv_objdir@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -390,14 +437,20 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = .
 @USE_COVERAGE_TRUE@AM_CFLAGS = --coverage
-@USE_PRIVATE_PLIBC_H_TRUE@PLIBC_INCLUDE = -I$(top_srcdir)/src/include/plibc
+@HAVE_GNUTLS_SNI_TRUE@TEST_HTTPS_SNI = test_https_sni
+@HAVE_POSIX_THREADS_TRUE@HTTPS_PARALLEL_TESTS = test_https_get_parallel \
+@HAVE_POSIX_THREADS_TRUE@  test_https_get_parallel_threads
+
+CPU_COUNT_DEF = -DCPU_COUNT=$(CPU_COUNT)
 AM_CPPFLAGS = \
-  $(PLIBC_INCLUDE) \
   -I$(top_srcdir)/src/include \
   -I$(top_srcdir)/src/microhttpd \
-  $(LIBCURL_CPPFLAGS)
+  -I$(top_srcdir)/src/platform \
+  $(LIBCURL_CPPFLAGS) $(GNUTLS_CPPFLAGS)
 
-EXTRA_DIST = cert.pem key.pem tls_test_keys.h tls_test_common.h
+EXTRA_DIST = cert.pem key.pem tls_test_keys.h tls_test_common.h \
+  host1.crt host1.key host2.crt host2.key
+
 test_https_time_out_SOURCES = \
   test_https_time_out.c \
   tls_test_common.c
@@ -405,7 +458,7 @@ test_https_time_out_SOURCES = \
 test_https_time_out_LDADD = \
   $(top_builddir)/src/testcurl/libcurl_version_check.a \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ -lgnutls @LIBGCRYPT_LIBS@
+  $(GNUTLS_LDFLAGS) $(GNUTLS_LIBS) @LIBGCRYPT_LIBS@ @LIBCURL@
 
 test_tls_options_SOURCES = \
   test_tls_options.c \
@@ -414,16 +467,22 @@ test_tls_options_SOURCES = \
 test_tls_options_LDADD = \
   $(top_builddir)/src/testcurl/libcurl_version_check.a \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ -lgnutls @LIBGCRYPT_LIBS@
+  $(GNUTLS_LDFLAGS) $(GNUTLS_LIBS) @LIBGCRYPT_LIBS@ @LIBCURL@
 
 test_https_get_parallel_SOURCES = \
   test_https_get_parallel.c \
   tls_test_common.c
 
+test_https_get_parallel_CPPFLAGS = \
+  $(AM_CPPFLAGS) $(CPU_COUNT_DEF)
+
+test_https_get_parallel_CFLAGS = \
+  $(PTHREAD_CFLAGS) $(AM_CFLAGS)
+
 test_https_get_parallel_LDADD = \
   $(top_builddir)/src/testcurl/libcurl_version_check.a \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ -lgnutls @LIBGCRYPT_LIBS@
+  $(PTHREAD_LIBS) $(GNUTLS_LDFLAGS) $(GNUTLS_LIBS) @LIBGCRYPT_LIBS@ @LIBCURL@
 
 test_empty_response_SOURCES = \
   test_empty_response.c \
@@ -432,16 +491,22 @@ test_empty_response_SOURCES = \
 test_empty_response_LDADD = \
   $(top_builddir)/src/testcurl/libcurl_version_check.a \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ -lgnutls @LIBGCRYPT_LIBS@
+  $(GNUTLS_LDFLAGS) $(GNUTLS_LIBS) @LIBGCRYPT_LIBS@ @LIBCURL@
 
 test_https_get_parallel_threads_SOURCES = \
   test_https_get_parallel_threads.c \
   tls_test_common.c
 
+test_https_get_parallel_threads_CPPFLAGS = \
+  $(AM_CPPFLAGS) $(CPU_COUNT_DEF)
+
+test_https_get_parallel_threads_CFLAGS = \
+  $(PTHREAD_CFLAGS) $(AM_CFLAGS)
+
 test_https_get_parallel_threads_LDADD = \
   $(top_builddir)/src/testcurl/libcurl_version_check.a \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ -lgnutls @LIBGCRYPT_LIBS@
+  $(PTHREAD_LIBS) $(GNUTLS_LDFLAGS) $(GNUTLS_LIBS) @LIBGCRYPT_LIBS@ @LIBCURL@
 
 test_tls_authentication_SOURCES = \
   test_tls_authentication.c \
@@ -450,7 +515,7 @@ test_tls_authentication_SOURCES = \
 test_tls_authentication_LDADD = \
   $(top_builddir)/src/testcurl/libcurl_version_check.a \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ -lgnutls @LIBGCRYPT_LIBS@
+  $(GNUTLS_LDFLAGS) $(GNUTLS_LIBS) @LIBGCRYPT_LIBS@ @LIBCURL@
 
 test_https_session_info_SOURCES = \
   test_https_session_info.c \
@@ -459,7 +524,7 @@ test_https_session_info_SOURCES = \
 test_https_session_info_LDADD = \
   $(top_builddir)/src/testcurl/libcurl_version_check.a \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ -lgnutls @LIBGCRYPT_LIBS@
+  $(GNUTLS_LDFLAGS) $(GNUTLS_LIBS) @LIBGCRYPT_LIBS@ @LIBCURL@
 
 test_https_multi_daemon_SOURCES = \
   test_https_multi_daemon.c \
@@ -468,7 +533,7 @@ test_https_multi_daemon_SOURCES = \
 test_https_multi_daemon_LDADD = \
   $(top_builddir)/src/testcurl/libcurl_version_check.a \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ -lgnutls @LIBGCRYPT_LIBS@
+  $(GNUTLS_LDFLAGS) $(GNUTLS_LIBS) @LIBGCRYPT_LIBS@ @LIBCURL@
 
 test_https_get_SOURCES = \
   test_https_get.c \
@@ -477,16 +542,20 @@ test_https_get_SOURCES = \
 test_https_get_LDADD = \
   $(top_builddir)/src/testcurl/libcurl_version_check.a \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ -lgnutls @LIBGCRYPT_LIBS@
+  $(GNUTLS_LDFLAGS) $(GNUTLS_LIBS) @LIBGCRYPT_LIBS@ @LIBCURL@
 
-test_https_sni_SOURCES = \
-  test_https_sni.c \
-  tls_test_common.c
+@HAVE_GNUTLS_SNI_TRUE@test_https_sni_SOURCES = \
+@HAVE_GNUTLS_SNI_TRUE@  test_https_sni.c \
+@HAVE_GNUTLS_SNI_TRUE@  tls_test_common.c
 
-test_https_sni_LDADD = \
-  $(top_builddir)/src/testcurl/libcurl_version_check.a \
-  $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ -lgnutls @LIBGCRYPT_LIBS@
+@HAVE_GNUTLS_SNI_TRUE@test_https_sni_CPPFLAGS = \
+@HAVE_GNUTLS_SNI_TRUE@  $(AM_CPPFLAGS) \
+@HAVE_GNUTLS_SNI_TRUE@  -DABS_SRCDIR=\"$(abs_srcdir)\"
+
+@HAVE_GNUTLS_SNI_TRUE@test_https_sni_LDADD = \
+@HAVE_GNUTLS_SNI_TRUE@  $(top_builddir)/src/testcurl/libcurl_version_check.a \
+@HAVE_GNUTLS_SNI_TRUE@  $(top_builddir)/src/microhttpd/libmicrohttpd.la \
+@HAVE_GNUTLS_SNI_TRUE@  $(GNUTLS_LDFLAGS) $(GNUTLS_LIBS) @LIBGCRYPT_LIBS@ @LIBCURL@
 
 test_https_get_select_SOURCES = \
   test_https_get_select.c \
@@ -495,7 +564,7 @@ test_https_get_select_SOURCES = \
 test_https_get_select_LDADD = \
   $(top_builddir)/src/testcurl/libcurl_version_check.a \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ -lgnutls @LIBGCRYPT_LIBS@
+  $(GNUTLS_LDFLAGS) $(GNUTLS_LIBS) @LIBGCRYPT_LIBS@ @LIBCURL@
 
 all: all-recursive
 
@@ -548,10 +617,10 @@ test_https_get$(EXEEXT): $(test_https_get_OBJECTS) $(test_https_get_DEPENDENCIES
 	$(AM_V_CCLD)$(LINK) $(test_https_get_OBJECTS) $(test_https_get_LDADD) $(LIBS)
 test_https_get_parallel$(EXEEXT): $(test_https_get_parallel_OBJECTS) $(test_https_get_parallel_DEPENDENCIES) $(EXTRA_test_https_get_parallel_DEPENDENCIES) 
 	@rm -f test_https_get_parallel$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(test_https_get_parallel_OBJECTS) $(test_https_get_parallel_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(test_https_get_parallel_LINK) $(test_https_get_parallel_OBJECTS) $(test_https_get_parallel_LDADD) $(LIBS)
 test_https_get_parallel_threads$(EXEEXT): $(test_https_get_parallel_threads_OBJECTS) $(test_https_get_parallel_threads_DEPENDENCIES) $(EXTRA_test_https_get_parallel_threads_DEPENDENCIES) 
 	@rm -f test_https_get_parallel_threads$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(test_https_get_parallel_threads_OBJECTS) $(test_https_get_parallel_threads_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(test_https_get_parallel_threads_LINK) $(test_https_get_parallel_threads_OBJECTS) $(test_https_get_parallel_threads_LDADD) $(LIBS)
 test_https_get_select$(EXEEXT): $(test_https_get_select_OBJECTS) $(test_https_get_select_DEPENDENCIES) $(EXTRA_test_https_get_select_DEPENDENCIES) 
 	@rm -f test_https_get_select$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(test_https_get_select_OBJECTS) $(test_https_get_select_LDADD) $(LIBS)
@@ -582,37 +651,127 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_empty_response.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_https_get.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_https_get_parallel.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_https_get_parallel_threads.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_https_get_parallel-test_https_get_parallel.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_https_get_parallel-tls_test_common.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_https_get_parallel_threads-test_https_get_parallel_threads.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_https_get_parallel_threads-tls_test_common.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_https_get_select.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_https_multi_daemon.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_https_session_info.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_https_sni.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_https_sni-test_https_sni.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_https_sni-tls_test_common.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_https_time_out.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_tls_authentication.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_tls_options.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tls_test_common.Po@am__quote@
 
 .c.o:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c $<
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ $<
 
 .c.obj:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c `$(CYGPATH_W) '$<'`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
 .c.lo:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LTCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.lo$$||'`;\
+@am__fastdepCC_TRUE@	$(LTCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Plo
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
+
+test_https_get_parallel-test_https_get_parallel.o: test_https_get_parallel.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_get_parallel_CPPFLAGS) $(CPPFLAGS) $(test_https_get_parallel_CFLAGS) $(CFLAGS) -MT test_https_get_parallel-test_https_get_parallel.o -MD -MP -MF $(DEPDIR)/test_https_get_parallel-test_https_get_parallel.Tpo -c -o test_https_get_parallel-test_https_get_parallel.o `test -f 'test_https_get_parallel.c' || echo '$(srcdir)/'`test_https_get_parallel.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_https_get_parallel-test_https_get_parallel.Tpo $(DEPDIR)/test_https_get_parallel-test_https_get_parallel.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_https_get_parallel.c' object='test_https_get_parallel-test_https_get_parallel.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_get_parallel_CPPFLAGS) $(CPPFLAGS) $(test_https_get_parallel_CFLAGS) $(CFLAGS) -c -o test_https_get_parallel-test_https_get_parallel.o `test -f 'test_https_get_parallel.c' || echo '$(srcdir)/'`test_https_get_parallel.c
+
+test_https_get_parallel-test_https_get_parallel.obj: test_https_get_parallel.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_get_parallel_CPPFLAGS) $(CPPFLAGS) $(test_https_get_parallel_CFLAGS) $(CFLAGS) -MT test_https_get_parallel-test_https_get_parallel.obj -MD -MP -MF $(DEPDIR)/test_https_get_parallel-test_https_get_parallel.Tpo -c -o test_https_get_parallel-test_https_get_parallel.obj `if test -f 'test_https_get_parallel.c'; then $(CYGPATH_W) 'test_https_get_parallel.c'; else $(CYGPATH_W) '$(srcdir)/test_https_get_parallel.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_https_get_parallel-test_https_get_parallel.Tpo $(DEPDIR)/test_https_get_parallel-test_https_get_parallel.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_https_get_parallel.c' object='test_https_get_parallel-test_https_get_parallel.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_get_parallel_CPPFLAGS) $(CPPFLAGS) $(test_https_get_parallel_CFLAGS) $(CFLAGS) -c -o test_https_get_parallel-test_https_get_parallel.obj `if test -f 'test_https_get_parallel.c'; then $(CYGPATH_W) 'test_https_get_parallel.c'; else $(CYGPATH_W) '$(srcdir)/test_https_get_parallel.c'; fi`
+
+test_https_get_parallel-tls_test_common.o: tls_test_common.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_get_parallel_CPPFLAGS) $(CPPFLAGS) $(test_https_get_parallel_CFLAGS) $(CFLAGS) -MT test_https_get_parallel-tls_test_common.o -MD -MP -MF $(DEPDIR)/test_https_get_parallel-tls_test_common.Tpo -c -o test_https_get_parallel-tls_test_common.o `test -f 'tls_test_common.c' || echo '$(srcdir)/'`tls_test_common.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_https_get_parallel-tls_test_common.Tpo $(DEPDIR)/test_https_get_parallel-tls_test_common.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tls_test_common.c' object='test_https_get_parallel-tls_test_common.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_get_parallel_CPPFLAGS) $(CPPFLAGS) $(test_https_get_parallel_CFLAGS) $(CFLAGS) -c -o test_https_get_parallel-tls_test_common.o `test -f 'tls_test_common.c' || echo '$(srcdir)/'`tls_test_common.c
+
+test_https_get_parallel-tls_test_common.obj: tls_test_common.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_get_parallel_CPPFLAGS) $(CPPFLAGS) $(test_https_get_parallel_CFLAGS) $(CFLAGS) -MT test_https_get_parallel-tls_test_common.obj -MD -MP -MF $(DEPDIR)/test_https_get_parallel-tls_test_common.Tpo -c -o test_https_get_parallel-tls_test_common.obj `if test -f 'tls_test_common.c'; then $(CYGPATH_W) 'tls_test_common.c'; else $(CYGPATH_W) '$(srcdir)/tls_test_common.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_https_get_parallel-tls_test_common.Tpo $(DEPDIR)/test_https_get_parallel-tls_test_common.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tls_test_common.c' object='test_https_get_parallel-tls_test_common.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_get_parallel_CPPFLAGS) $(CPPFLAGS) $(test_https_get_parallel_CFLAGS) $(CFLAGS) -c -o test_https_get_parallel-tls_test_common.obj `if test -f 'tls_test_common.c'; then $(CYGPATH_W) 'tls_test_common.c'; else $(CYGPATH_W) '$(srcdir)/tls_test_common.c'; fi`
+
+test_https_get_parallel_threads-test_https_get_parallel_threads.o: test_https_get_parallel_threads.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_get_parallel_threads_CPPFLAGS) $(CPPFLAGS) $(test_https_get_parallel_threads_CFLAGS) $(CFLAGS) -MT test_https_get_parallel_threads-test_https_get_parallel_threads.o -MD -MP -MF $(DEPDIR)/test_https_get_parallel_threads-test_https_get_parallel_threads.Tpo -c -o test_https_get_parallel_threads-test_https_get_parallel_threads.o `test -f 'test_https_get_parallel_threads.c' || echo '$(srcdir)/'`test_https_get_parallel_threads.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_https_get_parallel_threads-test_https_get_parallel_threads.Tpo $(DEPDIR)/test_https_get_parallel_threads-test_https_get_parallel_threads.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_https_get_parallel_threads.c' object='test_https_get_parallel_threads-test_https_get_parallel_threads.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_get_parallel_threads_CPPFLAGS) $(CPPFLAGS) $(test_https_get_parallel_threads_CFLAGS) $(CFLAGS) -c -o test_https_get_parallel_threads-test_https_get_parallel_threads.o `test -f 'test_https_get_parallel_threads.c' || echo '$(srcdir)/'`test_https_get_parallel_threads.c
+
+test_https_get_parallel_threads-test_https_get_parallel_threads.obj: test_https_get_parallel_threads.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_get_parallel_threads_CPPFLAGS) $(CPPFLAGS) $(test_https_get_parallel_threads_CFLAGS) $(CFLAGS) -MT test_https_get_parallel_threads-test_https_get_parallel_threads.obj -MD -MP -MF $(DEPDIR)/test_https_get_parallel_threads-test_https_get_parallel_threads.Tpo -c -o test_https_get_parallel_threads-test_https_get_parallel_threads.obj `if test -f 'test_https_get_parallel_threads.c'; then $(CYGPATH_W) 'test_https_get_parallel_threads.c'; else $(CYGPATH_W) '$(srcdir)/test_https_get_parallel_threads.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_https_get_parallel_threads-test_https_get_parallel_threads.Tpo $(DEPDIR)/test_https_get_parallel_threads-test_https_get_parallel_threads.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_https_get_parallel_threads.c' object='test_https_get_parallel_threads-test_https_get_parallel_threads.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_get_parallel_threads_CPPFLAGS) $(CPPFLAGS) $(test_https_get_parallel_threads_CFLAGS) $(CFLAGS) -c -o test_https_get_parallel_threads-test_https_get_parallel_threads.obj `if test -f 'test_https_get_parallel_threads.c'; then $(CYGPATH_W) 'test_https_get_parallel_threads.c'; else $(CYGPATH_W) '$(srcdir)/test_https_get_parallel_threads.c'; fi`
+
+test_https_get_parallel_threads-tls_test_common.o: tls_test_common.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_get_parallel_threads_CPPFLAGS) $(CPPFLAGS) $(test_https_get_parallel_threads_CFLAGS) $(CFLAGS) -MT test_https_get_parallel_threads-tls_test_common.o -MD -MP -MF $(DEPDIR)/test_https_get_parallel_threads-tls_test_common.Tpo -c -o test_https_get_parallel_threads-tls_test_common.o `test -f 'tls_test_common.c' || echo '$(srcdir)/'`tls_test_common.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_https_get_parallel_threads-tls_test_common.Tpo $(DEPDIR)/test_https_get_parallel_threads-tls_test_common.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tls_test_common.c' object='test_https_get_parallel_threads-tls_test_common.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_get_parallel_threads_CPPFLAGS) $(CPPFLAGS) $(test_https_get_parallel_threads_CFLAGS) $(CFLAGS) -c -o test_https_get_parallel_threads-tls_test_common.o `test -f 'tls_test_common.c' || echo '$(srcdir)/'`tls_test_common.c
+
+test_https_get_parallel_threads-tls_test_common.obj: tls_test_common.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_get_parallel_threads_CPPFLAGS) $(CPPFLAGS) $(test_https_get_parallel_threads_CFLAGS) $(CFLAGS) -MT test_https_get_parallel_threads-tls_test_common.obj -MD -MP -MF $(DEPDIR)/test_https_get_parallel_threads-tls_test_common.Tpo -c -o test_https_get_parallel_threads-tls_test_common.obj `if test -f 'tls_test_common.c'; then $(CYGPATH_W) 'tls_test_common.c'; else $(CYGPATH_W) '$(srcdir)/tls_test_common.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_https_get_parallel_threads-tls_test_common.Tpo $(DEPDIR)/test_https_get_parallel_threads-tls_test_common.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tls_test_common.c' object='test_https_get_parallel_threads-tls_test_common.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_get_parallel_threads_CPPFLAGS) $(CPPFLAGS) $(test_https_get_parallel_threads_CFLAGS) $(CFLAGS) -c -o test_https_get_parallel_threads-tls_test_common.obj `if test -f 'tls_test_common.c'; then $(CYGPATH_W) 'tls_test_common.c'; else $(CYGPATH_W) '$(srcdir)/tls_test_common.c'; fi`
+
+test_https_sni-test_https_sni.o: test_https_sni.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_sni_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_https_sni-test_https_sni.o -MD -MP -MF $(DEPDIR)/test_https_sni-test_https_sni.Tpo -c -o test_https_sni-test_https_sni.o `test -f 'test_https_sni.c' || echo '$(srcdir)/'`test_https_sni.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_https_sni-test_https_sni.Tpo $(DEPDIR)/test_https_sni-test_https_sni.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_https_sni.c' object='test_https_sni-test_https_sni.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_sni_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_https_sni-test_https_sni.o `test -f 'test_https_sni.c' || echo '$(srcdir)/'`test_https_sni.c
+
+test_https_sni-test_https_sni.obj: test_https_sni.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_sni_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_https_sni-test_https_sni.obj -MD -MP -MF $(DEPDIR)/test_https_sni-test_https_sni.Tpo -c -o test_https_sni-test_https_sni.obj `if test -f 'test_https_sni.c'; then $(CYGPATH_W) 'test_https_sni.c'; else $(CYGPATH_W) '$(srcdir)/test_https_sni.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_https_sni-test_https_sni.Tpo $(DEPDIR)/test_https_sni-test_https_sni.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_https_sni.c' object='test_https_sni-test_https_sni.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_sni_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_https_sni-test_https_sni.obj `if test -f 'test_https_sni.c'; then $(CYGPATH_W) 'test_https_sni.c'; else $(CYGPATH_W) '$(srcdir)/test_https_sni.c'; fi`
+
+test_https_sni-tls_test_common.o: tls_test_common.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_sni_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_https_sni-tls_test_common.o -MD -MP -MF $(DEPDIR)/test_https_sni-tls_test_common.Tpo -c -o test_https_sni-tls_test_common.o `test -f 'tls_test_common.c' || echo '$(srcdir)/'`tls_test_common.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_https_sni-tls_test_common.Tpo $(DEPDIR)/test_https_sni-tls_test_common.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tls_test_common.c' object='test_https_sni-tls_test_common.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_sni_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_https_sni-tls_test_common.o `test -f 'tls_test_common.c' || echo '$(srcdir)/'`tls_test_common.c
+
+test_https_sni-tls_test_common.obj: tls_test_common.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_sni_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_https_sni-tls_test_common.obj -MD -MP -MF $(DEPDIR)/test_https_sni-tls_test_common.Tpo -c -o test_https_sni-tls_test_common.obj `if test -f 'tls_test_common.c'; then $(CYGPATH_W) 'tls_test_common.c'; else $(CYGPATH_W) '$(srcdir)/tls_test_common.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_https_sni-tls_test_common.Tpo $(DEPDIR)/test_https_sni-tls_test_common.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tls_test_common.c' object='test_https_sni-tls_test_common.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_https_sni_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_https_sni-tls_test_common.obj `if test -f 'tls_test_common.c'; then $(CYGPATH_W) 'tls_test_common.c'; else $(CYGPATH_W) '$(srcdir)/tls_test_common.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

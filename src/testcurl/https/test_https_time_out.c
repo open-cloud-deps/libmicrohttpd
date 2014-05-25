@@ -31,17 +31,23 @@
 #include "tls_test_common.h"
 #include <gcrypt.h>
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN 1
+#endif /* !WIN32_LEAN_AND_MEAN */
+#include <windows.h>
+#endif
+
 extern const char srv_key_pem[];
 extern const char srv_self_signed_cert_pem[];
 
 static const int TIME_OUT = 3;
 
-static const char *http_get_req = "GET / HTTP/1.1\r\n\r\n";
-
 static int
 test_tls_session_time_out (gnutls_session_t session)
 {
-  int sd, ret;
+  int ret;
+  MHD_socket sd;
   struct sockaddr_in sa;
 
   sd = socket (AF_INET, SOCK_STREAM, 0);
@@ -54,9 +60,9 @@ test_tls_session_time_out (gnutls_session_t session)
   memset (&sa, '\0', sizeof (struct sockaddr_in));
   sa.sin_family = AF_INET;
   sa.sin_port = htons (DEAMON_TEST_PORT);
-  inet_pton (AF_INET, "127.0.0.1", &sa.sin_addr);
+  sa.sin_addr.s_addr = htonl (INADDR_LOOPBACK);
 
-  gnutls_transport_set_ptr (session, (gnutls_transport_ptr_t) (long) sd);
+  gnutls_transport_set_ptr (session, (gnutls_transport_ptr_t) (intptr_t) sd);
 
   ret = connect (sd, &sa, sizeof (struct sockaddr_in));
 

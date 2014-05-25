@@ -37,6 +37,13 @@
 #include <unistd.h>
 #endif
 
+#if defined(CPU_COUNT) && (CPU_COUNT+0) < 2
+#undef CPU_COUNT
+#endif
+#if !defined(CPU_COUNT)
+#define CPU_COUNT 2
+#endif
+
 #define POST_DATA "<?xml version='1.0' ?>\n<xml>\n<data-id>1</data-id>\n</xml>\n"
 
 #define LOOPCOUNT 1000
@@ -242,7 +249,7 @@ testMultithreadedPoolPost ()
   cbc.size = 2048;
   d = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
                         1081, NULL, NULL, &ahc_echo, NULL,
-                        MHD_OPTION_THREAD_POOL_SIZE, 4, MHD_OPTION_END);
+                        MHD_OPTION_THREAD_POOL_SIZE, CPU_COUNT, MHD_OPTION_END);
   if (d == NULL)
     return 16;
   for (i = 0; i < LOOPCOUNT; i++)
@@ -304,7 +311,7 @@ testExternalPost ()
   fd_set rs;
   fd_set ws;
   fd_set es;
-  int max;
+  MHD_socket max;
   int running;
   struct CURLMsg *msg;
   time_t start;
@@ -462,7 +469,7 @@ now ()
 {
   struct timeval tv;
 
-  GETTIMEOFDAY (&tv, NULL);
+  gettimeofday (&tv, NULL);
   return (((unsigned long long) tv.tv_sec * 1000LL) +
 	  ((unsigned long long) tv.tv_usec / 1000LL));
 }

@@ -24,7 +24,7 @@
  * @author Elliot Glaysher
  * @author Christian Grothoff (minor code clean up)
  */
-
+#include "platform.h"
 #include "reason_phrase.h"
 
 #ifndef NULL
@@ -148,11 +148,12 @@ static const struct MHD_Reason_Block reasons[] = {
   BLOCK (five_hundred),
 };
 
+
 const char *
 MHD_get_reason_phrase_for (unsigned int code)
 {
-  if ( (code >= 100) && 
-       (code < 600) && 
+  if ( (code >= 100) &&
+       (code < 600) &&
        (reasons[code / 100].max > (code % 100)) )
     return reasons[code / 100].data[code % 100];
   return "Unknown";

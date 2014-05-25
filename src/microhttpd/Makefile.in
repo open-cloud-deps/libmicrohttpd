@@ -15,6 +15,7 @@
 
 @SET_MAKE@
 
+
 VPATH = @srcdir@
 am__make_dryrun = \
   { \
@@ -51,43 +52,57 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-@HAVE_TSEARCH_FALSE@am__append_1 = \
+@W32_SHARED_LIB_EXP_TRUE@am__append_1 = $(lt_cv_objdir)/libmicrohttpd.lib $(lt_cv_objdir)/libmicrohttpd.def $(lt_cv_objdir)/libmicrohttpd.exp
+@W32_SHARED_LIB_EXP_TRUE@am__append_2 = $(lt_cv_objdir)/libmicrohttpd.lib $(lt_cv_objdir)/libmicrohttpd.def $(lt_cv_objdir)/libmicrohttpd.exp
+@W32_STATIC_LIB_TRUE@am__append_3 = $(lt_cv_objdir)/libmicrohttpd-static.lib
+@W32_STATIC_LIB_TRUE@am__append_4 = $(lt_cv_objdir)/libmicrohttpd-static.lib
+@HAVE_W32_TRUE@am__append_5 = $(MHD_DLL_RES_LO)
+@USE_COVERAGE_TRUE@am__append_6 = --coverage
+@HAVE_TSEARCH_FALSE@am__append_7 = \
 @HAVE_TSEARCH_FALSE@  tsearch.c tsearch.h
 
-@HAVE_POSTPROCESSOR_TRUE@am__append_2 = \
+@HAVE_POSTPROCESSOR_TRUE@am__append_8 = \
 @HAVE_POSTPROCESSOR_TRUE@  postprocessor.c
 
-@ENABLE_DAUTH_TRUE@am__append_3 = \
+@ENABLE_DAUTH_TRUE@am__append_9 = \
 @ENABLE_DAUTH_TRUE@  digestauth.c \
 @ENABLE_DAUTH_TRUE@  md5.c md5.h
 
-@ENABLE_BAUTH_TRUE@am__append_4 = \
+@ENABLE_BAUTH_TRUE@am__append_10 = \
 @ENABLE_BAUTH_TRUE@  basicauth.c \
 @ENABLE_BAUTH_TRUE@  base64.c base64.h
 
-@ENABLE_HTTPS_TRUE@am__append_5 = \
+@ENABLE_HTTPS_TRUE@am__append_11 = \
 @ENABLE_HTTPS_TRUE@  connection_https.c connection_https.h
 
 check_PROGRAMS = test_daemon$(EXEEXT) $(am__EXEEXT_1)
-@HAVE_POSTPROCESSOR_TRUE@am__append_6 = \
+@HAVE_POSTPROCESSOR_TRUE@am__append_12 = \
 @HAVE_POSTPROCESSOR_TRUE@  test_postprocessor \
 @HAVE_POSTPROCESSOR_TRUE@  test_postprocessor_large \
 @HAVE_POSTPROCESSOR_TRUE@  test_postprocessor_amp
 
 subdir = src/microhttpd
-DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
+DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
+	$(srcdir)/microhttpd_dll_res.rc.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4/libcurl.m4 \
-	$(top_srcdir)/m4/libgcrypt.m4 $(top_srcdir)/m4/libtool.m4 \
-	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
-	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \
-	$(top_srcdir)/m4/openssl.m4 $(top_srcdir)/acinclude.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/m4/ax_append_compile_flags.m4 \
+	$(top_srcdir)/m4/ax_append_flag.m4 \
+	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
+	$(top_srcdir)/m4/ax_check_openssl.m4 \
+	$(top_srcdir)/m4/ax_count_cpus.m4 \
+	$(top_srcdir)/m4/ax_have_epoll.m4 \
+	$(top_srcdir)/m4/ax_pthread.m4 \
+	$(top_srcdir)/m4/ax_require_defined.m4 \
+	$(top_srcdir)/m4/libcurl.m4 $(top_srcdir)/m4/libgcrypt.m4 \
+	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltoptions.m4 \
+	$(top_srcdir)/m4/ltsugar.m4 $(top_srcdir)/m4/ltversion.m4 \
+	$(top_srcdir)/m4/lt~obsolete.m4 $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/MHD_config.h
-CONFIG_CLEAN_FILES =
+CONFIG_CLEAN_FILES = microhttpd_dll_res.rc
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
@@ -118,29 +133,36 @@ am__uninstall_files_from_dir = { \
   }
 am__installdirs = "$(DESTDIR)$(libdir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
-libmicrohttpd_la_DEPENDENCIES =
+am__DEPENDENCIES_1 =
+libmicrohttpd_la_DEPENDENCIES = $(MHD_W32_LIB) $(am__DEPENDENCIES_1) \
+	$(am__append_5)
 am__libmicrohttpd_la_SOURCES_DIST = connection.c connection.h \
 	reason_phrase.c reason_phrase.h daemon.c internal.c internal.h \
 	memorypool.c memorypool.h response.c response.h tsearch.c \
 	tsearch.h postprocessor.c digestauth.c md5.c md5.h basicauth.c \
 	base64.c base64.h connection_https.c connection_https.h
-@HAVE_TSEARCH_FALSE@am__objects_1 = tsearch.lo
-@HAVE_POSTPROCESSOR_TRUE@am__objects_2 = postprocessor.lo
-@ENABLE_DAUTH_TRUE@am__objects_3 = digestauth.lo md5.lo
-@ENABLE_BAUTH_TRUE@am__objects_4 = basicauth.lo base64.lo
-@ENABLE_HTTPS_TRUE@am__objects_5 = connection_https.lo
-am_libmicrohttpd_la_OBJECTS = connection.lo reason_phrase.lo daemon.lo \
-	internal.lo memorypool.lo response.lo $(am__objects_1) \
-	$(am__objects_2) $(am__objects_3) $(am__objects_4) \
-	$(am__objects_5)
+@HAVE_TSEARCH_FALSE@am__objects_1 = libmicrohttpd_la-tsearch.lo
+@HAVE_POSTPROCESSOR_TRUE@am__objects_2 =  \
+@HAVE_POSTPROCESSOR_TRUE@	libmicrohttpd_la-postprocessor.lo
+@ENABLE_DAUTH_TRUE@am__objects_3 = libmicrohttpd_la-digestauth.lo \
+@ENABLE_DAUTH_TRUE@	libmicrohttpd_la-md5.lo
+@ENABLE_BAUTH_TRUE@am__objects_4 = libmicrohttpd_la-basicauth.lo \
+@ENABLE_BAUTH_TRUE@	libmicrohttpd_la-base64.lo
+@ENABLE_HTTPS_TRUE@am__objects_5 =  \
+@ENABLE_HTTPS_TRUE@	libmicrohttpd_la-connection_https.lo
+am_libmicrohttpd_la_OBJECTS = libmicrohttpd_la-connection.lo \
+	libmicrohttpd_la-reason_phrase.lo libmicrohttpd_la-daemon.lo \
+	libmicrohttpd_la-internal.lo libmicrohttpd_la-memorypool.lo \
+	libmicrohttpd_la-response.lo $(am__objects_1) $(am__objects_2) \
+	$(am__objects_3) $(am__objects_4) $(am__objects_5)
 libmicrohttpd_la_OBJECTS = $(am_libmicrohttpd_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 libmicrohttpd_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
-	$(AM_CFLAGS) $(CFLAGS) $(libmicrohttpd_la_LDFLAGS) $(LDFLAGS) \
-	-o $@
+	$(libmicrohttpd_la_CFLAGS) $(CFLAGS) \
+	$(libmicrohttpd_la_LDFLAGS) $(LDFLAGS) -o $@
 @HAVE_POSTPROCESSOR_TRUE@am__EXEEXT_1 = test_postprocessor$(EXEEXT) \
 @HAVE_POSTPROCESSOR_TRUE@	test_postprocessor_large$(EXEEXT) \
 @HAVE_POSTPROCESSOR_TRUE@	test_postprocessor_amp$(EXEEXT)
@@ -148,20 +170,22 @@ am_test_daemon_OBJECTS = test_daemon.$(OBJEXT)
 test_daemon_OBJECTS = $(am_test_daemon_OBJECTS)
 test_daemon_DEPENDENCIES =  \
 	$(top_builddir)/src/microhttpd/libmicrohttpd.la
-am_test_postprocessor_OBJECTS = test_postprocessor.$(OBJEXT)
+am_test_postprocessor_OBJECTS =  \
+	test_postprocessor-test_postprocessor.$(OBJEXT)
 test_postprocessor_OBJECTS = $(am_test_postprocessor_OBJECTS)
 test_postprocessor_DEPENDENCIES =  \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
-am_test_postprocessor_amp_OBJECTS = test_postprocessor_amp.$(OBJEXT)
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la $(MHD_W32_LIB)
+am_test_postprocessor_amp_OBJECTS =  \
+	test_postprocessor_amp-test_postprocessor_amp.$(OBJEXT)
 test_postprocessor_amp_OBJECTS = $(am_test_postprocessor_amp_OBJECTS)
 test_postprocessor_amp_DEPENDENCIES =  \
 	$(top_builddir)/src/microhttpd/libmicrohttpd.la
 am_test_postprocessor_large_OBJECTS =  \
-	test_postprocessor_large.$(OBJEXT)
+	test_postprocessor_large-test_postprocessor_large.$(OBJEXT)
 test_postprocessor_large_OBJECTS =  \
 	$(am_test_postprocessor_large_OBJECTS)
 test_postprocessor_large_DEPENDENCIES =  \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la $(MHD_W32_LIB)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -201,6 +225,7 @@ am__can_run_installinfo = \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
+DATA = $(noinst_DATA)
 ETAGS = etags
 CTAGS = ctags
 am__tty_colors = \
@@ -220,6 +245,7 @@ CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
+CPU_COUNT = @CPU_COUNT@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -231,14 +257,14 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
-EXT_LIBS = @EXT_LIBS@
-EXT_LIB_PATH = @EXT_LIB_PATH@
 FGREP = @FGREP@
+GNUTLS_CPPFLAGS = @GNUTLS_CPPFLAGS@
+GNUTLS_LDFLAGS = @GNUTLS_LDFLAGS@
+GNUTLS_LIBS = @GNUTLS_LIBS@
 GREP = @GREP@
 HAVE_CURL_BINARY = @HAVE_CURL_BINARY@
 HAVE_MAKEINFO_BINARY = @HAVE_MAKEINFO_BINARY@
-HAVE_SOCAT = @HAVE_SOCAT@
-HAVE_ZZUF = @HAVE_ZZUF@
+HIDDEN_VISIBILITY_CFLAGS = @HIDDEN_VISIBILITY_CFLAGS@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -266,12 +292,18 @@ LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MANIFEST_TOOL = @MANIFEST_TOOL@
 MHD_LIBDEPS = @MHD_LIBDEPS@
+MHD_LIB_CFLAGS = @MHD_LIB_CFLAGS@
+MHD_LIB_CPPFLAGS = @MHD_LIB_CPPFLAGS@
 MHD_LIB_LDFLAGS = @MHD_LIB_LDFLAGS@
 MKDIR_P = @MKDIR_P@
+MS_LIB_TOOL = @MS_LIB_TOOL@
 NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
+OPENSSL_INCLUDES = @OPENSSL_INCLUDES@
+OPENSSL_LDFLAGS = @OPENSSL_LDFLAGS@
+OPENSSL_LIBS = @OPENSSL_LIBS@
 OTOOL = @OTOOL@
 OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
@@ -281,18 +313,22 @@ PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
+PACKAGE_VERSION_MAJOR = @PACKAGE_VERSION_MAJOR@
+PACKAGE_VERSION_MINOR = @PACKAGE_VERSION_MINOR@
+PACKAGE_VERSION_SUBMINOR = @PACKAGE_VERSION_SUBMINOR@
 PATH_SEPARATOR = @PATH_SEPARATOR@
-PLIBC_CPPFLAGS = @PLIBC_CPPFLAGS@
-PLIBC_LDFLAGS = @PLIBC_LDFLAGS@
-PLIBC_LIBS = @PLIBC_LIBS@
-PTHREAD_CPPFLAGS = @PTHREAD_CPPFLAGS@
-PTHREAD_LDFLAGS = @PTHREAD_LDFLAGS@
+PKG_CONFIG = @PKG_CONFIG@
+PTHREAD_CC = @PTHREAD_CC@
+PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
 PTHREAD_LIBS = @PTHREAD_LIBS@
 RANLIB = @RANLIB@
+RC = @RC@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SPDY_LIBDEPS = @SPDY_LIBDEPS@
+SPDY_LIB_CFLAGS = @SPDY_LIB_CFLAGS@
+SPDY_LIB_CPPFLAGS = @SPDY_LIB_CPPFLAGS@
 SPDY_LIB_LDFLAGS = @SPDY_LIB_LDFLAGS@
 STRIP = @STRIP@
 VERSION = @VERSION@
@@ -309,6 +345,7 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+ax_pthread_config = @ax_pthread_config@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -321,6 +358,8 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+have_socat = @have_socat@
+have_zzuf = @have_zzuf@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -334,6 +373,7 @@ libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
+lt_cv_objdir = @lt_cv_objdir@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -349,57 +389,81 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-@USE_PRIVATE_PLIBC_H_TRUE@PLIBC_INCLUDE = -I$(top_srcdir)/src/include/plibc
 AM_CPPFLAGS = \
-  $(PLIBC_INCLUDE) \
   -I$(top_srcdir)/src/include \
-  -I$(top_srcdir)/src/daemon \
-  @LIBGCRYPT_CFLAGS@ 
+  -I$(top_srcdir)/src/microhttpd
 
-EXTRA_DIST = EXPORT.sym
+AM_CFLAGS = $(HIDDEN_VISIBILITY_CFLAGS) $(am__append_6)
+@HAVE_W32_TRUE@MHD_W32_LIB = $(top_builddir)/src/platform/libplatform_interface.la
 lib_LTLIBRARIES = \
   libmicrohttpd.la
 
+noinst_DATA = $(am__append_1) $(am__append_3)
+MOSTLYCLEANFILES = $(am__append_2) $(am__append_4)
+@W32_SHARED_LIB_EXP_FALSE@W32_MHD_LIB_LDFLAGS = 
+@W32_SHARED_LIB_EXP_TRUE@W32_MHD_LIB_LDFLAGS = -Wl,--output-def,$(lt_cv_objdir)/libmicrohttpd.def -XCClinker -static-libgcc
 libmicrohttpd_la_SOURCES = connection.c connection.h reason_phrase.c \
 	reason_phrase.h daemon.c internal.c internal.h memorypool.c \
-	memorypool.h response.c response.h $(am__append_1) \
-	$(am__append_2) $(am__append_3) $(am__append_4) \
-	$(am__append_5)
+	memorypool.h response.c response.h $(am__append_7) \
+	$(am__append_8) $(am__append_9) $(am__append_10) \
+	$(am__append_11)
+libmicrohttpd_la_CPPFLAGS = \
+  $(AM_CPPFLAGS) $(MHD_LIB_CPPFLAGS) \
+  -DBUILDING_MHD_LIB=1
+
+libmicrohttpd_la_CFLAGS = \
+  $(AM_CFLAGS) $(MHD_LIB_CFLAGS)
+
 libmicrohttpd_la_LDFLAGS = \
   $(MHD_LIB_LDFLAGS) \
+  $(W32_MHD_LIB_LDFLAGS) \
   -version-info @LIB_VERSION_CURRENT@:@LIB_VERSION_REVISION@:@LIB_VERSION_AGE@
 
-@USE_COVERAGE_TRUE@AM_CFLAGS = --coverage
-@ENABLE_HTTPS_TRUE@libmicrohttpd_la_LIBADD = -lgnutls @LIBGCRYPT_LIBS@
+libmicrohttpd_la_LIBADD = $(MHD_W32_LIB) $(MHD_LIBDEPS) \
+	$(am__append_5)
+@HAVE_W32_TRUE@MHD_DLL_RES_SRC = microhttpd_dll_res.rc
+@HAVE_W32_TRUE@MHD_DLL_RES_LO = libmicrohttpd_la-$(MHD_DLL_RES_SRC:.rc=.lo)
+@HAVE_W32_TRUE@EXTRA_libmicrohttpd_la_DEPENDENCIES = $(MHD_DLL_RES_LO)
 TESTS = $(check_PROGRAMS)
 test_daemon_SOURCES = \
   test_daemon.c
 
 test_daemon_LDADD = \
-  $(top_builddir)/src/microhttpd/libmicrohttpd.la 
+  $(top_builddir)/src/microhttpd/libmicrohttpd.la
 
 test_postprocessor_SOURCES = \
   test_postprocessor.c
 
+test_postprocessor_CPPFLAGS = \
+  $(AM_CPPFLAGS) $(GNUTLS_CPPFLAGS)
+
 test_postprocessor_LDADD = \
-  $(top_builddir)/src/microhttpd/libmicrohttpd.la 
+  $(top_builddir)/src/microhttpd/libmicrohttpd.la \
+  $(MHD_W32_LIB)
 
 test_postprocessor_amp_SOURCES = \
   test_postprocessor_amp.c
 
+test_postprocessor_amp_CPPFLAGS = \
+  $(AM_CPPFLAGS) $(GNUTLS_CPPFLAGS)
+
 test_postprocessor_amp_LDADD = \
-  $(top_builddir)/src/microhttpd/libmicrohttpd.la 
+  $(top_builddir)/src/microhttpd/libmicrohttpd.la
 
 test_postprocessor_large_SOURCES = \
   test_postprocessor_large.c
 
+test_postprocessor_large_CPPFLAGS = \
+  $(AM_CPPFLAGS) $(GNUTLS_CPPFLAGS)
+
 test_postprocessor_large_LDADD = \
-  $(top_builddir)/src/microhttpd/libmicrohttpd.la 
+  $(top_builddir)/src/microhttpd/libmicrohttpd.la \
+  $(MHD_W32_LIB)
 
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .c .lo .o .obj
+.SUFFIXES: .c .lo .o .obj .rc
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -430,6 +494,8 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
+microhttpd_dll_res.rc: $(top_builddir)/config.status $(srcdir)/microhttpd_dll_res.rc.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 install-libLTLIBRARIES: $(lib_LTLIBRARIES)
 	@$(NORMAL_INSTALL)
 	@list='$(lib_LTLIBRARIES)'; test -n "$(libdir)" || list=; \
@@ -492,44 +558,180 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/base64.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/basicauth.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/connection.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/connection_https.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/daemon.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/digestauth.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/internal.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/md5.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/memorypool.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/postprocessor.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/reason_phrase.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/response.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmicrohttpd_la-base64.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmicrohttpd_la-basicauth.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmicrohttpd_la-connection.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmicrohttpd_la-connection_https.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmicrohttpd_la-daemon.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmicrohttpd_la-digestauth.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmicrohttpd_la-internal.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmicrohttpd_la-md5.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmicrohttpd_la-memorypool.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmicrohttpd_la-postprocessor.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmicrohttpd_la-reason_phrase.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmicrohttpd_la-response.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmicrohttpd_la-tsearch.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_daemon.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_postprocessor.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_postprocessor_amp.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_postprocessor_large.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tsearch.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_postprocessor-test_postprocessor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_postprocessor_amp-test_postprocessor_amp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_postprocessor_large-test_postprocessor_large.Po@am__quote@
 
 .c.o:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c $<
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ $<
 
 .c.obj:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c `$(CYGPATH_W) '$<'`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
 .c.lo:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LTCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.lo$$||'`;\
+@am__fastdepCC_TRUE@	$(LTCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Plo
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
+
+libmicrohttpd_la-connection.lo: connection.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -MT libmicrohttpd_la-connection.lo -MD -MP -MF $(DEPDIR)/libmicrohttpd_la-connection.Tpo -c -o libmicrohttpd_la-connection.lo `test -f 'connection.c' || echo '$(srcdir)/'`connection.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libmicrohttpd_la-connection.Tpo $(DEPDIR)/libmicrohttpd_la-connection.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='connection.c' object='libmicrohttpd_la-connection.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -c -o libmicrohttpd_la-connection.lo `test -f 'connection.c' || echo '$(srcdir)/'`connection.c
+
+libmicrohttpd_la-reason_phrase.lo: reason_phrase.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -MT libmicrohttpd_la-reason_phrase.lo -MD -MP -MF $(DEPDIR)/libmicrohttpd_la-reason_phrase.Tpo -c -o libmicrohttpd_la-reason_phrase.lo `test -f 'reason_phrase.c' || echo '$(srcdir)/'`reason_phrase.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libmicrohttpd_la-reason_phrase.Tpo $(DEPDIR)/libmicrohttpd_la-reason_phrase.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='reason_phrase.c' object='libmicrohttpd_la-reason_phrase.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -c -o libmicrohttpd_la-reason_phrase.lo `test -f 'reason_phrase.c' || echo '$(srcdir)/'`reason_phrase.c
+
+libmicrohttpd_la-daemon.lo: daemon.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -MT libmicrohttpd_la-daemon.lo -MD -MP -MF $(DEPDIR)/libmicrohttpd_la-daemon.Tpo -c -o libmicrohttpd_la-daemon.lo `test -f 'daemon.c' || echo '$(srcdir)/'`daemon.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libmicrohttpd_la-daemon.Tpo $(DEPDIR)/libmicrohttpd_la-daemon.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='daemon.c' object='libmicrohttpd_la-daemon.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -c -o libmicrohttpd_la-daemon.lo `test -f 'daemon.c' || echo '$(srcdir)/'`daemon.c
+
+libmicrohttpd_la-internal.lo: internal.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -MT libmicrohttpd_la-internal.lo -MD -MP -MF $(DEPDIR)/libmicrohttpd_la-internal.Tpo -c -o libmicrohttpd_la-internal.lo `test -f 'internal.c' || echo '$(srcdir)/'`internal.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libmicrohttpd_la-internal.Tpo $(DEPDIR)/libmicrohttpd_la-internal.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='internal.c' object='libmicrohttpd_la-internal.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -c -o libmicrohttpd_la-internal.lo `test -f 'internal.c' || echo '$(srcdir)/'`internal.c
+
+libmicrohttpd_la-memorypool.lo: memorypool.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -MT libmicrohttpd_la-memorypool.lo -MD -MP -MF $(DEPDIR)/libmicrohttpd_la-memorypool.Tpo -c -o libmicrohttpd_la-memorypool.lo `test -f 'memorypool.c' || echo '$(srcdir)/'`memorypool.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libmicrohttpd_la-memorypool.Tpo $(DEPDIR)/libmicrohttpd_la-memorypool.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='memorypool.c' object='libmicrohttpd_la-memorypool.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -c -o libmicrohttpd_la-memorypool.lo `test -f 'memorypool.c' || echo '$(srcdir)/'`memorypool.c
+
+libmicrohttpd_la-response.lo: response.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -MT libmicrohttpd_la-response.lo -MD -MP -MF $(DEPDIR)/libmicrohttpd_la-response.Tpo -c -o libmicrohttpd_la-response.lo `test -f 'response.c' || echo '$(srcdir)/'`response.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libmicrohttpd_la-response.Tpo $(DEPDIR)/libmicrohttpd_la-response.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='response.c' object='libmicrohttpd_la-response.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -c -o libmicrohttpd_la-response.lo `test -f 'response.c' || echo '$(srcdir)/'`response.c
+
+libmicrohttpd_la-tsearch.lo: tsearch.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -MT libmicrohttpd_la-tsearch.lo -MD -MP -MF $(DEPDIR)/libmicrohttpd_la-tsearch.Tpo -c -o libmicrohttpd_la-tsearch.lo `test -f 'tsearch.c' || echo '$(srcdir)/'`tsearch.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libmicrohttpd_la-tsearch.Tpo $(DEPDIR)/libmicrohttpd_la-tsearch.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tsearch.c' object='libmicrohttpd_la-tsearch.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -c -o libmicrohttpd_la-tsearch.lo `test -f 'tsearch.c' || echo '$(srcdir)/'`tsearch.c
+
+libmicrohttpd_la-postprocessor.lo: postprocessor.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -MT libmicrohttpd_la-postprocessor.lo -MD -MP -MF $(DEPDIR)/libmicrohttpd_la-postprocessor.Tpo -c -o libmicrohttpd_la-postprocessor.lo `test -f 'postprocessor.c' || echo '$(srcdir)/'`postprocessor.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libmicrohttpd_la-postprocessor.Tpo $(DEPDIR)/libmicrohttpd_la-postprocessor.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='postprocessor.c' object='libmicrohttpd_la-postprocessor.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -c -o libmicrohttpd_la-postprocessor.lo `test -f 'postprocessor.c' || echo '$(srcdir)/'`postprocessor.c
+
+libmicrohttpd_la-digestauth.lo: digestauth.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -MT libmicrohttpd_la-digestauth.lo -MD -MP -MF $(DEPDIR)/libmicrohttpd_la-digestauth.Tpo -c -o libmicrohttpd_la-digestauth.lo `test -f 'digestauth.c' || echo '$(srcdir)/'`digestauth.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libmicrohttpd_la-digestauth.Tpo $(DEPDIR)/libmicrohttpd_la-digestauth.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='digestauth.c' object='libmicrohttpd_la-digestauth.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -c -o libmicrohttpd_la-digestauth.lo `test -f 'digestauth.c' || echo '$(srcdir)/'`digestauth.c
+
+libmicrohttpd_la-md5.lo: md5.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -MT libmicrohttpd_la-md5.lo -MD -MP -MF $(DEPDIR)/libmicrohttpd_la-md5.Tpo -c -o libmicrohttpd_la-md5.lo `test -f 'md5.c' || echo '$(srcdir)/'`md5.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libmicrohttpd_la-md5.Tpo $(DEPDIR)/libmicrohttpd_la-md5.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='md5.c' object='libmicrohttpd_la-md5.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -c -o libmicrohttpd_la-md5.lo `test -f 'md5.c' || echo '$(srcdir)/'`md5.c
+
+libmicrohttpd_la-basicauth.lo: basicauth.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -MT libmicrohttpd_la-basicauth.lo -MD -MP -MF $(DEPDIR)/libmicrohttpd_la-basicauth.Tpo -c -o libmicrohttpd_la-basicauth.lo `test -f 'basicauth.c' || echo '$(srcdir)/'`basicauth.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libmicrohttpd_la-basicauth.Tpo $(DEPDIR)/libmicrohttpd_la-basicauth.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='basicauth.c' object='libmicrohttpd_la-basicauth.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -c -o libmicrohttpd_la-basicauth.lo `test -f 'basicauth.c' || echo '$(srcdir)/'`basicauth.c
+
+libmicrohttpd_la-base64.lo: base64.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -MT libmicrohttpd_la-base64.lo -MD -MP -MF $(DEPDIR)/libmicrohttpd_la-base64.Tpo -c -o libmicrohttpd_la-base64.lo `test -f 'base64.c' || echo '$(srcdir)/'`base64.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libmicrohttpd_la-base64.Tpo $(DEPDIR)/libmicrohttpd_la-base64.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='base64.c' object='libmicrohttpd_la-base64.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -c -o libmicrohttpd_la-base64.lo `test -f 'base64.c' || echo '$(srcdir)/'`base64.c
+
+libmicrohttpd_la-connection_https.lo: connection_https.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -MT libmicrohttpd_la-connection_https.lo -MD -MP -MF $(DEPDIR)/libmicrohttpd_la-connection_https.Tpo -c -o libmicrohttpd_la-connection_https.lo `test -f 'connection_https.c' || echo '$(srcdir)/'`connection_https.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libmicrohttpd_la-connection_https.Tpo $(DEPDIR)/libmicrohttpd_la-connection_https.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='connection_https.c' object='libmicrohttpd_la-connection_https.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) $(libmicrohttpd_la_CFLAGS) $(CFLAGS) -c -o libmicrohttpd_la-connection_https.lo `test -f 'connection_https.c' || echo '$(srcdir)/'`connection_https.c
+
+test_postprocessor-test_postprocessor.o: test_postprocessor.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_postprocessor_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_postprocessor-test_postprocessor.o -MD -MP -MF $(DEPDIR)/test_postprocessor-test_postprocessor.Tpo -c -o test_postprocessor-test_postprocessor.o `test -f 'test_postprocessor.c' || echo '$(srcdir)/'`test_postprocessor.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_postprocessor-test_postprocessor.Tpo $(DEPDIR)/test_postprocessor-test_postprocessor.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_postprocessor.c' object='test_postprocessor-test_postprocessor.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_postprocessor_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_postprocessor-test_postprocessor.o `test -f 'test_postprocessor.c' || echo '$(srcdir)/'`test_postprocessor.c
+
+test_postprocessor-test_postprocessor.obj: test_postprocessor.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_postprocessor_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_postprocessor-test_postprocessor.obj -MD -MP -MF $(DEPDIR)/test_postprocessor-test_postprocessor.Tpo -c -o test_postprocessor-test_postprocessor.obj `if test -f 'test_postprocessor.c'; then $(CYGPATH_W) 'test_postprocessor.c'; else $(CYGPATH_W) '$(srcdir)/test_postprocessor.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_postprocessor-test_postprocessor.Tpo $(DEPDIR)/test_postprocessor-test_postprocessor.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_postprocessor.c' object='test_postprocessor-test_postprocessor.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_postprocessor_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_postprocessor-test_postprocessor.obj `if test -f 'test_postprocessor.c'; then $(CYGPATH_W) 'test_postprocessor.c'; else $(CYGPATH_W) '$(srcdir)/test_postprocessor.c'; fi`
+
+test_postprocessor_amp-test_postprocessor_amp.o: test_postprocessor_amp.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_postprocessor_amp_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_postprocessor_amp-test_postprocessor_amp.o -MD -MP -MF $(DEPDIR)/test_postprocessor_amp-test_postprocessor_amp.Tpo -c -o test_postprocessor_amp-test_postprocessor_amp.o `test -f 'test_postprocessor_amp.c' || echo '$(srcdir)/'`test_postprocessor_amp.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_postprocessor_amp-test_postprocessor_amp.Tpo $(DEPDIR)/test_postprocessor_amp-test_postprocessor_amp.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_postprocessor_amp.c' object='test_postprocessor_amp-test_postprocessor_amp.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_postprocessor_amp_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_postprocessor_amp-test_postprocessor_amp.o `test -f 'test_postprocessor_amp.c' || echo '$(srcdir)/'`test_postprocessor_amp.c
+
+test_postprocessor_amp-test_postprocessor_amp.obj: test_postprocessor_amp.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_postprocessor_amp_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_postprocessor_amp-test_postprocessor_amp.obj -MD -MP -MF $(DEPDIR)/test_postprocessor_amp-test_postprocessor_amp.Tpo -c -o test_postprocessor_amp-test_postprocessor_amp.obj `if test -f 'test_postprocessor_amp.c'; then $(CYGPATH_W) 'test_postprocessor_amp.c'; else $(CYGPATH_W) '$(srcdir)/test_postprocessor_amp.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_postprocessor_amp-test_postprocessor_amp.Tpo $(DEPDIR)/test_postprocessor_amp-test_postprocessor_amp.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_postprocessor_amp.c' object='test_postprocessor_amp-test_postprocessor_amp.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_postprocessor_amp_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_postprocessor_amp-test_postprocessor_amp.obj `if test -f 'test_postprocessor_amp.c'; then $(CYGPATH_W) 'test_postprocessor_amp.c'; else $(CYGPATH_W) '$(srcdir)/test_postprocessor_amp.c'; fi`
+
+test_postprocessor_large-test_postprocessor_large.o: test_postprocessor_large.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_postprocessor_large_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_postprocessor_large-test_postprocessor_large.o -MD -MP -MF $(DEPDIR)/test_postprocessor_large-test_postprocessor_large.Tpo -c -o test_postprocessor_large-test_postprocessor_large.o `test -f 'test_postprocessor_large.c' || echo '$(srcdir)/'`test_postprocessor_large.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_postprocessor_large-test_postprocessor_large.Tpo $(DEPDIR)/test_postprocessor_large-test_postprocessor_large.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_postprocessor_large.c' object='test_postprocessor_large-test_postprocessor_large.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_postprocessor_large_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_postprocessor_large-test_postprocessor_large.o `test -f 'test_postprocessor_large.c' || echo '$(srcdir)/'`test_postprocessor_large.c
+
+test_postprocessor_large-test_postprocessor_large.obj: test_postprocessor_large.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_postprocessor_large_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_postprocessor_large-test_postprocessor_large.obj -MD -MP -MF $(DEPDIR)/test_postprocessor_large-test_postprocessor_large.Tpo -c -o test_postprocessor_large-test_postprocessor_large.obj `if test -f 'test_postprocessor_large.c'; then $(CYGPATH_W) 'test_postprocessor_large.c'; else $(CYGPATH_W) '$(srcdir)/test_postprocessor_large.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_postprocessor_large-test_postprocessor_large.Tpo $(DEPDIR)/test_postprocessor_large-test_postprocessor_large.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_postprocessor_large.c' object='test_postprocessor_large-test_postprocessor_large.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_postprocessor_large_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_postprocessor_large-test_postprocessor_large.obj `if test -f 'test_postprocessor_large.c'; then $(CYGPATH_W) 'test_postprocessor_large.c'; else $(CYGPATH_W) '$(srcdir)/test_postprocessor_large.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -716,7 +918,7 @@ check-am: all-am
 	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
 	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
 check: check-am
-all-am: Makefile $(LTLIBRARIES)
+all-am: Makefile $(LTLIBRARIES) $(DATA)
 installdirs:
 	for dir in "$(DESTDIR)$(libdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
@@ -741,6 +943,7 @@ install-strip:
 	    "INSTALL_PROGRAM_ENV=STRIPPROG='$(STRIP)'" install; \
 	fi
 mostlyclean-generic:
+	-test -z "$(MOSTLYCLEANFILES)" || rm -f $(MOSTLYCLEANFILES)
 
 clean-generic:
 
@@ -839,6 +1042,44 @@ uninstall-am: uninstall-libLTLIBRARIES
 	mostlyclean-libtool pdf pdf-am ps ps-am tags uninstall \
 	uninstall-am uninstall-libLTLIBRARIES
 
+
+@W32_SHARED_LIB_EXP_TRUE@$(lt_cv_objdir)/libmicrohttpd.def: libmicrohttpd.la
+
+@W32_SHARED_LIB_EXP_TRUE@$(lt_cv_objdir)/libmicrohttpd.exp: $(lt_cv_objdir)/libmicrohttpd.lib
+
+@W32_SHARED_LIB_EXP_TRUE@$(lt_cv_objdir)/libmicrohttpd.lib: $(lt_cv_objdir)/libmicrohttpd.def libmicrohttpd.la $(libmicrohttpd_la_OBJECTS)
+@USE_MS_LIB_TOOL_TRUE@@W32_SHARED_LIB_EXP_TRUE@	@echo Creating $@ and libmicrohttpd.exp by $(MS_LIB_TOOL)... && \
+@USE_MS_LIB_TOOL_TRUE@@W32_SHARED_LIB_EXP_TRUE@	dll_name=`$(EGREP) -o dlname=\'.+\' libmicrohttpd.la` && \
+@USE_MS_LIB_TOOL_TRUE@@W32_SHARED_LIB_EXP_TRUE@	dll_name=$${dll_name#*\'} && dll_name=$${dll_name%\'} && test -n "$$dll_name" && \
+@USE_MS_LIB_TOOL_TRUE@@W32_SHARED_LIB_EXP_TRUE@	echo Using .dll filename: $$dll_name.. && \
+@USE_MS_LIB_TOOL_TRUE@@W32_SHARED_LIB_EXP_TRUE@	$(MS_LIB_TOOL) -def:$(lt_cv_objdir)/libmicrohttpd.def -name:$$dll_name -out:$@ $(libmicrohttpd_la_OBJECTS:.lo=.o)
+@USE_MS_LIB_TOOL_FALSE@@W32_SHARED_LIB_EXP_TRUE@	@echo Creating $@ and libmicrohttpd.exp by $(DLLTOOL)... && \
+@USE_MS_LIB_TOOL_FALSE@@W32_SHARED_LIB_EXP_TRUE@	dll_name=`$(EGREP) -o dlname=\'.+\' libmicrohttpd.la` && \
+@USE_MS_LIB_TOOL_FALSE@@W32_SHARED_LIB_EXP_TRUE@	dll_name=$${dll_name#*\'} && dll_name=$${dll_name%\'} && test -n "$$dll_name" && \
+@USE_MS_LIB_TOOL_FALSE@@W32_SHARED_LIB_EXP_TRUE@	echo Using .dll filename: $$dll_name.. && \
+@USE_MS_LIB_TOOL_FALSE@@W32_SHARED_LIB_EXP_TRUE@	$(DLLTOOL) -d $(lt_cv_objdir)/libmicrohttpd.def -D $$dll_name -l $@ $(libmicrohttpd_la_OBJECTS:.lo=.o) -e $(lt_cv_objdir)/libmicrohttpd.exp && \
+@USE_MS_LIB_TOOL_FALSE@@W32_SHARED_LIB_EXP_TRUE@	echo Created libmicrohttpd.exp and libmicrohttpd.lib.
+
+@W32_STATIC_LIB_TRUE@$(lt_cv_objdir)/libmicrohttpd-static.lib: libmicrohttpd.la $(libmicrohttpd_la_OBJECTS)
+@USE_MS_LIB_TOOL_TRUE@@W32_STATIC_LIB_TRUE@	$(MS_LIB_TOOL) -out:$@ $(libmicrohttpd_la_OBJECTS:.lo=.o)
+@USE_MS_LIB_TOOL_FALSE@@W32_STATIC_LIB_TRUE@	cp $(lt_cv_objdir)/libmicrohttpd.a $@
+
+# General rule is not required, but keep it just in case
+@HAVE_W32_TRUE@.rc.lo:
+@HAVE_W32_TRUE@	$(LIBTOOL) $(AM_V_lt) --tag=RC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(RC) $(RCFLAGS) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $< -o $@
+
+# To add dll resource only to .dll file and exclude it form static
+# lib, a little trick was used. Allow libtool to create file.lo,
+# file.o and .libs/file.lo, .libs/file.o files, then overwrite file.o
+# by empty object generated from empty c-file. Later libtool will
+# use .libs/file.o for shared lib and empty file.o for static lib.
+# This implementation is based on trick found in liblzma.
+# Note: windres does not understand '-isystem' flag, so all
+# possible '-isystem' flags are replaced by simple '-I' flags.
+@HAVE_W32_TRUE@$(MHD_DLL_RES_LO): $(MHD_DLL_RES_SRC)
+@HAVE_W32_TRUE@	RC_CPP_FLAGS=" $(DEFAULT_INCLUDES) $(INCLUDES) $(libmicrohttpd_la_CPPFLAGS) $(CPPFLAGS) " && \
+@HAVE_W32_TRUE@	$(LIBTOOL) $(AM_V_lt) --tag=RC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(RC) $(RCFLAGS) $(DEFS) $${RC_CPP_FLAGS// -isystem / -I } $< -o $@ && \
+@HAVE_W32_TRUE@	echo > $@-empty.c && $(CC) $(AM_CFLAGS) $(CFLAGS) -c $@-empty.c -o $(@:.lo=.o) && rm -f $@-empty.c
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

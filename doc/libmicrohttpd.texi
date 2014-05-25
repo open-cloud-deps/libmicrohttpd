@@ -359,16 +359,9 @@ for the specific platform.
 
 @section Portability to W32
 
-On W32, GNUnet requires PlibC, a lightweight library to provide some
-more POSIX-like calls on W32.  While PlibC takes care of most issues,
-it is unable to make @code{select} (or equivalent alternative socket
-calls) unblock when a socket is @code{shutdown}.  This can be
-problematic if MHD is used in ``one thread per connection'' mode.  In
-this case, an inactive TCP connection may block @code{MHD_stop_daemon}
-until the connection times out.  You may be able to mitigate the issue
-by setting a reasonably low timeout, but in general we of course
-recommend migrating away from Windows.  Using MHD with other types of
-event loops is unaffected by this issue.
+libmicrohttpd in general ported well to W32. Most libmicrohttpd features
+are supported. W32 do not support some functions, like epoll and
+corresponding MHD features are not available on W32.
 
 
 @section Portability to z/OS
@@ -525,6 +518,12 @@ Enables using @code{MHD_suspend_connection} and
 @code{MHD_resume_connection}, as performing these calls requires some
 additional pipes to be created, and code not using these calls should
 not pay the cost.
+
+@item MHD_USE_TCP_FASTOPEN
+@cindex listen
+Enable TCP_FASTOPEN on the listen socket.  TCP_FASTOPEN is currently
+supported on Linux >= 3.6.  On other systems using this option with
+cause @code{MHD_start_daemon} to fail.
 
 @end table
 @end deftp
@@ -838,6 +837,25 @@ followed by a @code{size_t}).  Not specifying this option or using
 a value of zero means using the system default (which is likely to
 differ based on your platform).
 
+@item MHD_OPTION_TCP_FASTQUEUE_QUEUE_SIZE
+@cindex listen
+When the flag @code{MHD_USE_TCP_FASTOPEN} is used, this option sets the
+connection handshake queue size for the TCP FASTOPEN connections.  Note
+that a TCP FASTOPEN connection handshake occupies more resources than a
+TCP handshake as the SYN packets also contain DATA which is kept in the
+associate state until handshake is completed.  If this option is not
+given the queue size is set to a default value of 10.  This option must
+be followed by a @code{unsigned int}.
+
+@item MHD_OPTION_HTTPS_MEM_DHPARAMS
+@cindex TLS
+@cindex SSL
+@cindex DH
+Memory pointer for the Diffie-Hellman parameters (dh.pem) to be used
+by the HTTPS daemon for key exchange.  This option must be followed by
+a @code{const char *} argument.  The argument would be a zero-terminated
+string with a PEM encoded PKCS3 DH parameters structure suitable
+for passing to @code{gnutls_dh_parms_import_pkcs3}.
 @end table
 @end deftp
 
@@ -1104,6 +1122,21 @@ Iterator over key-value pairs.  This iterator can be used to iterate
 over all of the cookies, headers, or @code{POST}-data fields of a
 request, and also to iterate over the headers that have been added to a
 response.
+
+@table @var
+@item cls
+custom value specified when iteration was triggered;
+
+@item kind
+kind of the header we are looking at
+
+@item key
+key for the value, can be an empty string
+
+@item value
+value corresponding value, can be NULL
+
+@end table
 
 Return @code{MHD_YES} to continue iterating, @code{MHD_NO} to abort the
 iteration.

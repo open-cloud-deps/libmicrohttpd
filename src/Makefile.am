@@ -8,7 +8,7 @@ endif
 endif
 if ENABLE_SPDY
 if HAVE_OPENSSL
-microspdy = microspdy 
+microspdy = microspdy
 if HAVE_CURL
 microspdy += spdy2http
 endif
@@ -18,7 +18,11 @@ microspdy += testspdy
 endif
 endif
 
-SUBDIRS = include microhttpd $(microspdy) examples $(curltests) $(zzuftests) . 
+SUBDIRS = include platform microhttpd $(microspdy) examples $(curltests) $(zzuftests) .
+
+if BUILD_EXAMPLES
+SUBDIRS += examples
+endif
 
 EXTRA_DIST = \
  datadir/cert-and-key.pem \

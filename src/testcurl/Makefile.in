@@ -54,8 +54,7 @@ build_triplet = @build@
 host_triplet = @host@
 @ENABLE_HTTPS_TRUE@am__append_1 = https
 @HAVE_CURL_TRUE@check_PROGRAMS = test_start_stop$(EXEEXT) \
-@HAVE_CURL_TRUE@	$(am__EXEEXT_1) test_get$(EXEEXT) \
-@HAVE_CURL_TRUE@	test_get_sendfile$(EXEEXT) \
+@HAVE_CURL_TRUE@	test_get$(EXEEXT) test_get_sendfile$(EXEEXT) \
 @HAVE_CURL_TRUE@	test_urlparse$(EXEEXT) test_put$(EXEEXT) \
 @HAVE_CURL_TRUE@	test_process_headers$(EXEEXT) \
 @HAVE_CURL_TRUE@	test_process_arguments$(EXEEXT) \
@@ -70,29 +69,45 @@ host_triplet = @host@
 @HAVE_CURL_TRUE@	test_iplimit11$(EXEEXT) \
 @HAVE_CURL_TRUE@	test_termination$(EXEEXT) \
 @HAVE_CURL_TRUE@	test_timeout$(EXEEXT) test_callback$(EXEEXT) \
-@HAVE_CURL_TRUE@	$(am__EXEEXT_2) perf_get$(EXEEXT) \
-@HAVE_CURL_TRUE@	$(am__EXEEXT_3) $(am__EXEEXT_4) \
-@HAVE_CURL_TRUE@	$(am__EXEEXT_5)
-@HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@am__append_2 = \
+@HAVE_CURL_TRUE@	$(am__EXEEXT_1) perf_get$(EXEEXT) \
+@HAVE_CURL_TRUE@	$(am__EXEEXT_2) $(am__EXEEXT_3) \
+@HAVE_CURL_TRUE@	$(am__EXEEXT_4) $(am__EXEEXT_5)
+@HAVE_CURL_TRUE@@HAVE_POSIX_THREADS_TRUE@am__append_2 = \
+@HAVE_CURL_TRUE@@HAVE_POSIX_THREADS_TRUE@  test_quiesce
+
+@HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@am__append_3 = \
 @HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@  test_post \
 @HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@  test_postform \
 @HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@  test_post_loop \
 @HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@  test_post11 \
 @HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@  test_postform11 \
-@HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@  test_post_loop11 
+@HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@  test_post_loop11
 
 @HAVE_CURL_TRUE@noinst_PROGRAMS = test_options$(EXEEXT)
-@ENABLE_DAUTH_TRUE@@HAVE_CURL_TRUE@am__append_3 = \
+@ENABLE_DAUTH_TRUE@@HAVE_CURL_TRUE@am__append_4 = \
 @ENABLE_DAUTH_TRUE@@HAVE_CURL_TRUE@	test_digestauth test_digestauth_with_arguments
+
+@HAVE_W32_TRUE@am__append_5 = \
+@HAVE_W32_TRUE@ $(top_builddir)/src/platform/libplatform_interface.la
+
+@HAVE_W32_TRUE@am__append_6 = \
+@HAVE_W32_TRUE@  $(top_builddir)/src/platform/libplatform_interface.la
 
 subdir = src/testcurl
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4/libcurl.m4 \
-	$(top_srcdir)/m4/libgcrypt.m4 $(top_srcdir)/m4/libtool.m4 \
-	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
-	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \
-	$(top_srcdir)/m4/openssl.m4 $(top_srcdir)/acinclude.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/m4/ax_append_compile_flags.m4 \
+	$(top_srcdir)/m4/ax_append_flag.m4 \
+	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
+	$(top_srcdir)/m4/ax_check_openssl.m4 \
+	$(top_srcdir)/m4/ax_count_cpus.m4 \
+	$(top_srcdir)/m4/ax_have_epoll.m4 \
+	$(top_srcdir)/m4/ax_pthread.m4 \
+	$(top_srcdir)/m4/ax_require_defined.m4 \
+	$(top_srcdir)/m4/libcurl.m4 $(top_srcdir)/m4/libgcrypt.m4 \
+	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltoptions.m4 \
+	$(top_srcdir)/m4/ltsugar.m4 $(top_srcdir)/m4/ltversion.m4 \
+	$(top_srcdir)/m4/lt~obsolete.m4 $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -113,9 +128,9 @@ libcurl_version_check_a_LIBADD =
 am_libcurl_version_check_a_OBJECTS = curl_version_check.$(OBJEXT)
 libcurl_version_check_a_OBJECTS =  \
 	$(am_libcurl_version_check_a_OBJECTS)
-@HAVE_W32_FALSE@am__EXEEXT_1 = test_quiesce$(EXEEXT)
-@HAVE_CURL_BINARY_TRUE@@HAVE_W32_FALSE@am__EXEEXT_2 = test_get_response_cleanup$(EXEEXT)
-@HAVE_W32_FALSE@am__EXEEXT_3 = perf_get_concurrent$(EXEEXT)
+@HAVE_CURL_BINARY_TRUE@@HAVE_W32_FALSE@am__EXEEXT_1 = test_get_response_cleanup$(EXEEXT)
+@HAVE_W32_FALSE@am__EXEEXT_2 = perf_get_concurrent$(EXEEXT)
+@HAVE_CURL_TRUE@@HAVE_POSIX_THREADS_TRUE@am__EXEEXT_3 = test_quiesce$(EXEEXT)
 @HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@am__EXEEXT_4 =  \
 @HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@	test_post$(EXEEXT) \
 @HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@	test_postform$(EXEEXT) \
@@ -173,11 +188,13 @@ test_get_response_cleanup_DEPENDENCIES =  \
 am_test_get_sendfile_OBJECTS = test_get_sendfile.$(OBJEXT)
 test_get_sendfile_OBJECTS = $(am_test_get_sendfile_OBJECTS)
 test_get_sendfile_DEPENDENCIES =  \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
+	$(am__append_5)
 am_test_get_sendfile11_OBJECTS = test_get_sendfile.$(OBJEXT)
 test_get_sendfile11_OBJECTS = $(am_test_get_sendfile11_OBJECTS)
 test_get_sendfile11_DEPENDENCIES =  \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
+	$(am__append_6)
 am_test_iplimit11_OBJECTS = test_iplimit.$(OBJEXT)
 test_iplimit11_OBJECTS = $(am_test_iplimit11_OBJECTS)
 test_iplimit11_DEPENDENCIES =  \
@@ -250,10 +267,15 @@ am_test_put_chunked_OBJECTS = test_put_chunked.$(OBJEXT)
 test_put_chunked_OBJECTS = $(am_test_put_chunked_OBJECTS)
 test_put_chunked_DEPENDENCIES =  \
 	$(top_builddir)/src/microhttpd/libmicrohttpd.la
-am_test_quiesce_OBJECTS = test_quiesce.$(OBJEXT)
+am_test_quiesce_OBJECTS = test_quiesce-test_quiesce.$(OBJEXT)
 test_quiesce_OBJECTS = $(am_test_quiesce_OBJECTS)
+am__DEPENDENCIES_1 =
 test_quiesce_DEPENDENCIES =  \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
+	$(am__DEPENDENCIES_1)
+test_quiesce_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(test_quiesce_CFLAGS) \
+	$(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 am_test_start_stop_OBJECTS = test_start_stop.$(OBJEXT)
 test_start_stop_OBJECTS = $(am_test_start_stop_OBJECTS)
 test_start_stop_DEPENDENCIES =  \
@@ -393,6 +415,7 @@ CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
+CPU_COUNT = @CPU_COUNT@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -404,14 +427,14 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
-EXT_LIBS = @EXT_LIBS@
-EXT_LIB_PATH = @EXT_LIB_PATH@
 FGREP = @FGREP@
+GNUTLS_CPPFLAGS = @GNUTLS_CPPFLAGS@
+GNUTLS_LDFLAGS = @GNUTLS_LDFLAGS@
+GNUTLS_LIBS = @GNUTLS_LIBS@
 GREP = @GREP@
 HAVE_CURL_BINARY = @HAVE_CURL_BINARY@
 HAVE_MAKEINFO_BINARY = @HAVE_MAKEINFO_BINARY@
-HAVE_SOCAT = @HAVE_SOCAT@
-HAVE_ZZUF = @HAVE_ZZUF@
+HIDDEN_VISIBILITY_CFLAGS = @HIDDEN_VISIBILITY_CFLAGS@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -439,12 +462,18 @@ LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MANIFEST_TOOL = @MANIFEST_TOOL@
 MHD_LIBDEPS = @MHD_LIBDEPS@
+MHD_LIB_CFLAGS = @MHD_LIB_CFLAGS@
+MHD_LIB_CPPFLAGS = @MHD_LIB_CPPFLAGS@
 MHD_LIB_LDFLAGS = @MHD_LIB_LDFLAGS@
 MKDIR_P = @MKDIR_P@
+MS_LIB_TOOL = @MS_LIB_TOOL@
 NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
+OPENSSL_INCLUDES = @OPENSSL_INCLUDES@
+OPENSSL_LDFLAGS = @OPENSSL_LDFLAGS@
+OPENSSL_LIBS = @OPENSSL_LIBS@
 OTOOL = @OTOOL@
 OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
@@ -454,18 +483,22 @@ PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
+PACKAGE_VERSION_MAJOR = @PACKAGE_VERSION_MAJOR@
+PACKAGE_VERSION_MINOR = @PACKAGE_VERSION_MINOR@
+PACKAGE_VERSION_SUBMINOR = @PACKAGE_VERSION_SUBMINOR@
 PATH_SEPARATOR = @PATH_SEPARATOR@
-PLIBC_CPPFLAGS = @PLIBC_CPPFLAGS@
-PLIBC_LDFLAGS = @PLIBC_LDFLAGS@
-PLIBC_LIBS = @PLIBC_LIBS@
-PTHREAD_CPPFLAGS = @PTHREAD_CPPFLAGS@
-PTHREAD_LDFLAGS = @PTHREAD_LDFLAGS@
+PKG_CONFIG = @PKG_CONFIG@
+PTHREAD_CC = @PTHREAD_CC@
+PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
 PTHREAD_LIBS = @PTHREAD_LIBS@
 RANLIB = @RANLIB@
+RC = @RC@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SPDY_LIBDEPS = @SPDY_LIBDEPS@
+SPDY_LIB_CFLAGS = @SPDY_LIB_CFLAGS@
+SPDY_LIB_CPPFLAGS = @SPDY_LIB_CPPFLAGS@
 SPDY_LIB_LDFLAGS = @SPDY_LIB_LDFLAGS@
 STRIP = @STRIP@
 VERSION = @VERSION@
@@ -482,6 +515,7 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+ax_pthread_config = @ax_pthread_config@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -494,6 +528,8 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+have_socat = @have_socat@
+have_zzuf = @have_zzuf@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -507,6 +543,7 @@ libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
+lt_cv_objdir = @lt_cv_objdir@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -524,16 +561,14 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = . $(am__append_1)
 @USE_COVERAGE_TRUE@AM_CFLAGS = -fprofile-arcs -ftest-coverage
-@USE_PRIVATE_PLIBC_H_TRUE@PLIBC_INCLUDE = -I$(top_srcdir)/src/include/plibc
 AM_CPPFLAGS = \
-  $(PLIBC_INCLUDE) \
+-DCPU_COUNT=$(CPU_COUNT) \
 -I$(top_srcdir) \
--I$(top_srcdir)/src/daemon \
+-I$(top_srcdir)/src/microhttpd \
 -I$(top_srcdir)/src/include \
 $(LIBCURL_CPPFLAGS)
 
 @HAVE_W32_FALSE@PERF_GET_CONCURRENT = perf_get_concurrent
-@HAVE_W32_FALSE@TEST_QUIESCE = test_quiesce
 @HAVE_CURL_BINARY_TRUE@@HAVE_W32_FALSE@CURL_FORK_TEST = test_get_response_cleanup
 @HAVE_CURL_TRUE@TESTS = $(check_PROGRAMS)
 @HAVE_CURL_TRUE@noinst_LIBRARIES = libcurl_version_check.a
@@ -557,21 +592,24 @@ test_get_SOURCES = \
 
 test_get_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_quiesce_SOURCES = \
   test_quiesce.c
 
+test_quiesce_CFLAGS = \
+  $(PTHREAD_CFLAGS) $(AM_CFLAGS)
+
 test_quiesce_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  $(PTHREAD_LIBS) @LIBCURL@
 
 test_callback_SOURCES = \
   test_callback.c
 
 test_callback_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 perf_get_SOURCES = \
   perf_get.c \
@@ -579,7 +617,7 @@ perf_get_SOURCES = \
 
 perf_get_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 perf_get_concurrent_SOURCES = \
   perf_get_concurrent.c \
@@ -587,195 +625,193 @@ perf_get_concurrent_SOURCES = \
 
 perf_get_concurrent_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_digestauth_SOURCES = \
   test_digestauth.c
 
 test_digestauth_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ @LIBGCRYPT_LIBS@
+  @LIBGCRYPT_LIBS@ @LIBCURL@
 
 test_digestauth_with_arguments_SOURCES = \
   test_digestauth_with_arguments.c
 
 test_digestauth_with_arguments_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ @LIBGCRYPT_LIBS@
+  @LIBGCRYPT_LIBS@ @LIBCURL@
 
 test_get_sendfile_SOURCES = \
   test_get_sendfile.c
 
-test_get_sendfile_LDADD = \
-  $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
-
+test_get_sendfile_LDADD =  \
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la @LIBCURL@ \
+	$(am__append_5)
 test_urlparse_SOURCES = \
   test_urlparse.c
 
 test_urlparse_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_get_response_cleanup_SOURCES = \
   test_get_response_cleanup.c
 
 test_get_response_cleanup_LDADD = \
-  $(top_builddir)/src/microhttpd/libmicrohttpd.la 
+  $(top_builddir)/src/microhttpd/libmicrohttpd.la
 
 test_get_chunked_SOURCES = \
   test_get_chunked.c
 
 test_get_chunked_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_post_SOURCES = \
   test_post.c
 
 test_post_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_process_headers_SOURCES = \
   test_process_headers.c
 
 test_process_headers_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_parse_cookies_SOURCES = \
   test_parse_cookies.c
 
 test_parse_cookies_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_process_arguments_SOURCES = \
   test_process_arguments.c
 
 test_process_arguments_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_postform_SOURCES = \
   test_postform.c
 
 test_postform_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@  @LIBGCRYPT_LIBS@
+  @LIBGCRYPT_LIBS@ @LIBCURL@
 
 test_post_loop_SOURCES = \
   test_post_loop.c
 
 test_post_loop_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_put_SOURCES = \
   test_put.c
 
 test_put_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_put_chunked_SOURCES = \
   test_put_chunked.c
 
 test_put_chunked_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_get11_SOURCES = \
   test_get.c
 
 test_get11_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_get_sendfile11_SOURCES = \
   test_get_sendfile.c
 
-test_get_sendfile11_LDADD = \
-  $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
-
+test_get_sendfile11_LDADD =  \
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la @LIBCURL@ \
+	$(am__append_6)
 test_post11_SOURCES = \
   test_post.c
 
 test_post11_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_postform11_SOURCES = \
   test_postform.c
 
 test_postform11_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@  @LIBGCRYPT_LIBS@
+  @LIBGCRYPT_LIBS@ @LIBCURL@
 
 test_post_loop11_SOURCES = \
   test_post_loop.c
 
 test_post_loop11_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_put11_SOURCES = \
   test_put.c
 
 test_put11_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_large_put_SOURCES = \
   test_large_put.c
 
 test_large_put_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_large_put11_SOURCES = \
   test_large_put.c
 
 test_large_put11_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_long_header_SOURCES = \
   test_long_header.c
 
 test_long_header_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_long_header11_SOURCES = \
   test_long_header.c
 
 test_long_header11_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_iplimit11_SOURCES = \
   test_iplimit.c
 
 test_iplimit11_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_termination_SOURCES = \
   test_termination.c
 
 test_termination_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 test_timeout_SOURCES = \
   test_timeout.c
 
 test_timeout_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@ 
+  @LIBCURL@
 
 all: all-recursive
 
@@ -925,7 +961,7 @@ test_put_chunked$(EXEEXT): $(test_put_chunked_OBJECTS) $(test_put_chunked_DEPEND
 	$(AM_V_CCLD)$(LINK) $(test_put_chunked_OBJECTS) $(test_put_chunked_LDADD) $(LIBS)
 test_quiesce$(EXEEXT): $(test_quiesce_OBJECTS) $(test_quiesce_DEPENDENCIES) $(EXTRA_test_quiesce_DEPENDENCIES) 
 	@rm -f test_quiesce$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(test_quiesce_OBJECTS) $(test_quiesce_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(test_quiesce_LINK) $(test_quiesce_OBJECTS) $(test_quiesce_LDADD) $(LIBS)
 test_start_stop$(EXEEXT): $(test_start_stop_OBJECTS) $(test_start_stop_DEPENDENCIES) $(EXTRA_test_start_stop_DEPENDENCIES) 
 	@rm -f test_start_stop$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(test_start_stop_OBJECTS) $(test_start_stop_LDADD) $(LIBS)
@@ -967,32 +1003,49 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_process_headers.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_put.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_put_chunked.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_quiesce.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_quiesce-test_quiesce.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_start_stop.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_termination.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_timeout.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_urlparse.Po@am__quote@
 
 .c.o:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c $<
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ $<
 
 .c.obj:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c `$(CYGPATH_W) '$<'`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
 .c.lo:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LTCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.lo$$||'`;\
+@am__fastdepCC_TRUE@	$(LTCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Plo
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
+
+test_quiesce-test_quiesce.o: test_quiesce.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_quiesce_CFLAGS) $(CFLAGS) -MT test_quiesce-test_quiesce.o -MD -MP -MF $(DEPDIR)/test_quiesce-test_quiesce.Tpo -c -o test_quiesce-test_quiesce.o `test -f 'test_quiesce.c' || echo '$(srcdir)/'`test_quiesce.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_quiesce-test_quiesce.Tpo $(DEPDIR)/test_quiesce-test_quiesce.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_quiesce.c' object='test_quiesce-test_quiesce.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_quiesce_CFLAGS) $(CFLAGS) -c -o test_quiesce-test_quiesce.o `test -f 'test_quiesce.c' || echo '$(srcdir)/'`test_quiesce.c
+
+test_quiesce-test_quiesce.obj: test_quiesce.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_quiesce_CFLAGS) $(CFLAGS) -MT test_quiesce-test_quiesce.obj -MD -MP -MF $(DEPDIR)/test_quiesce-test_quiesce.Tpo -c -o test_quiesce-test_quiesce.obj `if test -f 'test_quiesce.c'; then $(CYGPATH_W) 'test_quiesce.c'; else $(CYGPATH_W) '$(srcdir)/test_quiesce.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_quiesce-test_quiesce.Tpo $(DEPDIR)/test_quiesce-test_quiesce.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_quiesce.c' object='test_quiesce-test_quiesce.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_quiesce_CFLAGS) $(CFLAGS) -c -o test_quiesce-test_quiesce.obj `if test -f 'test_quiesce.c'; then $(CYGPATH_W) 'test_quiesce.c'; else $(CYGPATH_W) '$(srcdir)/test_quiesce.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

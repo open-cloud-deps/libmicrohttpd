@@ -39,11 +39,18 @@
 #include <limits.h>
 #include <ctype.h>
 
+#if defined(CPU_COUNT) && (CPU_COUNT+0) < 2
+#undef CPU_COUNT
+#endif
+#if !defined(CPU_COUNT)
+#define CPU_COUNT 2
+#endif
+
 /**
  * Number of threads to run in the thread pool.  Should (roughly) match
  * the number of cores on your system.
  */
-#define NUMBER_OF_THREADS 4
+#define NUMBER_OF_THREADS CPU_COUNT
 
 /**
  * How many bytes of a file do we give to libmagic to determine the mime type?
@@ -258,7 +265,7 @@ list_directory (struct ResponseDataContext *rdc,
     {
       if ('.' == de->d_name[0])
 	continue;
-      if (sizeof (fullname) <=
+      if (sizeof (fullname) <= (size_t)
 	  snprintf (fullname, sizeof (fullname),
 		    "%s/%s",
 		    dirname, de->d_name))
@@ -362,9 +369,11 @@ update_directory ()
 					      rdc.buf,
 					      MHD_RESPMEM_MUST_FREE);
   mark_as_html (response);
+#if FORCE_CLOSE
   (void) MHD_add_response_header (response,
 				  MHD_HTTP_HEADER_CONNECTION,
 				  "close");
+#endif
   update_cached_response (response);
 }
 
@@ -557,7 +566,7 @@ process_upload_data (void *cls,
       uc->filename = strdup (fn);
     }
   if ( (0 != size) &&
-       (size != write (uc->fd, data, size)) )
+       (size != (size_t) write (uc->fd, data, size)) )
     {
       /* write failed; likely: disk full */
       fprintf (stderr,
@@ -775,7 +784,9 @@ generate_page (void *cls,
 	}
     }
   if (0 == strcmp (method, MHD_HTTP_METHOD_GET))
+  {
     return return_directory_response (connection);
+  }
 
   /* unexpected request, refuse */
   return MHD_queue_response (connection,

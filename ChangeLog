@@ -1,3 +1,109 @@
+May  2 20:22:45 CEST 2014
+	Fix infinite loop (DoS) when HTTP connection is reset (#3392). -GM
+	Fix possible issue from combination of epoll and suspend/resume
+	logic if edge trigger event is lost; also simplify logic to
+	maintain simpler invariants on the epoll state. -CG
+	Use OpenSSL cipher list "HIGH" in libmicrospdy (#3391). -CG
+	Releasing 0.9.35. -CG
+
+Thu Apr 10 09:39:38 CEST 2014
+	Removed unescaping for URI path (#3371) as '+' should not
+	be converted to space in accordance with
+	http://www.w3.org/TR/html401/appendix/notes.html#ampersands-in-uris
+	and http://www.w3.org/TR/html401/interact/forms.html#h-17.13.4.1
+	Note that we now also no longer convert '#38;' to '&'; if needed,
+	the application needs to apply unescaping to the path of the URI
+	itself (before, MHD unescaped '#38;' but not '&amp;', so this
+	inconsistency was now resolved by simply not unescaping anything
+	before the first '&'). -CG
+
+Tue Apr 08 15:35:44 CET 2014
+	Added support for W32 native threads.
+	Added --with-threads=LIB configure parameter. -EG
+
+Mon Apr  7 13:25:30 CEST 2014
+	Add MHD_OPTION_HTTPS_MEM_DHPARAMS to allow applications
+	to enable PFS. -HB/CG
+
+Tue Apr 01 07:10:23 CET 2014
+	Added usage of native mutex on W32. -EG
+
+Sat Mar 29 16:12:03 CET 2014
+	Added MHD_is_feature_supported() function. -EG
+
+Thu Mar 27 14:47:54 CET 2014
+	Used larger FD_SETSIZE internally on W32.
+	Extended API to work with non-default FD_SETSIZE. -EG
+
+Tue Mar 25 12:53:55 CET 2014
+	Fix limiting by IPv6 address. -EG
+
+Tue Mar 25 09:06:13 CET 2014
+	Added more FD_SETSIZE checks.
+	Implemented FD_SETSIZE checks for W32. -EG
+
+Wed Mar 05 13:15:05 CET 2014
+	Cleanup and refactoring of configure.ac.
+	m4 macros updated.
+	Custom configure macros replaced with autoconf archive macros.
+	SPDY disabled by default on W32.
+	Changed configure flag from '--disable-pipe' to
+	'--enable-socketpair'.
+	Added configure flags '--disable-doc' and '--disable-examples'.
+	Narrowed down extrenal lib specific compiler and linker flags
+	usage. -EG
+
+Wed Feb 26 17:42:34 CET 2014
+	Refactoring of configure.ac: custom macros replaced with macros
+	from Autoconf Archive.
+	Minor corrections of configure.ac.
+	Excluded pthread flags from global flags, pthread now used only
+	where required.
+	W32: fixed .dll resource compilation with '-isystem' CPPFLAG.
+	W32: improved header compatibility with MSVC.
+	W32: now tested on Win64, compiled by MinGW-w64. -EG
+
+Mon Feb 24 23:13:53 CET 2014
+	Added support for TCP FASTOPEN. -SHT
+	Releasing 0.9.34. -CG
+
+Thu Feb 20 14:17:05 CET 2014
+	W32: Added creation of libmicrohttpd.lib, libmicrohttpd.def,
+	libmicrohttpd.exp and libmicrohttpd-static.lib for easy use
+	compiled MHD with MSVC.
+	W32: Use MS lib.exe tool if available for creating MSVC staff.
+	W32: Added .dll information resource. -EG
+
+Tue Feb 18 19:46:45 CET 2014
+	Removed dependency on plibc for simpler compilation for W32.
+	Added configure option "--disable-pipes" to use socketpairs
+	instead of pipes for signalling to child threads. Pipes are
+	always disabled on W32.
+	Some code refactoring. -EG
+
+Sat Feb  8 15:08:35 CET 2014
+	Corrected some uses of 'int' vs. 'size_t'. -EG/CG
+
+Wed Jan 22 09:44:33 CET 2014
+	MHD_USE_DUAL_STACK in libmicrohttpd currently just *inhibits
+	setting* the IPV6_V6ONLY socket option, but per Microsoft's
+	documentation the default on Windows is that this is enabled, thus
+	MHD_USE_DUAL_STACK will not work (since it leaves the
+	default). libmicrohttpd should probably just unconditionally set
+	IPV6_V6ONLY to the desired value when the option is available. -LJ
+
+Wed Jan  1 21:38:18 CET 2014
+	Allow Keep-Alive with HTTP 1.0 (if explicitly requested),
+	and automatically set "Connection: Keep-Alive" in response
+	in this case as well. -CG
+
+Tue Dec 24 12:27:39 CET 2013
+	Adding explicit annotations to hide symbols that are not for
+	export in the C code (gcc 4.0 or higher only). -CG
+
+Sun Dec 22 14:54:30 CET 2013
+	Adding a few lines to avoid warnings from picky compilers. -CG
+
 Sat Dec 21 17:26:08 CET 2013
 	Fixed an issue with a missing argument in the postexample.
 	Fixed issue with bogus offset increment involving sendfile
