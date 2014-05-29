@@ -1051,13 +1051,13 @@ uninstall-am: uninstall-libLTLIBRARIES
 @USE_MS_LIB_TOOL_TRUE@@W32_SHARED_LIB_EXP_TRUE@	@echo Creating $@ and libmicrohttpd.exp by $(MS_LIB_TOOL)... && \
 @USE_MS_LIB_TOOL_TRUE@@W32_SHARED_LIB_EXP_TRUE@	dll_name=`$(EGREP) -o dlname=\'.+\' libmicrohttpd.la` && \
 @USE_MS_LIB_TOOL_TRUE@@W32_SHARED_LIB_EXP_TRUE@	dll_name=$${dll_name#*\'} && dll_name=$${dll_name%\'} && test -n "$$dll_name" && \
-@USE_MS_LIB_TOOL_TRUE@@W32_SHARED_LIB_EXP_TRUE@	echo Using .dll filename: $$dll_name.. && \
-@USE_MS_LIB_TOOL_TRUE@@W32_SHARED_LIB_EXP_TRUE@	$(MS_LIB_TOOL) -def:$(lt_cv_objdir)/libmicrohttpd.def -name:$$dll_name -out:$@ $(libmicrohttpd_la_OBJECTS:.lo=.o)
+@USE_MS_LIB_TOOL_TRUE@@W32_SHARED_LIB_EXP_TRUE@	echo Creating $$dll_name by $(MS_LIB_TOOL).. && cd "$(lt_cv_objdir)" && \
+@USE_MS_LIB_TOOL_TRUE@@W32_SHARED_LIB_EXP_TRUE@	$(MS_LIB_TOOL) -def:libmicrohttpd.def -name:$$dll_name -out:libmicrohttpd.lib $(libmicrohttpd_la_OBJECTS:.lo=.o) && cd ..
 @USE_MS_LIB_TOOL_FALSE@@W32_SHARED_LIB_EXP_TRUE@	@echo Creating $@ and libmicrohttpd.exp by $(DLLTOOL)... && \
 @USE_MS_LIB_TOOL_FALSE@@W32_SHARED_LIB_EXP_TRUE@	dll_name=`$(EGREP) -o dlname=\'.+\' libmicrohttpd.la` && \
 @USE_MS_LIB_TOOL_FALSE@@W32_SHARED_LIB_EXP_TRUE@	dll_name=$${dll_name#*\'} && dll_name=$${dll_name%\'} && test -n "$$dll_name" && \
-@USE_MS_LIB_TOOL_FALSE@@W32_SHARED_LIB_EXP_TRUE@	echo Using .dll filename: $$dll_name.. && \
-@USE_MS_LIB_TOOL_FALSE@@W32_SHARED_LIB_EXP_TRUE@	$(DLLTOOL) -d $(lt_cv_objdir)/libmicrohttpd.def -D $$dll_name -l $@ $(libmicrohttpd_la_OBJECTS:.lo=.o) -e $(lt_cv_objdir)/libmicrohttpd.exp && \
+@USE_MS_LIB_TOOL_FALSE@@W32_SHARED_LIB_EXP_TRUE@	echo Creating $$dll_name by $(DLLTOOL).. && cd "$(lt_cv_objdir)" && \
+@USE_MS_LIB_TOOL_FALSE@@W32_SHARED_LIB_EXP_TRUE@	$(DLLTOOL) -d ./libmicrohttpd.def -D $$dll_name -l libmicrohttpd.lib $(libmicrohttpd_la_OBJECTS:.lo=.o) -e ./libmicrohttpd.exp && cd .. &&\
 @USE_MS_LIB_TOOL_FALSE@@W32_SHARED_LIB_EXP_TRUE@	echo Created libmicrohttpd.exp and libmicrohttpd.lib.
 
 @W32_STATIC_LIB_TRUE@$(lt_cv_objdir)/libmicrohttpd-static.lib: libmicrohttpd.la $(libmicrohttpd_la_OBJECTS)
