@@ -1,2 +1,2 @@
 version=3
-opts=pgpsigurlmangle=s/$/.sig/ ftp://ftp.gnu.org/gnu/libmicrohttpd/libmicrohttpd-(\d.+).tar.gz
+opts=pgpsigurlmangle=s/$/.sig/,dversionmangle=s/\+dfsg// ftp://ftp.gnu.org/gnu/libmicrohttpd/libmicrohttpd-(\d.+).tar.gz

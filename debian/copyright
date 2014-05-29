@@ -3,6 +3,7 @@ Upstream-Name: Libmicrohttpd
 Upstream-Contact: Christian Grothoff <christian@grothoff.org>
 Source: http://www.gnu.org/software/libmicrohttpd/
 License: LGPL-2.1+
+Files-Excluded: src/datadir/spdy-draft.txt
 
 Files: *
 Copyright: (C) 2007-2013 Christian Grothoff <christian@grothoff.org>
