@@ -1,3 +1,17 @@
+libmicrohttpd (0.9.37+dfsg-1) unstable; urgency=medium
+
+  * Exclude non-free src/datadir/spdy-draft.txt (Closes: #745404) from
+    debian/copyright and update debian/watch to mangle the debian version.
+  * Imported Upstream version 0.9.37+dfsg.
+  * Remove 02-hiding_symbols.patch: manual hiding of symbols is not necessary
+    anymore as visibility is set when needed.
+  * Add two new symbols from 0.9.35 in libmicrohttpd10.symbols.
+  * Build depend on libgnutls28-dev instead of libgnutls-dev (Closes: #753115).
+  * debian/control: make libmicrohttpd10 pre-depend on ${misc:Pre-Depends}
+    instead of multi-arch.
+
+ -- Bertrand Marc <beberking@gmail.com>  Thu, 10 Jul 2014 11:30:01 +0200
+
 libmicrohttpd (0.9.33-1) unstable; urgency=medium
 
   [ Bertrand Marc ]
