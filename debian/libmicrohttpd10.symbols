@@ -17,11 +17,13 @@ libmicrohttpd.so.10 libmicrohttpd10 #MINVER#
  MHD_get_connection_info@Base 0.9.20
  MHD_get_connection_values@Base 0.9.20
  MHD_get_daemon_info@Base 0.9.20
+ MHD_get_fdset2@Base 0.9.35
  MHD_get_fdset@Base 0.9.20
  MHD_get_response_header@Base 0.9.20
  MHD_get_response_headers@Base 0.9.20
  MHD_get_timeout@Base 0.9.20
  MHD_get_version@Base 0.9.20
+ MHD_is_feature_supported@Base 0.9.35
  MHD_lookup_connection_value@Base 0.9.20
  MHD_post_process@Base 0.9.20
  MHD_queue_auth_fail_response@Base 0.9.20
