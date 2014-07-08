@@ -149,6 +149,21 @@ MHD_get_connection_values (struct MHD_Connection *connection,
 
 
 /**
+ * Convert all occurences of '+' to ' '.
+ *
+ * @param arg string that is modified
+ */
+static void
+escape_plus (char *arg)
+{
+  char *p;
+
+  for (p=strchr (arg, '+'); NULL != p; p = strchr (p + 1, '+'))
+    *p = ' ';
+}
+
+
+/**
  * This function can be used to add an entry to the HTTP headers of a
  * connection (so that the #MHD_get_connection_values function will
  * return them -- and the `struct MHD_PostProcessor` will also see
@@ -585,15 +600,23 @@ add_extra_headers (struct MHD_Connection *connection)
                (0 == strcasecmp (connection->version,
                                  MHD_HTTP_VERSION_1_1)) )
             {
-              connection->have_chunked_upload = MHD_YES;
               have_encoding = MHD_get_response_header (connection->response,
 						       MHD_HTTP_HEADER_TRANSFER_ENCODING);
               if (NULL == have_encoding)
+              {
                 MHD_add_response_header (connection->response,
                                          MHD_HTTP_HEADER_TRANSFER_ENCODING,
                                          "chunked");
+                connection->have_chunked_upload = MHD_YES;
+              }
 	      else if (0 != strcasecmp (have_encoding, "chunked"))
+              {
 		add_close = MHD_YES; /* application already set some strange encoding, can't do 'chunked' */
+              }
+              else
+              {
+                connection->have_chunked_upload = MHD_YES;
+              }
             }
           else
             {
@@ -615,7 +638,7 @@ add_extra_headers (struct MHD_Connection *connection)
 	   ( (NULL == connection->method) ||
 	     (0 != strcasecmp (connection->method,
 			       MHD_HTTP_METHOD_CONNECT)) ||
-	     (0 != connection->response->total_size) ) )
+	     (MHD_SIZE_UNKNOWN != connection->response->total_size) ) )
 	{
 	  /*
 	     Here we add a content-length if one is missing; however,
@@ -1167,6 +1190,7 @@ parse_arguments (enum MHD_ValueKind kind,
 	  if (NULL == equals)
 	    {
 	      /* got 'foo', add key 'foo' with NULL for value */
+              escape_plus (args);
 	      connection->daemon->unescape_callback (connection->daemon->unescape_callback_cls,
 						     connection,
 						     args);
@@ -1178,9 +1202,11 @@ parse_arguments (enum MHD_ValueKind kind,
 	  /* got 'foo=bar' */
 	  equals[0] = '\0';
 	  equals++;
+          escape_plus (args);
 	  connection->daemon->unescape_callback (connection->daemon->unescape_callback_cls,
 						 connection,
 						 args);
+          escape_plus (equals);
 	  connection->daemon->unescape_callback (connection->daemon->unescape_callback_cls,
 						 connection,
 						 equals);
@@ -1193,6 +1219,7 @@ parse_arguments (enum MHD_ValueKind kind,
 	   (equals >= amper) )
 	{
 	  /* got 'foo&bar' or 'foo&bar=val', add key 'foo' with NULL for value */
+          escape_plus (args);
 	  connection->daemon->unescape_callback (connection->daemon->unescape_callback_cls,
 						 connection,
 						 args);
@@ -1211,9 +1238,11 @@ parse_arguments (enum MHD_ValueKind kind,
 	 so we got regular 'foo=value&bar...'-kind of argument */
       equals[0] = '\0';
       equals++;
+      escape_plus (args);
       connection->daemon->unescape_callback (connection->daemon->unescape_callback_cls,
 					     connection,
 					     args);
+      escape_plus (equals);
       connection->daemon->unescape_callback (connection->daemon->unescape_callback_cls,
 					     connection,
 					     equals);
@@ -1361,11 +1390,9 @@ parse_initial_message_line (struct MHD_Connection *connection,
       args++;
       parse_arguments (MHD_GET_ARGUMENT_KIND, connection, args);
     }
-#if 0
   connection->daemon->unescape_callback (connection->daemon->unescape_callback_cls,
 					 connection,
 					 uri);
-#endif
   connection->url = uri;
   if (NULL == http_version)
     connection->version = "";
@@ -1612,9 +1639,13 @@ do_read (struct MHD_Connection *connection)
   if (bytes_read < 0)
     {
       const int err = MHD_socket_errno_;
-      if ((EINTR == err) || (EAGAIN == err) || (ECONNRESET == err)
-          || (EWOULDBLOCK == err))
+      if ((EINTR == err) || (EAGAIN == err) || (EWOULDBLOCK == err))
 	  return MHD_NO;
+      if (ECONNRESET == err)
+        {
+           CONNECTION_CLOSE_ERROR(connection, NULL);
+	   return MHD_NO;
+	}
 #if HAVE_MESSAGES
 #if HTTPS_SUPPORT
       if (0 != (connection->daemon->options & MHD_USE_SSL))
@@ -2133,7 +2164,7 @@ MHD_connection_handle_write (struct MHD_Connection *connection)
           break;
         case MHD_CONNECTION_CHUNKED_BODY_READY:
           do_write (connection);
-	  if (connection->state !=  MHD_CONNECTION_CHUNKED_BODY_READY)
+	  if (MHD_CONNECTION_CHUNKED_BODY_READY != connection->state)
 	     break;
           check_write_done (connection,
                             (connection->response->total_size ==
@@ -2503,8 +2534,9 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
           break;
         case MHD_CONNECTION_BODY_SENT:
           build_header_response (connection);
-          if (connection->write_buffer_send_offset ==
-              connection->write_buffer_append_offset)
+          if ( (MHD_NO == connection->have_chunked_upload) ||
+               (connection->write_buffer_send_offset ==
+                connection->write_buffer_append_offset) )
             connection->state = MHD_CONNECTION_FOOTERS_SENT;
           else
             connection->state = MHD_CONNECTION_FOOTERS_SENDING;
@@ -2526,11 +2558,15 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
 				     MHD_HTTP_HEADER_CONNECTION);
           MHD_destroy_response (connection->response);
           connection->response = NULL;
-          if (NULL != daemon->notify_completed)
+          if ( (NULL != daemon->notify_completed) &&
+               (MHD_YES == connection->client_aware) )
+          {
 	    daemon->notify_completed (daemon->notify_completed_cls,
 				      connection,
 				      &connection->client_context,
 						  MHD_REQUEST_TERMINATED_COMPLETED_OK);
+            connection->client_aware = MHD_NO;
+          }
           end =
             MHD_lookup_connection_value (connection, MHD_HEADER_KIND,
                                          MHD_HTTP_HEADER_CONNECTION);

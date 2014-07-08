@@ -1,3 +1,33 @@
+Mon Jun  2 00:03:28 CEST 2014
+	Added back unescaping for URI path (#3413) but without
+	unescaping '+' (#3371) to remain compatible with
+	MHD 0.9.34 and before.  Note that applications providing
+	a custom MHD_OPTION_UNESCAPE_CALLBACK are no longer expected
+	to replace '+' with ' ', as that is now done separately for
+	the locations where this transformation is appropriate.
+	Releasing 0.9.37. -CG
+
+Wed May 28 15:30:56 CEST 2014
+	Properly applying patch that was supposed to be
+	committed on "May  2 20:22:45 CEST 2014" to address
+	infinite loop (DoS) when HTTP connection is reset (#3392). -GM
+
+Sun May 25 20:18:27 CEST 2014
+	Fixed W32 build issues. -EG
+	Releasing 0.9.36. -CG
+
+Sat May 17 06:47:00 CEST 2014
+	Fix notifying client about completed request twice
+	under certain circumstances. -CG
+
+Tue May 13 18:24:37 CEST 2014
+	Fix accidental transmission of footer termination '\r\n'
+	for responses with zero byte payload and non-chunked
+	encoding (#3397).  Thanks to amatus for reporting. -CG
+
+Sun May  4 11:05:26 CEST 2014
+	Fix gnutls header check to make it cross-compile aware. -BK
+
 May  2 20:22:45 CEST 2014
 	Fix infinite loop (DoS) when HTTP connection is reset (#3392). -GM
 	Fix possible issue from combination of epoll and suspend/resume
