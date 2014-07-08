@@ -11,7 +11,7 @@ Homepage: http://www.gnu.org/software/libmicrohttpd/
 
 Package: libmicrohttpd10
 Architecture: any
-Pre-Depends: multiarch-support
+Pre-Depends: ${misc:Pre-Depends}
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Description: library embedding HTTP server functionality
  GNU libmicrohttpd is a small C library that is supposed to make it easy to run
