@@ -23,6 +23,7 @@ libmicrohttpd.so.10 libmicrohttpd10 #MINVER#
  MHD_get_response_headers@Base 0.9.20
  MHD_get_timeout@Base 0.9.20
  MHD_get_version@Base 0.9.20
+ MHD_http_unescape@Base 0.9.39
  MHD_is_feature_supported@Base 0.9.35
  MHD_lookup_connection_value@Base 0.9.20
  MHD_post_process@Base 0.9.20
@@ -36,6 +37,7 @@ libmicrohttpd.so.10 libmicrohttpd10 #MINVER#
  MHD_set_connection_option@Base 0.9.20
  MHD_set_connection_value@Base 0.9.20
  MHD_set_panic_func@Base 0.9.20
+ MHD_set_response_options@Base 0.9.38
  MHD_start_daemon@Base 0.9.20
  MHD_start_daemon_va@Base 0.9.20
  MHD_stop_daemon@Base 0.9.20
