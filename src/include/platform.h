@@ -1,6 +1,6 @@
 /*
      This file is part of libmicrohttpd
-     (C) 2008 Christian Grothoff (and other contributing authors)
+     Copyright (C) 2008 Christian Grothoff (and other contributing authors)
 
      This library is free software; you can redistribute it and/or
      modify it under the terms of the GNU Lesser General Public
@@ -40,7 +40,21 @@
 #ifdef _MHD_EXTERN
 #undef _MHD_EXTERN
 #endif /* _MHD_EXTERN */
+#if defined(_WIN32) && defined(MHD_W32LIB)
 #define _MHD_EXTERN extern
+#elif defined (_WIN32) && defined(MHD_W32DLL)
+#define _MHD_EXTERN __declspec(dllimport) 
+#else
+#define _MHD_EXTERN extern
+#endif
+#elif !defined(_MHD_EXTERN) /* && BUILDING_MHD_LIB */
+#if defined(_WIN32) && defined(MHD_W32LIB)
+#define _MHD_EXTERN extern
+#elif defined (_WIN32) && defined(MHD_W32DLL)
+#define _MHD_EXTERN extern __declspec(dllexport) 
+#else
+#define _MHD_EXTERN extern
+#endif
 #endif /* BUILDING_MHD_LIB */
 
 #define _XOPEN_SOURCE_EXTENDED  1
@@ -68,7 +82,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
 #include <stdarg.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -148,6 +164,10 @@
 #define SHUT_RDWR SD_BOTH
 #endif
 
+#if defined(_MSC_FULL_VER) && !defined (_SSIZE_T_DEFINED)
+#define _SSIZE_T_DEFINED
+typedef intptr_t ssize_t;
+#endif // !_SSIZE_T_DEFINED */
 #ifndef MHD_SOCKET_DEFINED
 /**
  * MHD_socket is type for socket FDs
@@ -176,5 +196,10 @@ typedef int MHD_pipe;
 #else /* ! MHD_DONT_USE_PIPES */
 typedef MHD_socket MHD_pipe;
 #endif /* ! MHD_DONT_USE_PIPES */
+
+#if !defined(IPPROTO_IPV6) && defined(_MSC_FULL_VER) && _WIN32_WINNT >= 0x0501
+/* VC use IPPROTO_IPV6 as part of enum */
+#define IPPROTO_IPV6 IPPROTO_IPV6
+#endif
 
 #endif

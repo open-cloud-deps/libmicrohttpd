@@ -1,7 +1,7 @@
 /* DO NOT CHANGE THIS LINE */
 /*
      This file is part of libmicrohttpd
-     (C) 2007, 2009 Christian Grothoff
+     Copyright (C) 2007, 2009 Christian Grothoff
 
      libmicrohttpd is free software; you can redistribute it and/or modify
      it under the terms of the GNU General Public License as published
@@ -290,7 +290,8 @@ main (int argc, char *const *argv)
 {
   unsigned int errorCount = 0;
 
-  oneone = NULL != strstr (argv[0], "11");
+  oneone = (NULL != strrchr (argv[0], (int) '/')) ?
+    (NULL != strstr (strrchr (argv[0], (int) '/'), "11")) : 0;
   errorCount += testInternalGet ();
   errorCount += testMultithreadedGet ();
   errorCount += testMultithreadedPoolGet ();
