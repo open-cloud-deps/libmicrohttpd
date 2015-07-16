@@ -1,3 +1,16 @@
+libmicrohttpd (0.9.42+dfsg-1) experimental; urgency=medium
+
+  * Update upstream signing key. Remove debian/source/include-binaries as
+    the upstream signing key is now ascii armored.
+  * Imported Upstream version 0.9.42+dfsg.
+  * Add two new symbols from 0.9.38 and 0.9.39 in libmicrohttpd10.symbols.
+  * Add a build-dependency on pkg-config to avoid an error with autoreconf.
+  * Standards version 3.9.6: no changes needed.
+  * Add debian/libmicrohttpd-dev.examples to install upstream examples
+    (Closes: #793743).
+
+ -- Bertrand Marc <beberking@gmail.com>  Wed, 05 Aug 2015 11:57:55 +0200
+
 libmicrohttpd (0.9.37+dfsg-1) unstable; urgency=medium
 
   * Exclude non-free src/datadir/spdy-draft.txt (Closes: #745404) from
