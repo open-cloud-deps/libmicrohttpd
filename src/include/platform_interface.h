@@ -1,6 +1,6 @@
 /*
   This file is part of libmicrohttpd
-  (C) 2014 Karlson2k (Evgeny Grin)
+  Copyright (C) 2014 Karlson2k (Evgeny Grin)
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -13,12 +13,12 @@
   Lesser General Public License for more details.
 
   You should have received a copy of the GNU Lesser General Public
-  License along with this library. 
+  License along with this library.
   If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * @file include/platfrom_interface.h
+ * @file include/platform_interface.h
  * @brief  internal platform abstraction functions
  * @author Karlson2k (Evgeny Grin)
  */
@@ -30,6 +30,56 @@
 #if defined(_WIN32) && !defined(__CYGWIN__)
 #include "w32functions.h"
 #endif
+
+/* ***************************** 
+     General function mapping 
+   *****************************/
+#if !defined(_WIN32) || defined(__CYGWIN__)
+/**
+ * Check two strings case-insensitive equality
+ * @param a first string to check
+ * @param b second string to check
+ * @return boolean true if strings are equal, boolean false if strings are unequal
+ */
+#define MHD_str_equal_caseless_(a,b) (0==strcasecmp((a),(b)))
+#else
+/**
+ * Check two strings case-insensitive equality
+ * @param a first string to check
+ * @param b second string to check
+ * @return boolean true if strings are equal, boolean false if strings are unequal
+ */
+#define MHD_str_equal_caseless_(a,b) (0==_stricmp((a),(b)))
+#endif
+
+#if !defined(_WIN32) || defined(__CYGWIN__)
+/**
+ * Check not more than n chars in two strings case-insensitive equality
+ * @param a first string to check
+ * @param b second string to check
+ * @param n maximum number of chars to check
+ * @return boolean true if strings are equal, boolean false if strings are unequal
+ */
+#define MHD_str_equal_caseless_n_(a,b,n) (0==strncasecmp((a),(b),(n)))
+#else
+/**
+ * Check not more than n chars in two strings case-insensitive equality
+ * @param a first string to check
+ * @param b second string to check
+ * @param n maximum number of chars to check
+ * @return boolean true if strings are equal, boolean false if strings are unequal
+ */
+#define MHD_str_equal_caseless_n_(a,b,n) (0==_strnicmp((a),(b),(n)))
+#endif
+
+/* Platform-independent snprintf name */
+#if !defined(_WIN32) || defined(__CYGWIN__)
+#define MHD_snprintf_ snprintf
+#else
+#define MHD_snprintf_ W32_snprintf
+#endif
+
+
 
 /* MHD_socket_close_(fd) close any FDs (non-W32) / close only socket FDs (W32) */
 #if !defined(_WIN32) || defined(__CYGWIN__)
@@ -73,6 +123,15 @@
 #else
 #define MHD_SYS_select_(n,r,w,e,t) select((int)0,(r),(w),(e),(t))
 #endif
+
+#if defined(HAVE_POLL)
+/* MHD_sys_poll_ is wrapper macro for system poll() function */
+#if !defined(MHD_WINSOCK_SOCKETS)
+#define MHD_sys_poll_ poll
+#else  /* MHD_WINSOCK_SOCKETS */
+#define MHD_sys_poll_ WSAPoll
+#endif /* MHD_WINSOCK_SOCKETS */
+#endif /* HAVE_POLL */
 
 /* MHD_pipe_ create pipe (!MHD_DONT_USE_PIPES) /
  *           create two connected sockets (MHD_DONT_USE_PIPES) */
@@ -152,8 +211,8 @@ typedef HANDLE MHD_thread_handle_;
 #define MHD_THRD_RTRN_TYPE_ void*
 #define MHD_THRD_CALL_SPEC_
 #elif defined(MHD_USE_W32_THREADS)
-#define MHD_THRD_RTRN_TYPE_ DWORD
-#define MHD_THRD_CALL_SPEC_ WINAPI
+#define MHD_THRD_RTRN_TYPE_ unsigned
+#define MHD_THRD_CALL_SPEC_ __stdcall
 #endif
 
 #if defined(MHD_USE_POSIX_THREADS)

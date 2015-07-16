@@ -1,6 +1,6 @@
 /*
     This file is part of libmicrospdy
-    Copyright (C) 2012 Andrey Uzunov
+    Copyright Copyright (C) 2012 Andrey Uzunov
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -205,7 +205,7 @@ SPDYF_openssl_recv(struct SPDY_Session *session,
 			case SSL_ERROR_SYSCALL:
 				if(EINTR == errno)
 					return SPDY_IO_ERROR_AGAIN;
-
+				return SPDY_IO_ERROR_ERROR;
 			default:
 				return SPDY_IO_ERROR_ERROR;
 		}
@@ -241,7 +241,7 @@ SPDYF_openssl_send(struct SPDY_Session *session,
 			case SSL_ERROR_SYSCALL:
 				if(EINTR == errno)
 					return SPDY_IO_ERROR_AGAIN;
-
+				return SPDY_IO_ERROR_ERROR;
 			default:
 				return SPDY_IO_ERROR_ERROR;
 		}

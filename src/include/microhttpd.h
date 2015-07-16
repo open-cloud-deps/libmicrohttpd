@@ -1,6 +1,6 @@
 /*
      This file is part of libmicrohttpd
-     (C) 2006-2014 Christian Grothoff (and other contributing authors)
+     Copyright (C) 2006-2015 Christian Grothoff (and other contributing authors)
 
      This library is free software; you can redistribute it and/or
      modify it under the terms of the GNU Lesser General Public
@@ -130,7 +130,7 @@ typedef intptr_t ssize_t;
  * Current version of the library.
  * 0x01093001 = 1.9.30-1.
  */
-#define MHD_VERSION 0x00093700
+#define MHD_VERSION 0x00094200
 
 /**
  * MHD-internal return code for "YES".
@@ -166,7 +166,14 @@ typedef intptr_t ssize_t;
 #endif
 
 #ifndef _MHD_EXTERN
+#if defined(_WIN32) && defined(MHD_W32LIB)
 #define _MHD_EXTERN extern
+#elif defined (_WIN32) && defined(MHD_W32DLL)
+/* Define MHD_W32DLL when using MHD as W32 .DLL to speed up linker a little */
+#define _MHD_EXTERN __declspec(dllimport)
+#else
+#define _MHD_EXTERN extern
+#endif
 #endif
 
 #ifndef MHD_SOCKET_DEFINED
@@ -244,6 +251,8 @@ typedef SOCKET MHD_socket;
 #define MHD_HTTP_FORBIDDEN 403
 #define MHD_HTTP_NOT_FOUND 404
 #define MHD_HTTP_METHOD_NOT_ALLOWED 405
+#define MHD_HTTP_NOT_ACCEPTABLE 406
+/** @deprecated */
 #define MHD_HTTP_METHOD_NOT_ACCEPTABLE 406
 #define MHD_HTTP_PROXY_AUTHENTICATION_REQUIRED 407
 #define MHD_HTTP_REQUEST_TIMEOUT 408
@@ -285,7 +294,7 @@ typedef SOCKET MHD_socket;
  * with the SHOUTcast "ICY" line instad of "HTTP".
  * @ingroup specialized
  */
-#define MHD_ICY_FLAG ((uint32_t)(1 << 31))
+#define MHD_ICY_FLAG ((uint32_t)(((uint32_t)1) << 31))
 
 /**
  * @defgroup headers HTTP headers
@@ -371,6 +380,7 @@ typedef SOCKET MHD_socket;
 #define MHD_HTTP_METHOD_OPTIONS "OPTIONS"
 #define MHD_HTTP_METHOD_POST "POST"
 #define MHD_HTTP_METHOD_PUT "PUT"
+#define MHD_HTTP_METHOD_PATCH "PATCH"
 #define MHD_HTTP_METHOD_TRACE "TRACE"
 
 /** @} */ /* end of group methods */
@@ -844,7 +854,36 @@ enum MHD_OPTION
    * HTTPS daemon for key exchange.
    * This option must be followed by a `const char *` argument.
    */
-  MHD_OPTION_HTTPS_MEM_DHPARAMS = 24
+  MHD_OPTION_HTTPS_MEM_DHPARAMS = 24,
+
+  /**
+   * If present and set to true, allow reusing address:port socket
+   * (by using SO_REUSEPORT on most platform, or platform-specific ways).
+   * If present and set to false, disallow reusing address:port socket
+   * (does nothing on most plaform, but uses SO_EXCLUSIVEADDRUSE on Windows).
+   * This option must be followed by a `unsigned int` argument.
+   */
+  MHD_OPTION_LISTENING_ADDRESS_REUSE = 25,
+
+  /**
+   * Memory pointer for a password that decrypts the private key (key.pem)
+   * to be used by the HTTPS daemon. This option should be followed by a
+   * `const char *` argument.
+   * This should be used in conjunction with #MHD_OPTION_HTTPS_MEM_KEY.
+   * @sa ::MHD_FEATURE_HTTPS_KEY_PASSWORD
+   */
+  MHD_OPTION_HTTPS_KEY_PASSWORD = 26,
+
+  /**
+   * Register a function that should be called whenever a connection is
+   * started or closed.
+   *
+   * This option should be followed by TWO pointers.  First a pointer
+   * to a function of type #MHD_NotifyConnectionCallback and second a
+   * pointer to a closure to pass to the request completed callback.
+   * The second pointer maybe NULL.
+   */
+  MHD_OPTION_NOTIFY_CONNECTION = 27
 
 };
 
@@ -980,6 +1019,29 @@ enum MHD_RequestTerminationCode
 
 
 /**
+ * The `enum MHD_ConnectionNotificationCode` specifies types
+ * of connection notifications.
+ * @ingroup request
+ */
+enum MHD_ConnectionNotificationCode
+{
+
+  /**
+   * A new connection has been started.
+   * @ingroup request
+   */
+  MHD_CONNECTION_NOTIFY_STARTED = 0,
+
+  /**
+   * A connection is closed.
+   * @ingroup request
+   */
+  MHD_CONNECTION_NOTIFY_CLOSED = 1
+
+};
+
+
+/**
  * Information about a connection.
  */
 union MHD_ConnectionInfo
@@ -1020,6 +1082,12 @@ union MHD_ConnectionInfo
    * daemons running).
    */
   struct MHD_Daemon *daemon;
+
+  /**
+   * Socket-specific client context.  Points to the same address as
+   * the "socket_context" of the #MHD_NotifyConnectionCallback.
+   */
+  void **socket_context;
 };
 
 
@@ -1078,7 +1146,17 @@ enum MHD_ConnectionInfoType
    * No extra arguments should be passed.
    * @ingroup request
    */
-  MHD_CONNECTION_INFO_CONNECTION_FD
+  MHD_CONNECTION_INFO_CONNECTION_FD,
+
+  /**
+   * Returns the client-specific pointer to a `void *` that was (possibly)
+   * set during a #MHD_NotifyConnectionCallback when the socket was
+   * first accepted.  Note that this is NOT the same as the "con_cls"
+   * argument of the #MHD_AccessHandlerCallback.  The "con_cls" is
+   * fresh for each HTTP request, while the "socket_context" is fresh
+   * for each socket.
+   */
+  MHD_CONNECTION_INFO_SOCKET_CONTEXT
 
 };
 
@@ -1109,7 +1187,13 @@ enum MHD_DaemonInfoType
    * Request the file descriptor for the external epoll.
    * No extra arguments should be passed.
    */
-  MHD_DAEMON_INFO_EPOLL_FD_LINUX_ONLY
+  MHD_DAEMON_INFO_EPOLL_FD_LINUX_ONLY,
+
+  /**
+   * Request the number of current connections handled by the daemon.
+   * No extra arguments should be passed.
+   */
+  MHD_DAEMON_INFO_CURRENT_CONNECTIONS
 };
 
 
@@ -1123,23 +1207,24 @@ enum MHD_DaemonInfoType
  * @param reason error detail, may be NULL
  * @ingroup logging
  */
-typedef
-  void (*MHD_PanicCallback) (void *cls,
-			     const char *file,
-			     unsigned int line,
-			     const char *reason);
+typedef void
+(*MHD_PanicCallback) (void *cls,
+                      const char *file,
+                      unsigned int line,
+                      const char *reason);
 
 /**
  * Allow or deny a client to connect.
  *
+ * @param cls closure
  * @param addr address information from the client
  * @param addrlen length of @a addr
  * @return #MHD_YES if connection is allowed, #MHD_NO if not
  */
 typedef int
-  (*MHD_AcceptPolicyCallback) (void *cls,
-                               const struct sockaddr *addr,
-                               socklen_t addrlen);
+(*MHD_AcceptPolicyCallback) (void *cls,
+                             const struct sockaddr *addr,
+                             socklen_t addrlen);
 
 
 /**
@@ -1182,14 +1267,14 @@ typedef int
  *         error while handling the request
  */
 typedef int
-  (*MHD_AccessHandlerCallback) (void *cls,
-                                struct MHD_Connection *connection,
-                                const char *url,
-                                const char *method,
-                                const char *version,
-                                const char *upload_data,
-                                size_t *upload_data_size,
-                                void **con_cls);
+(*MHD_AccessHandlerCallback) (void *cls,
+                              struct MHD_Connection *connection,
+                              const char *url,
+                              const char *method,
+                              const char *version,
+                              const char *upload_data,
+                              size_t *upload_data_size,
+                              void **con_cls);
 
 
 /**
@@ -1205,10 +1290,35 @@ typedef int
  * @ingroup request
  */
 typedef void
-  (*MHD_RequestCompletedCallback) (void *cls,
-                                   struct MHD_Connection *connection,
-                                   void **con_cls,
-                                   enum MHD_RequestTerminationCode toe);
+(*MHD_RequestCompletedCallback) (void *cls,
+                                 struct MHD_Connection *connection,
+                                 void **con_cls,
+                                 enum MHD_RequestTerminationCode toe);
+
+/**
+ * Signature of the callback used by MHD to notify the
+ * application about started/stopped connections
+ *
+ * @param cls client-defined closure
+ * @param connection connection handle
+ * @param socket_context socket-specific pointer where the
+ *                       client can associate some state specific
+ *                       to the TCP connection; note that this is
+ *                       different from the "con_cls" which is per
+ *                       HTTP request.  The client can initialize
+ *                       during #MHD_CONNECTION_NOTIFY_STARTED and
+ *                       cleanup during #MHD_CONNECTION_NOTIFY_CLOSED
+ *                       and access in the meantime using
+ *                       #MHD_CONNECTION_INFO_SOCKET_CONTEXT.
+ * @param toe reason for connection notification
+ * @see #MHD_OPTION_NOTIFY_CONNECTION
+ * @ingroup request
+ */
+typedef void
+(*MHD_NotifyConnectionCallback) (void *cls,
+                                 struct MHD_Connection *connection,
+                                 void **socket_context,
+                                 enum MHD_ConnectionNotificationCode toe);
 
 
 /**
@@ -1227,9 +1337,10 @@ typedef void
  * @ingroup request
  */
 typedef int
-  (*MHD_KeyValueIterator) (void *cls,
-                           enum MHD_ValueKind kind,
-                           const char *key, const char *value);
+(*MHD_KeyValueIterator) (void *cls,
+                         enum MHD_ValueKind kind,
+                         const char *key,
+                         const char *value);
 
 
 /**
@@ -1277,10 +1388,10 @@ typedef int
  *    This is not a limitation of MHD but rather of the HTTP protocol.
  */
 typedef ssize_t
-  (*MHD_ContentReaderCallback) (void *cls,
-				uint64_t pos,
-				char *buf,
-				size_t max);
+(*MHD_ContentReaderCallback) (void *cls,
+                              uint64_t pos,
+                              char *buf,
+                              size_t max);
 
 
 /**
@@ -1293,7 +1404,7 @@ typedef ssize_t
  * @ingroup response
  */
 typedef void
-  (*MHD_ContentReaderFreeCallback) (void *cls);
+(*MHD_ContentReaderFreeCallback) (void *cls);
 
 
 /**
@@ -1316,15 +1427,15 @@ typedef void
  *         #MHD_NO to abort the iteration
  */
 typedef int
-  (*MHD_PostDataIterator) (void *cls,
-                           enum MHD_ValueKind kind,
-                           const char *key,
-                           const char *filename,
-                           const char *content_type,
-                           const char *transfer_encoding,
-                           const char *data,
-			   uint64_t off,
-			   size_t size);
+(*MHD_PostDataIterator) (void *cls,
+                         enum MHD_ValueKind kind,
+                         const char *key,
+                         const char *filename,
+                         const char *content_type,
+                         const char *transfer_encoding,
+                         const char *data,
+                         uint64_t off,
+                         size_t size);
 
 /* **************** Daemon handling functions ***************** */
 
@@ -1528,10 +1639,10 @@ MHD_get_fdset2 (struct MHD_Daemon *daemon,
 
 /**
  * Obtain timeout value for `select()` for this daemon (only needed if
- * connection timeout is used).  The returned value is how long
- * `select()` or `poll()` should at most block, not the timeout value set
- * for connections.  This function MUST NOT be called if MHD is
- * running with #MHD_USE_THREAD_PER_CONNECTION.
+ * connection timeout is used).  The returned value is how many milliseconds
+ * `select()` or `poll()` should at most block, not the timeout value set for
+ * connections.  This function MUST NOT be called if MHD is running with
+ * #MHD_USE_THREAD_PER_CONNECTION.
  *
  * @param daemon daemon to query for timeout
  * @param timeout set to the timeout (in milliseconds)
@@ -1668,6 +1779,19 @@ MHD_set_panic_func (MHD_PanicCallback cb, void *cls);
 
 
 /**
+ * Process escape sequences ('%HH') Updates val in place; the
+ * result should be UTF-8 encoded and cannot be larger than the input.
+ * The result must also still be 0-terminated.
+ *
+ * @param val value to unescape (modified in the process)
+ * @return length of the resulting val (`strlen(val)` may be
+ *  shorter afterwards due to elimination of escape sequences)
+ */
+_MHD_EXTERN size_t
+MHD_http_unescape (char *val);
+
+
+/**
  * Get a particular header value.  If multiple
  * values match the kind, return any one of them.
  *
@@ -1744,6 +1868,53 @@ MHD_resume_connection (struct MHD_Connection *connection);
 
 
 /* **************** Response manipulation functions ***************** */
+
+
+/**
+ * Flags for special handling of responses.
+ */
+enum MHD_ResponseFlags
+{
+  /**
+   * Default: no special flags.
+   */
+  MHD_RF_NONE = 0,
+
+  /**
+   * Only respond in conservative HTTP 1.0-mode.   In particular,
+   * do not (automatically) sent "Connection" headers and always
+   * close the connection after generating the response.
+   */
+  MHD_RF_HTTP_VERSION_1_0_ONLY = 1
+
+};
+
+
+/**
+ * MHD options (for future extensions).
+ */
+enum MHD_ResponseOptions
+{
+  /**
+   * End of the list of options.
+   */
+  MHD_RO_END = 0
+};
+
+
+/**
+ * Set special flags and options for a response.
+ *
+ * @param response the response to modify
+ * @param flags to set for the response
+ * @param ... #MHD_RO_END terminated list of options
+ * @return #MHD_YES on success, #MHD_NO on error
+ */
+_MHD_EXTERN int
+MHD_set_response_options (struct MHD_Response *response,
+                          enum MHD_ResponseFlags flags,
+                          ...);
+
 
 /**
  * Create a response object.  The response object can be extended with
@@ -1881,51 +2052,53 @@ MHD_create_response_from_fd_at_offset (size_t size,
 
 #if 0
 /**
- * Bits in an event mask that specifies which actions
- * MHD should perform and under which conditions it
- * should call the 'upgrade' callback again.
+ * Enumeration for actions MHD should perform on the underlying socket
+ * of the upgrade.  This API is not finalized, and in particular
+ * the final set of actions is yet to be decided. This is just an
+ * idea for what we might want.
  */
-enum MHD_UpgradeEventMask
+enum MHD_UpgradeAction
 {
 
   /**
-   * Never call the handler again; finish sending bytes
-   * in the 'write' buffer and then close the socket.
+   * Close the socket, the application is done with it.
+   *
+   * Takes no extra arguments.
+   *
+   * NOTE: it is unclear if we want to have this in the
+   * "final" API, this is all just ideas.
    */
-  MHD_UPGRADE_EVENT_TERMINATE = 0,
-
-  /**
-   * Call the handler again once there is data ready
-   * for reading.
-   */
-  MHD_UPGRADE_EVENT_READ = 1,
-
-  /**
-   * Call the handler again once there is buffer space
-   * available for writing.
-   */
-  MHD_UPGRADE_EVENT_WRITE = 2,
-
-  /**
-   * Do not wait on any socket actions, we're waiting on
-   * an 'external' event.  Run the function again once
-   * the 'select' call returns _without_ this socket even
-   * being involved in the select sets (useful in
-   * conjunction with the external select loop).
-   */
-  MHD_UPGRADE_EVENT_EXTERNAL = 4,
+  MHD_UPGRADE_ACTION_CLOSE = 0,
 
   /**
    * Uncork the TCP write buffer (that is, tell the OS to transmit all
-   * bytes in the buffer now, and to not use TCP-CORKing).  This is
-   * not really an event flag, but an additional request (which MHD
-   * may ignore if the platform does not support it).  Note that
-   * only returning 'CORK' will *also* cause the socket to be closed!
+   * bytes in the buffer now, and to not use TCP-CORKing).
+   *
+   * Takes no extra arguments.
+   *
+   * NOTE: it is unclear if we want to have this in the
+   * "final" API, this is all just ideas.
    */
-  MHD_UPGRADE_EVENT_CORK = 8
+  MHD_UPGRADE_ACTION_CORK
 
 };
 
+
+/**
+ * This connection-specific callback is provided by MHD to
+ * applications (unusual) during the #MHD_UpgradeHandler.
+ * It allows applications to perform 'special' actions on
+ * the underlying socket from the upgrade.
+ *
+ * @param cls the closure (from `upgrade_action_cls`)
+ * @param action which action should be performed
+ * @param ... arguments to the action (depends on the action)
+ * @return #MHD_NO on error, #MHD_YES on success
+ */
+typedef int
+(*MHD_UpgradeActionCallback)(void *cls,
+                             enum MHD_UpgradeAction action,
+                             ...);
 
 /**
  * Function called after a protocol "upgrade" response was sent
@@ -1960,33 +2133,34 @@ enum MHD_UpgradeEventMask
  * @param connection original HTTP connection handle,
  *                   giving the function a last chance
  *                   to inspect the original HTTP request
- * @param con_cls value as set by the last call to the
- *                MHD_AccessHandlerCallback; will afterwards
- *                be also given to the #MHD_RequestCompletedCallback
- * @param data_in_size available data for reading, set to data read
- * @param data_in data read from the socket
- * @param data_out_size available buffer for writing, set to bytes
- *                written to 'data_out'
- * @param data_out buffer for sending data via the connection
- * @return desired actions for event handling loop
+ * @param sock socket to use for bi-directional communication
+ *        with the client.  For HTTPS, this may not be a socket
+ *        that is directly connected to the client and thus certain
+ *        operations (TCP-specific setsockopt(), getsockopt(), etc.)
+ *        may not work as expected (as the socket could be from a
+ *        socketpair() or a TCP-loopback)
+ * @param upgrade_action function that can be used to perform actions
+ *        on the @a sock (like those that cannot be done explicitly).
+ *        Applications must use this callback to perform the
+ *        close() action on the @a sock.
+ * @param upgrade_action_cls closure that must be passed to @a upgrade_action
  */
-typedef enum MHD_UpgradeEventMask (*MHD_UpgradeHandler)(void *cls,
-							struct MHD_Connection *connection,
-							void **con_cls,
-							size_t *data_in_size,
-							const char *data_in,
-							size_t *data_out_size,
-							char *data_out);
+typedef void
+(*MHD_UpgradeHandler)(void *cls,
+                      struct MHD_Connection *connection,
+                      MHD_SOCKET sock,
+                      MHD_UpgradeActionCallback upgrade_action,
+                      void *upgrade_action_cls);
 
 
 /**
  * Create a response object that can be used for 101 UPGRADE
- * responses, for example to implement websockets.  After sending the
+ * responses, for example to implement WebSockets.  After sending the
  * response, control over the data stream is given to the callback (which
  * can then, for example, start some bi-directional communication).
  * If the response is queued for multiple connections, the callback
  * will be called for each connection.  The callback
- * will ONLY be called if the response header was successfully passed
+ * will ONLY be called after the response header was successfully passed
  * to the OS; if there are communication errors before, the usual MHD
  * connection error handling code will be performed.
  *
@@ -1994,7 +2168,7 @@ typedef enum MHD_UpgradeEventMask (*MHD_UpgradeHandler)(void *cls,
  * and setting correct HTTP headers for the upgrade must be done
  * manually (this way, it is possible to implement most existing
  * WebSocket versions using this API; in fact, this API might be useful
- * for any protocol switch, not just websockets).  Note that
+ * for any protocol switch, not just WebSockets).  Note that
  * draft-ietf-hybi-thewebsocketprotocol-00 cannot be implemented this
  * way as the header "HTTP/1.1 101 WebSocket Protocol Handshake"
  * cannot be generated; instead, MHD will always produce "HTTP/1.1 101
@@ -2005,7 +2179,7 @@ typedef enum MHD_UpgradeEventMask (*MHD_UpgradeHandler)(void *cls,
  * header information is not connection-specific).
  *
  * @param upgrade_handler function to call with the 'upgraded' socket
- * @param upgrade_handler_cls closure for 'upgrade_handler'
+ * @param upgrade_handler_cls closure for @a upgrade_handler
  * @return NULL on error (i.e. invalid arguments, out of memory)
  */
 struct MHD_Response *
@@ -2319,21 +2493,27 @@ MHD_set_connection_option (struct MHD_Connection *connection,
 union MHD_DaemonInfo
 {
   /**
-   * Size of the key.
+   * Size of the key, no longer supported.
    * @deprecated
    */
   size_t key_size;
 
   /**
-   * Size of the mac key.
+   * Size of the mac key, no longer supported.
    * @deprecated
    */
   size_t mac_key_size;
 
   /**
-   * Listen socket file descriptor
+   * Listen socket file descriptor, for #MHD_DAEMON_INFO_EPOLL_FD_LINUX_ONLY
+   * and #MHD_DAEMON_INFO_LISTEN_FD.
    */
   MHD_socket listen_fd;
+
+  /**
+   * Number of active connections, for #MHD_DAEMON_INFO_CURRENT_CONNECTIONS.
+   */
+  unsigned int num_connections;
 };
 
 
@@ -2365,9 +2545,9 @@ MHD_get_version (void);
 
 
 /**
-* Types of information about MHD features,
-* used by #MHD_is_feature_supported.
-*/
+ * Types of information about MHD features,
+ * used by #MHD_is_feature_supported().
+ */
 enum MHD_FEATURE
 {
   /**
@@ -2421,7 +2601,7 @@ enum MHD_FEATURE
   /**
    * Get whether shutdown on listen socket to signal other
    * threads is supported. If not supported flag
-   * MHD_USE_PIPE_FOR_SHUTDOWN is automatically forced.
+   * #MHD_USE_PIPE_FOR_SHUTDOWN is automatically forced.
    */
   MHD_FEATURE_SHUTDOWN_LISTEN_SOCKET = 8,
 
@@ -2448,18 +2628,25 @@ enum MHD_FEATURE
   /**
    * Get whether HTTP Digest authorization is supported. If
    * supported then options #MHD_OPTION_DIGEST_AUTH_RANDOM,
-   * #MHD_OPTION_NONCE_NC_SIZE and functions #MHD_digest_auth_check,
-   * #MHD_digest_auth_check can be used.
+   * #MHD_OPTION_NONCE_NC_SIZE and
+   * #MHD_digest_auth_check() can be used.
    */
   MHD_FEATURE_DIGEST_AUTH = 12,
 
   /**
    * Get whether postprocessor is supported. If supported then
-   * functions #MHD_create_post_processor, #MHD_post_process,
-   * #MHD_destroy_post_processor, #MHD_destroy_post_processor can
+   * functions #MHD_create_post_processor(), #MHD_post_process() and
+   * #MHD_destroy_post_processor() can
    * be used.
    */
-  MHD_FEATURE_POSTPROCESSOR = 13
+  MHD_FEATURE_POSTPROCESSOR = 13,
+
+  /**
+  * Get whether password encrypted private key for HTTPS daemon is
+  * supported. If supported then option
+  * ::MHD_OPTION_HTTPS_KEY_PASSWORD can be used.
+  */
+  MHD_FEATURE_HTTPS_KEY_PASSWORD = 14
 };
 
 

@@ -44,6 +44,9 @@
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
+/* Define if you have epoll_create1 function. */
+#undef HAVE_EPOLL_CREATE1
+
 /* Define to 1 if you have the <errno.h> header file. */
 #undef HAVE_ERRNO_H
 
@@ -124,6 +127,9 @@
 
 /* Define to 1 if you have the <openssl/sha.h> header file. */
 #undef HAVE_OPENSSL_SHA_H
+
+/* Define to 1 if you have the `poll' function. */
+#undef HAVE_POLL
 
 /* Define to 1 if you have the <poll.h> header file. */
 #undef HAVE_POLL_H
@@ -299,9 +305,6 @@
 
 /* This is a NetBSD system */
 #undef NETBSD
-
-/* Define to 1 if your C compiler doesn't accept -c and -o together. */
-#undef NO_MINUS_C_MINUS_O
 
 /* This is an OpenBSD system */
 #undef OPENBSD

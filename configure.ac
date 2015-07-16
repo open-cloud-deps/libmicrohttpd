@@ -1,5 +1,5 @@
 # This file is part of libmicrohttpd.
-# (C) 2006-2014 Christian Grothoff (and other contributing authors)
+# (C) 2006-2015 Christian Grothoff (and other contributing authors)
 #
 # libmicrohttpd is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published
@@ -22,15 +22,15 @@
 #
 AC_PREREQ([2.60])
 LT_PREREQ([2.4.0])
-AC_INIT([libmicrohttpd],[0.9.37],[libmicrohttpd@gnu.org])
+AC_INIT([libmicrohttpd],[0.9.42],[libmicrohttpd@gnu.org])
 AM_INIT_AUTOMAKE([silent-rules] [subdir-objects])
 AC_CONFIG_HEADERS([MHD_config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AH_TOP([#define _GNU_SOURCE  1])
 
-LIB_VERSION_CURRENT=37
+LIB_VERSION_CURRENT=42
 LIB_VERSION_REVISION=0
-LIB_VERSION_AGE=27
+LIB_VERSION_AGE=32
 AC_SUBST(LIB_VERSION_CURRENT)
 AC_SUBST(LIB_VERSION_REVISION)
 AC_SUBST(LIB_VERSION_AGE)
@@ -114,6 +114,7 @@ AC_CHECK_HEADER([windows.h],
 
 # for pkg-config
 MHD_LIBDEPS=""
+MHD_REQ_PRIVATE=''
 # Check system type
 case "$host_os" in
 *darwin* | *rhapsody* | *macosx*)
@@ -135,6 +136,8 @@ netbsd*)
 *solaris*)
      AC_DEFINE_UNQUOTED(SOLARIS,1,[This is a Solaris system])
      AC_DEFINE_UNQUOTED(_REENTRANT,1,[Need with solaris or errno doesnt work])
+     AC_SEARCH_LIBS(gethostbyname, nsl)
+     AC_SEARCH_LIBS(socket, socket)
      ;;
 *arm-linux*)
      AC_DEFINE_UNQUOTED(LINUX,1,[This is a Linux kernel])
@@ -247,8 +250,10 @@ AM_CONDITIONAL(W32_SHARED_LIB_EXP, [test "x$w32_shared_lib_exp" = "xyes"])
 AM_CONDITIONAL(USE_MS_LIB_TOOL, [test "x$ac_cv_use_ms_lib_tool" = "xyes"])
 
 # set GCC options
-# use '-fno-strict-aliasing', but only if the compiler can take it
-AX_APPEND_COMPILE_FLAGS([[-fno-strict-aliasing]])
+# use '-fno-strict-aliasing', but only if the compiler
+# and linker can take it
+AX_CHECK_LINK_FLAG([-fno-strict-aliasing],
+  [AX_APPEND_COMPILE_FLAGS([-fno-strict-aliasing])])
 
 AC_C_BIGENDIAN
 
@@ -271,6 +276,36 @@ AC_ARG_ENABLE([[examples]],
 test "x$enable_examples" = "xno" || enable_examples=yes
 AM_CONDITIONAL([BUILD_EXAMPLES], [test "x$enable_examples" = "xyes"])
 
+AC_ARG_ENABLE([[poll]],
+  [AS_HELP_STRING([[--enable-poll[=ARG]]], [enable poll support (yes, no, auto) [auto]])],
+    [enable_poll=${enableval}],
+    [enable_poll='auto']
+  )
+
+if test "$enable_poll" != "no"; then
+  if test "$os_is_native_w32" != "yes"; then
+    AC_CHECK_HEADERS([poll.h],
+      [
+        AC_CHECK_FUNCS([poll], [have_poll='yes'], [have_poll='no'])
+      ])
+  else
+    AC_MSG_CHECKING([for WSAPoll()])
+    AC_LINK_IFELSE([
+      AC_LANG_PROGRAM([[#include <winsock2.h>]], [[
+WSAPOLLFD fda[2];
+WSAPoll(fda, 2, 0);]])],
+        [
+          have_poll='yes'
+          AC_DEFINE([HAVE_POLL],[1])
+        ], [have_poll='no'])
+    AC_MSG_RESULT([$have_poll])
+  fi
+  if test "$enable_poll" = "yes" && test "$have_poll" != "yes"; then
+    AC_MSG_ERROR([[Support for poll was explicitly requested but cannot be enabled on this platform.]])
+  fi
+  enable_poll="$have_poll"
+fi
+
 AC_ARG_ENABLE([[epoll]],
   [AS_HELP_STRING([[--enable-epoll[=ARG]]], [enable epoll support (yes, no, auto) [auto]])],
     [enable_epoll=${enableval}],
@@ -289,6 +324,18 @@ if test "$enable_epoll" != "no"; then
     fi
     enable_epoll='no'
   fi
+fi
+
+if test "x$enable_epoll" = "xyes"; then
+  AC_CACHE_CHECK([for epoll_create1()], [mhd_cv_have_epoll_create1], [
+    AC_LINK_IFELSE([
+      AC_LANG_PROGRAM([[#include <sys/epoll.h>]], [[
+int fd;
+fd = epoll_create1(EPOLL_CLOEXEC);]])],
+      [mhd_cv_have_epoll_create1=yes],
+      [mhd_cv_have_epoll_create1=no])])
+  AS_IF([test "x$mhd_cv_have_epoll_create1" = "xyes"],[
+    AC_DEFINE([[HAVE_EPOLL_CREATE1]], [[1]], [Define if you have epoll_create1 function.])])
 fi
 
 if test "x$HAVE_POSIX_THREADS" = "xyes"; then
@@ -311,7 +358,7 @@ fi
 AC_CHECK_HEADERS([fcntl.h math.h errno.h limits.h stdio.h locale.h sys/stat.h sys/types.h pthread.h],,AC_MSG_ERROR([Compiling libmicrohttpd requires standard UNIX headers files]))
 
 # Check for optional headers
-AC_CHECK_HEADERS([sys/types.h sys/time.h sys/msg.h netdb.h netinet/in.h netinet/tcp.h time.h sys/socket.h sys/mman.h arpa/inet.h sys/select.h poll.h search.h])
+AC_CHECK_HEADERS([sys/types.h sys/time.h sys/msg.h netdb.h netinet/in.h netinet/tcp.h time.h sys/socket.h sys/mman.h arpa/inet.h sys/select.h search.h])
 AM_CONDITIONAL([HAVE_TSEARCH], [test "x$ac_cv_header_search_h" = "xyes"])
 
 AC_CHECK_MEMBER([struct sockaddr_in.sin_len],
@@ -329,6 +376,7 @@ AC_CHECK_MEMBER([struct sockaddr_in.sin_len],
       #include <netinet/in.h>
     #endif
    ])
+
 
 # Check for pipe/socketpair signaling
 AC_MSG_CHECKING([[whether to enable signaling by socketpair]])
@@ -445,10 +493,11 @@ case "$host" in
     ;;
   *)
     dnl on other compilers, check if we can do -fvisibility=hidden
-    AX_CHECK_COMPILE_FLAG([-fvisibility=hidden],
+    AX_CHECK_LINK_FLAG([-fvisibility=hidden],
+      [AX_CHECK_COMPILE_FLAG([-fvisibility=hidden],
                            [AC_DEFINE([_MHD_EXTERN], [__attribute__((visibility("default"))) extern],
                                        [defines how to decorate public symbols while building])
-                            HIDDEN_VISIBILITY_CFLAGS="-fvisibility=hidden"])
+                            HIDDEN_VISIBILITY_CFLAGS="-fvisibility=hidden"])])
     ;;
 esac
 AC_SUBST(HIDDEN_VISIBILITY_CFLAGS)
@@ -615,30 +664,28 @@ fi
 
 # gnutls
 GNUTLS_CPPFLAGS=""
-GNUTLS_CFLAGS=""
 GNUTLS_LDFLAGS=""
-GNUTLS_LIBS=""
 have_gnutls=no
 have_gnutls_sni=no
-AC_MSG_CHECKING(for gnutls)
-AC_ARG_WITH(gnutls,
-   [AC_HELP_STRING([--with-gnutls=PFX],[base of gnutls installation])],
-   [AC_MSG_RESULT([using prefix $with_gnutls])
+have_gnutls_pkgcfg=no
+AC_MSG_CHECKING([[how to find GnuTLS library]])
+AC_ARG_WITH([[gnutls]],
+   [AC_HELP_STRING([[--with-gnutls[=PFX]]],[use GnuTLS for HTTPS support, optional PFX overrides pkg-config data for GnuTLS headers (PFX/include) and libs (PFX/lib)])],
+   [
     case $with_gnutls in
       no)
+        AC_MSG_RESULT([[GnuTLS disabled]])
         ;;
       yes)
-        AC_CHECK_HEADERS([gnutls/gnutls.h],
-            [AC_CHECK_LIB([gnutls], [gnutls_priority_set], [
-              GNUTLS_LIBS="-lgnutls"
-              AC_CHECK_LIB([gnutls], [gnutls_load_file], [AC_CHECK_LIB([gnutls], [gnutls_privkey_import_x509_raw], [have_gnutls_sni=yes])])
-              have_gnutls=yes])])
+        AC_MSG_RESULT([[automatically, forced]])
         ;;
       *)
+        AC_MSG_RESULT([[-I$with_gnutls/include -L$with_gnutls/lib -lgnutls]])
         SAVE_LDFLAGS="$LDFLAGS"
         SAVE_CPPFLAGS="$CPPFLAGS"
         LDFLAGS="-L$with_gnutls/lib $LDFLAGS"
         CPPFLAGS="-I$with_gnutls/include $CPPFLAGS"
+        have_gnutls_pkgcfg=no
           AC_CHECK_HEADERS([gnutls/gnutls.h],
             [AC_CHECK_LIB([gnutls], [gnutls_priority_set],
               [
@@ -654,18 +701,78 @@ AC_ARG_WITH(gnutls,
         ;;
     esac
    ],
-   [AC_MSG_RESULT([--with-gnutls not specified])
-    AC_CHECK_HEADERS([gnutls/gnutls.h],
+   [AC_MSG_RESULT([[automatically]])
+   ])
+
+AS_IF([test "x$with_gnutls" != "xno" && test "x$have_gnutls" != "xyes"],
+  [
+    PKG_CHECK_MODULES(GNUTLS, [[gnutls]],
+      [
+       have_gnutls_pkgcfg='yes'
+       SAVE_CPPFLAGS="$CPPFLAGS"
+       SAVE_CFLAGS="$CFLAGS"
+       SAVE_LDFLAGS="$LDFLAGS"
+       SAVE_LIBS="$LIBS"
+       CPPFLAGS="$GNUTLS_CFLAGS $CPPFLAGS"
+       CFLAGS="$GNUTLS_CFLAGS $CFLAGS"
+       LDFLAGS="$GNUTLS_LIBS $LDFLAGS"
+       LIBS="$LIBS $GNUTLS_LIBS"
+       AC_MSG_CHECKING([[whether GnuTLS is usable]])
+       AC_LINK_IFELSE([
+         AC_LANG_PROGRAM([[#include <gnutls/gnutls.h>]], [[
+                gnutls_session_t session;
+                gnutls_priority_t priorities;
+                gnutls_global_init();
+                gnutls_priority_init(&priorities, "NORMAL", NULL);
+                gnutls_init(&session, GNUTLS_SERVER);
+                gnutls_priority_set(session, priorities);
+          ]])],
+          [
+           AC_MSG_RESULT([[yes]])
+           have_gnutls=yes
+           GNUTLS_CPPLAGS="$GNUTLS_CFLAGS"
+           GNUTLS_LDFLAGS="$GNUTLS_LIBS"
+           AC_MSG_CHECKING([[for gnutls_privkey_import_x509_raw()]])
+           AC_LINK_IFELSE([
+             AC_LANG_PROGRAM([[#include <gnutls/gnutls.h>]], [[
+                    gnutls_datum_t data;
+                    gnutls_privkey_t key;
+                    gnutls_load_file("key.pem", &data);
+                    gnutls_privkey_import_x509_raw(key, &data, GNUTLS_X509_FMT_PEM, NULL, 0);
+                    gnutls_free(data.data);
+                  ]])], [[have_gnutls_sni=yes]], [[have_gnutls_sni=no]])
+           AC_MSG_RESULT([[$have_gnutls_sni]])
+          ],
+          [
+           AC_MSG_RESULT([[no]])
+           have_gnutls=no
+          ])
+
+       AS_IF([test "x$have_gnutls" != "xyes"], [AC_MSG_WARN([pkg-config reports that GnuTLS is present, but GnuTLS can't be used])])
+       CPPFLAGS="$SAVE_CPPFLAGS"
+       CFLAGS="$SAVE_CFLAGS"
+       LDFLAGS="$SAVE_LDFLAGS"
+       LIBS="$SAVE_LIBS"
+      ],
+      [
+       have_gnutls_pkgcfg='no'
+       AC_CHECK_HEADERS([gnutls/gnutls.h],
         [AC_CHECK_LIB([gnutls], [gnutls_priority_set],
           [
             GNUTLS_LIBS="-lgnutls"
             AC_CHECK_LIB([gnutls], [gnutls_load_file], [AC_CHECK_LIB([gnutls], [gnutls_privkey_import_x509_raw], [have_gnutls_sni=yes])])
             have_gnutls=yes
-          ])])])
+          ])])
+      ])
+  ])
+
+AS_IF([test "x$have_gnutls" != "xyes" && test "x$with_gnutls" = "xyes"], [AC_MSG_ERROR([[can't find usable libgnutls]])])
+
 AM_CONDITIONAL(HAVE_GNUTLS, test "x$have_gnutls" = "xyes")
 AM_CONDITIONAL([HAVE_GNUTLS_SNI], [test "x$have_gnutls_sni" = "xyes"])
 
 AC_SUBST([GNUTLS_CPPFLAGS])
+AC_SUBST([GNUTLS_CFLAGS])
 AC_SUBST([GNUTLS_LDFLAGS])
 AC_SUBST([GNUTLS_LIBS])
 
@@ -679,8 +786,8 @@ if test "x$enable_https" != "xno"
 then
   AS_IF([test "x$have_gnutls" = "xyes" && test "x$have_gcrypt" = "xyes"], [
           AC_DEFINE([HTTPS_SUPPORT],[1],[include HTTPS support])
-          MHD_LIB_CPPFLAGS="$MHD_LIB_CPPFLAGS $GNUTLS_CPPFLAGS $LIBGCRYPT_CFLAGS"
-          MHD_LIB_CFLAGS="$MHD_LIB_CFLAGS $GNUTLS_CFLAGS $LIBGCRYPT_CFLAGS"
+          MHD_LIB_CPPFLAGS="$MHD_LIB_CPPFLAGS $LIBGCRYPT_CFLAGS $GNUTLS_CPPFLAGS"
+          MHD_LIB_CFLAGS="$MHD_LIB_CFLAGS $LIBGCRYPT_CFLAGS $GNUTLS_CFLAGS"
           MHD_LIB_LDFLAGS="$MHD_LIB_LDFLAGS $GNUTLS_LDFLAGS"
           MHD_LIBDEPS="$GNUTLS_LIBS $LIBGCRYPT_LIBS $MHD_LIBDEPS"
           enable_https=yes
@@ -726,7 +833,7 @@ AC_ARG_ENABLE([dauth],
 			[disable HTTP basic and digest Auth support]),
 		[enable_dauth=${enableval}],
 		[enable_dauth=yes])
-if test "$enable_dauth" != "xno"
+if test "x$enable_dauth" != "xno"
 then
  enable_dauth=yes
  AC_DEFINE([DAUTH_SUPPORT],[1],[include digest Auth support])
@@ -758,6 +865,17 @@ AC_SUBST(MHD_LIB_CFLAGS)
 AC_SUBST(MHD_LIB_LDFLAGS)
 
 # for pkg-config
+AS_IF([[test "x$enable_https" = "xyes" && test "x$have_gnutls_pkgcfg" = "xyes" ]],
+ [ # remove GnuTLS from private libs in .pc file as it defined in Requires.private
+   MHD_REQ_PRIVATE='gnutls'
+   MHD_LIBDEPS_PKGCFG="${MHD_LIBDEPS//$GNUTLS_LIBS/}"
+ ],
+ [
+   MHD_REQ_PRIVATE=''
+   MHD_LIBDEPS_PKGCFG="$MHD_LIBDEPS"
+ ])
+AC_SUBST([MHD_REQ_PRIVATE])
+AC_SUBST([MHD_LIBDEPS_PKGCFG])
 AC_SUBST(MHD_LIBDEPS)
 
 AC_SUBST(CPPFLAGS)
@@ -767,6 +885,7 @@ AC_SUBST(LDFLAGS)
 AC_CONFIG_FILES([
 libmicrohttpd.pc
 libmicrospdy.pc
+w32/VS2013/microhttpd_dll_res_vc.rc
 Makefile
 contrib/Makefile
 doc/Makefile
@@ -803,6 +922,7 @@ AC_MSG_NOTICE([Configuration Summary:
   Digest auth.:      ${enable_dauth}
   Postproc:          ${enable_postprocessor}
   HTTPS support:     ${MSG_HTTPS}
+  poll support:      ${enable_poll=no}
   epoll support:     ${enable_epoll=no}
   build docs:        ${enable_doc}
   build examples:    ${enable_examples}
@@ -819,4 +939,11 @@ else
  AC_MSG_NOTICE([
   License         :  LGPL or eCos
 ])
+fi
+
+if test "x$enable_bauth" != "xyes" -o \
+        "x$enable_dauth" != "xyes" -o \
+        "x$enable_postprocessor" != "xyes"
+then
+ AC_MSG_NOTICE([WARNING: This will be a custom build with missing symbols. Do NOT use this build in a distribution. Building with these kinds of configure options is only for custom builds for embedded systems.])
 fi
