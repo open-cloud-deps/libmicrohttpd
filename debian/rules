@@ -1,5 +1,12 @@
 #!/usr/bin/make -f
 
+# test suite is known to fail on kfreebsd, don't fail build on that
+TESTSUITE_FAIL_CMD=exit 1
+ifneq ($(filter $(DEB_BUILD_ARCH), kfreebsd-amd64 kfreebsd-i386),)
+TESTSUITE_FAIL_CMD=exit 0
+endif
+
+
 %:
 	dh ${@} --with autoreconf
 
@@ -10,7 +17,7 @@ override_dh_auto_install:
 	rm -f debian/tmp/usr/lib/*/*.la
 
 override_dh_auto_test:
-	# disabled
+	dh_auto_test || $(TESTSUITE_FAIL_CMD)
 
 override_dh_install:
 	dh_install --fail-missing
