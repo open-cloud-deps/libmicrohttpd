@@ -1,3 +1,18 @@
+libmicrohttpd (0.9.42+dfsg-2) unstable; urgency=medium
+
+  [ Martin Pitt ]
+  * debian/rules: Run the test suite and make it fatal on non-kfreebsd, where
+    it's known to fail (Closes: #797154).
+  * Add compile/link/run autopkgtest for libmicrohttpd-dev (Closes: #797157).
+
+  [ Bertrand Marc ]
+  * Build-depend on libssl-dev and zlib-dev to enable libmicrospdy.
+  * Put libmicrospdy into separate packages (libmicrosdpy0, -dbg and -dev) and
+    create libmicrospdy0.symbols.
+  * Upload to unstable.
+
+ -- Bertrand Marc <beberking@gmail.com>  Sun, 06 Sep 2015 17:40:18 +0200
+
 libmicrohttpd (0.9.42+dfsg-1) experimental; urgency=medium
 
   * Update upstream signing key. Remove debian/source/include-binaries as
