@@ -73,3 +73,41 @@ Description: library embedding HTTP server functionality (development)
   * Support for SSL3 and TLS
  .
  This package contains the development files.
+ 
+Package: libmicrospdy0
+Architecture: any
+Pre-Depends: ${misc:Pre-Depends}
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: library embedding SPDY server functionality
+ GNU libmicrospdy is a small C very experimental library embedding a SPDY
+ server (the base for HTTP 2.0). libmicrospdy provides a compact API and
+ implementation of SPDY server. libmicrospdy currently only implements partially
+ version 3 of SPDY.
+
+Package: libmicrospdy-dbg
+Section: debug
+Priority: extra
+Architecture: any
+Depends:
+ ${misc:Depends}, libmicrospdy0 (= ${binary:Version}),
+ libmicrospdy-dev (= ${binary:Version})
+Description: library embedding SPDY server functionality (debug)
+ GNU libmicrospdy is a small C very experimental library embedding a SPDY
+ server (the base for HTTP 2.0). libmicrospdy provides a compact API and
+ implementation of SPDY server. libmicrospdy currently only implements partially
+ version 3 of SPDY.
+ .
+ This package contains the debugging symbols.
+
+Package: libmicrospdy-dev
+Section: libdevel
+Architecture: any
+Depends:
+ ${misc:Depends}, libmicrospdy0 (= ${binary:Version})
+Description: library embedding SPDY server functionality (development)
+ GNU libmicrospdy is a small C very experimental library embedding a SPDY
+ server (the base for HTTP 2.0). libmicrospdy provides a compact API and
+ implementation of SPDY server. libmicrospdy currently only implements partially
+ version 3 of SPDY.
+ .
+ This package contains the development files.
