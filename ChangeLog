@@ -1,3 +1,69 @@
+Wed Sep 16 11:06:02 CEST 2015
+	Releasing libmicrohttpd 0.9.43. -CG
+
+Wed Sep  2 16:50:31 CEST 2015
+ 	Call resume_suspended_connections() when the user is running
+	its own mainloop and calls MHD_run_from_select() to support
+	resuming connections with external select. -FC
+
+Sun Aug 30 14:53:51 CEST 2015
+	Correct documentation as to when MHD_USE_EPOLL_LINUX_ONLY
+	is allowed. -CG
+
+Thu Aug 27 09:38:44 CEST 2015
+	Reimplement monotonic clock functions for better
+	support various platforms.
+	Print more information during configure. -EG
+
+Fri Aug 14 14:13:55 CEST 2015
+	Export MHD_get_reason_phrase_for() symbol. -CG
+
+Sat Aug  8 12:19:47 CEST 2015
+	Added checks for overflows and buffer overruns, fixed
+	possible buffer overrun.
+	Updated md5 implementation.
+	Fixed many compiler warning (mostly for VC compiler). -EG
+
+Tue Aug  4 13:50:23 CEST 2015
+	Fix failure to properly clean up timed out connections
+	if running in external select mode without listen socket,
+	which caused busy waiting until new connections arrived.
+	(Fixes #3924, thanks to slimp for reporting and testcase). -CG
+
+Sun Aug  2 19:08:20 CEST 2015
+	Ignore close() errors on sockets except for EBADF,
+	fixes #3926. -CG
+
+Sat Jun 27 22:16:27 CEST 2015
+	Make sure to decrement connection counter before
+	calling connection notifier so that
+	MHD_DAEMON_INFO_CURRENT_CONNECTIONS does not
+	present stale information (relevant if this is
+	used for termination detection of a daemon
+	stopped via MHD_quiesce_daemon()). Thanks to
+	Markus Doppelbauer for reporting. -CG
+
+Fri Jun 26 23:17:20 CEST 2015
+	Fix (automatic) handling of HEAD requests with
+	MHD_create_response_from_callback() and HTTP/1.1
+	connection keep-alives. Thanks to Cristian Klein
+	for reporting. -CG
+
+Tue Jun 09 18:30:17 CEST 2015
+	Add new functions MHD_create_response_from_fd64() and
+	MHD_create_response_from_fd_at_offset64(). -EG
+
+Thu Jun  4 13:37:05 CEST 2015
+	Fixing memory leak in digest authentication. -AW
+
+Wed Jun 03 21:23:47 CEST 2015
+	Add deprecation compiler messages for deprecated functions
+	and macros. -EG
+
+Fri May 29 12:23:01 CEST 2015
+	Fixing digest authentication when used in combination
+	with escaped characters in URLs. -CG/AW
+
 Wed May 13 11:49:09 CEST 2015
 	Releasing libmicrohttpd 0.9.42. -CG
 

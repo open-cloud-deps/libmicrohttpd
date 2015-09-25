@@ -30,7 +30,7 @@
 #include "connection.h"
 #include "memorypool.h"
 #include "response.h"
-#include "reason_phrase.h"
+#include "mhd_mono_clock.h"
 
 #if HAVE_NETINET_TCP_H
 /* for TCP_CORK */
@@ -301,7 +301,8 @@ connection_close_error (struct MHD_Connection *connection,
   if (NULL != emsg)
     MHD_DLOG (connection->daemon, emsg);
 #endif
-  MHD_connection_close (connection, MHD_REQUEST_TERMINATED_WITH_ERROR);
+  MHD_connection_close (connection, 
+			MHD_REQUEST_TERMINATED_WITH_ERROR);
 }
 
 
@@ -337,7 +338,8 @@ try_ready_normal_body (struct MHD_Connection *connection)
   response = connection->response;
   if (NULL == response->crc)
     return MHD_YES;
-  if (0 == response->total_size)
+  if ( (0 == response->total_size) ||
+       (connection->response_write_position == response->total_size) )
     return MHD_YES; /* 0-byte response is always ready */
   if ( (response->data_start <=
 	connection->response_write_position) &&
@@ -356,7 +358,7 @@ try_ready_normal_body (struct MHD_Connection *connection)
   ret = response->crc (response->crc_cls,
                        connection->response_write_position,
                        response->data,
-                       MHD_MIN (response->data_buffer_size,
+                       (size_t)MHD_MIN ((uint64_t)response->data_buffer_size,
                                 response->total_size -
                                 connection->response_write_position));
   if ( (((ssize_t) MHD_CONTENT_READER_END_OF_STREAM) == ret) ||
@@ -367,7 +369,8 @@ try_ready_normal_body (struct MHD_Connection *connection)
       if (NULL != response->crc)
         (void) MHD_mutex_unlock_ (&response->mutex);
       if ( ((ssize_t)MHD_CONTENT_READER_END_OF_STREAM) == ret)
-	MHD_connection_close (connection, MHD_REQUEST_TERMINATED_COMPLETED_OK);
+	MHD_connection_close (connection, 
+			      MHD_REQUEST_TERMINATED_COMPLETED_OK);
       else
 	CONNECTION_CLOSE_ERROR (connection,
 				"Closing connection (stream error)\n");
@@ -403,12 +406,12 @@ try_ready_chunked_body (struct MHD_Connection *connection)
   struct MHD_Response *response;
   size_t size;
   char cbuf[10];                /* 10: max strlen of "%x\r\n" */
-  size_t cblen;
+  int cblen;
 
   response = connection->response;
   if (0 == connection->write_buffer_size)
     {
-      size = connection->daemon->pool_size;
+      size = MHD_MIN(connection->daemon->pool_size, 2 * (0xFFFFFF + sizeof(cbuf) + 2));
       do
         {
           size /= 2;
@@ -426,30 +429,30 @@ try_ready_chunked_body (struct MHD_Connection *connection)
       connection->write_buffer = buf;
     }
 
-  if ( (response->data_start <=
+  if (0 == response->total_size)
+    ret = 0; /* response must be empty, don't bother calling crc */
+  else if ( (response->data_start <=
 	connection->response_write_position) &&
-       (response->data_size + response->data_start >
+       (response->data_start + response->data_size >
 	connection->response_write_position) )
     {
+      /* difference between response_write_position and data_start is less
+         than data_size which is size_t type, no need to check for overflow */
+      const size_t data_write_offset = (size_t)(connection->response_write_position - response->data_start);
       /* buffer already ready, use what is there for the chunk */
-      ret = response->data_size + response->data_start - connection->response_write_position;
-      if ( (ret > 0) &&
-           (((size_t) ret) > connection->write_buffer_size - sizeof (cbuf) - 2) )
+      ret = response->data_size - data_write_offset;
+      if ( ((size_t) ret) > connection->write_buffer_size - sizeof (cbuf) - 2 )
 	ret = connection->write_buffer_size - sizeof (cbuf) - 2;
       memcpy (&connection->write_buffer[sizeof (cbuf)],
-	      &response->data[connection->response_write_position - response->data_start],
-	      ret);
+              &response->data[data_write_offset], ret);
     }
   else
     {
       /* buffer not in range, try to fill it */
-      if (0 == response->total_size)
-	ret = 0; /* response must be empty, don't bother calling crc */
-      else
-	ret = response->crc (response->crc_cls,
-			     connection->response_write_position,
-			     &connection->write_buffer[sizeof (cbuf)],
-			     connection->write_buffer_size - sizeof (cbuf) - 2);
+      ret = response->crc (response->crc_cls,
+                           connection->response_write_position,
+                           &connection->write_buffer[sizeof (cbuf)],
+                           connection->write_buffer_size - sizeof (cbuf) - 2);
     }
   if ( ((ssize_t) MHD_CONTENT_READER_END_WITH_ERROR) == ret)
     {
@@ -476,11 +479,11 @@ try_ready_chunked_body (struct MHD_Connection *connection)
     }
   if (ret > 0xFFFFFF)
     ret = 0xFFFFFF;
-  MHD_snprintf_ (cbuf,
+  cblen = MHD_snprintf_(cbuf,
 	    sizeof (cbuf),
 	    "%X\r\n", (unsigned int) ret);
-  cblen = strlen (cbuf);
-  EXTRA_CHECK (cblen <= sizeof (cbuf));
+  EXTRA_CHECK(cblen > 0);
+  EXTRA_CHECK(cblen < sizeof(cbuf));
   memcpy (&connection->write_buffer[sizeof (cbuf) - cblen], cbuf, cblen);
   memcpy (&connection->write_buffer[sizeof (cbuf) + ret], "\r\n", 2);
   connection->response_write_position += ret;
@@ -1591,7 +1594,7 @@ process_request_body (struct MHD_Connection *connection)
 	       (MHD_SIZE_UNKNOWN != connection->remaining_upload_size) &&
 	       (connection->remaining_upload_size < available) )
 	    {
-              processed = connection->remaining_upload_size;
+              processed = (size_t)connection->remaining_upload_size;
 	    }
           else
 	    {
@@ -1657,7 +1660,7 @@ process_request_body (struct MHD_Connection *connection)
 static int
 do_read (struct MHD_Connection *connection)
 {
-  int bytes_read;
+  ssize_t bytes_read;
 
   if (connection->read_buffer_size == connection->read_buffer_offset)
     return MHD_NO;
@@ -1968,7 +1971,7 @@ update_last_activity (struct MHD_Connection *connection)
 {
   struct MHD_Daemon *daemon = connection->daemon;
 
-  connection->last_activity = MHD_monotonic_time();
+  connection->last_activity = MHD_monotonic_sec_counter();
   if (connection->connection_timeout != daemon->connection_timeout)
     return; /* custom timeout, no need to move it in "normal" DLL */
 
@@ -2127,41 +2130,50 @@ MHD_connection_handle_write (struct MHD_Connection *connection)
           break;
         case MHD_CONNECTION_NORMAL_BODY_READY:
           response = connection->response;
-          if (NULL != response->crc)
-            (void) MHD_mutex_lock_ (&response->mutex);
-          if (MHD_YES != try_ready_normal_body (connection))
-	    break;
-	  ret = connection->send_cls (connection,
-				      &response->data
-				      [connection->response_write_position
-				       - response->data_start],
-				      response->data_size -
-				      (connection->response_write_position
-				       - response->data_start));
-	  const int err = MHD_socket_errno_;
+          if (connection->response_write_position <
+              connection->response->total_size)
+          {
+            int err;
+            uint64_t data_write_offset;
+            if (NULL != response->crc)
+              (void) MHD_mutex_lock_ (&response->mutex);
+            if (MHD_YES != try_ready_normal_body (connection))
+              break;
+            data_write_offset = connection->response_write_position
+                                - response->data_start;
+            if (data_write_offset > (uint64_t)SIZE_MAX)
+              MHD_PANIC("Data offset exceeds limit");
+            ret = connection->send_cls (connection,
+                                        &response->data
+                                        [(size_t)data_write_offset],
+                                        response->data_size -
+                                        (size_t)data_write_offset);
+            err = MHD_socket_errno_;
 #if DEBUG_SEND_DATA
-          if (ret > 0)
-            fprintf (stderr,
-                     "Sent DATA response: `%.*s'\n",
-                     (int) ret,
-                     &response->data[connection->response_write_position -
-                                     response->data_start]);
+            if (ret > 0)
+              fprintf (stderr,
+                       "Sent %d-byte DATA response: `%.*s'\n",
+                       (int) ret,
+                       (int) ret,
+                       &response->data[connection->response_write_position -
+                                       response->data_start]);
 #endif
-          if (NULL != response->crc)
-            (void) MHD_mutex_unlock_ (&response->mutex);
-          if (ret < 0)
-            {
-              if ((err == EINTR) || (err == EAGAIN) || (EWOULDBLOCK == err))
-                return MHD_YES;
+            if (NULL != response->crc)
+              (void) MHD_mutex_unlock_ (&response->mutex);
+            if (ret < 0)
+              {
+                if ((err == EINTR) || (err == EAGAIN) || (EWOULDBLOCK == err))
+                  return MHD_YES;
 #if HAVE_MESSAGES
-              MHD_DLOG (connection->daemon,
-                        "Failed to send data: %s\n",
-                        MHD_socket_last_strerr_ ());
+                MHD_DLOG (connection->daemon,
+                          "Failed to send data: %s\n",
+                          MHD_socket_last_strerr_ ());
 #endif
-	      CONNECTION_CLOSE_ERROR (connection, NULL);
-              return MHD_YES;
-            }
-          connection->response_write_position += ret;
+                CONNECTION_CLOSE_ERROR (connection, NULL);
+                return MHD_YES;
+              }
+            connection->response_write_position += ret;
+          }
           if (connection->response_write_position ==
               connection->response->total_size)
             connection->state = MHD_CONNECTION_FOOTERS_SENT; /* have no footers */
@@ -2523,7 +2535,9 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
         case MHD_CONNECTION_CHUNKED_BODY_UNREADY:
           if (NULL != connection->response->crc)
             (void) MHD_mutex_lock_ (&connection->response->mutex);
-          if (0 == connection->response->total_size)
+          if ( (0 == connection->response->total_size) ||
+               (connection->response_write_position ==
+                connection->response->total_size) )
             {
               if (NULL != connection->response->crc)
                 (void) MHD_mutex_unlock_ (&connection->response->mutex);
@@ -2579,15 +2593,17 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
 	    daemon->notify_completed (daemon->notify_completed_cls,
 				      connection,
 				      &connection->client_context,
-						  MHD_REQUEST_TERMINATED_COMPLETED_OK);
+				      MHD_REQUEST_TERMINATED_COMPLETED_OK);
             connection->client_aware = MHD_NO;
           }
           end =
-            MHD_lookup_connection_value (connection, MHD_HEADER_KIND,
+            MHD_lookup_connection_value (connection, 
+					 MHD_HEADER_KIND,
                                          MHD_HTTP_HEADER_CONNECTION);
           if ( (MHD_YES == connection->read_closed) ||
                (client_close) ||
-               ((NULL != end) && (MHD_str_equal_caseless_ (end, "close"))) )
+               ( (NULL != end) && 
+		 (MHD_str_equal_caseless_ (end, "close")) ) )
             {
               connection->read_closed = MHD_YES;
               connection->read_buffer_offset = 0;
@@ -2641,9 +2657,10 @@ MHD_connection_handle_idle (struct MHD_Connection *connection)
     }
   timeout = connection->connection_timeout;
   if ( (0 != timeout) &&
-       (timeout <= (MHD_monotonic_time() - connection->last_activity)) )
+       (timeout <= (MHD_monotonic_sec_counter() - connection->last_activity)) )
     {
-      MHD_connection_close (connection, MHD_REQUEST_TERMINATED_TIMEOUT_REACHED);
+      MHD_connection_close (connection,
+			    MHD_REQUEST_TERMINATED_TIMEOUT_REACHED);
       connection->in_idle = MHD_NO;
       return MHD_YES;
     }
