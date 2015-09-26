@@ -14,8 +14,8 @@
 
  You should have received a copy of the GNU General Public License
  along with libmicrohttpd; see the file COPYING.  If not, write to the
- Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- Boston, MA 02111-1307, USA.
+ Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ Boston, MA 02110-1301, USA.
  */
 
 /**
@@ -90,6 +90,7 @@ query_session_ahc (void *cls, struct MHD_Connection *connection,
 /**
  * negotiate a secure connection with server & query negotiated security parameters
  */
+#if LIBCURL_VERSION_NUM >= 0x072200
 static int
 test_query_session ()
 {
@@ -161,7 +162,7 @@ test_query_session ()
   free (cbc.buf);
   return 0;
 }
-
+#endif
 
 int
 main (int argc, char *const *argv)
@@ -177,7 +178,9 @@ main (int argc, char *const *argv)
       fprintf (stderr, "Error (code: %u)\n", errorCount);
       return -1;
     }
+#if LIBCURL_VERSION_NUM >= 0x072200
   errorCount += test_query_session ();
+#endif
   print_test_result (errorCount, argv[0]);
   curl_global_cleanup ();
   if (errorCount > 0)

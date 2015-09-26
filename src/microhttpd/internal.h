@@ -51,8 +51,8 @@
  */
 #define EXTRA_CHECKS MHD_NO
 
-#define MHD_MAX(a,b) ((a)<(b)) ? (b) : (a)
-#define MHD_MIN(a,b) ((a)<(b)) ? (a) : (b)
+#define MHD_MAX(a,b) (((a)<(b)) ? (b) : (a))
+#define MHD_MIN(a,b) (((a)<(b)) ? (a) : (b))
 
 
 /**
@@ -78,6 +78,8 @@ extern void *mhd_panic_cls;
 /* If we have Clang or gcc >= 4.5, use __buildin_unreachable() */
 #if defined(__clang__) || (__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5)
 #define BUILTIN_NOT_REACHED __builtin_unreachable()
+#elif defined(_MSC_FULL_VER)
+#define BUILTIN_NOT_REACHED __assume(0)
 #else
 #define BUILTIN_NOT_REACHED
 #endif
@@ -295,7 +297,7 @@ struct MHD_Response
   /**
    * Offset to start reading from when using @e fd.
    */
-  off_t fd_off;
+  uint64_t fd_off;
 
   /**
    * Number of bytes ready in @e data (buffer may be larger
@@ -679,7 +681,7 @@ struct MHD_Connection
   size_t write_buffer_size;
 
   /**
-   * Offset where we are with sending from write_buffer.
+   * Offset where we are with sending from @e write_buffer.
    */
   size_t write_buffer_send_offset;
 
@@ -1434,17 +1436,6 @@ struct MHD_Daemon
     (element)->nextE->prevE = (element)->prevE; \
   (element)->nextE = NULL; \
   (element)->prevE = NULL; } while (0)
-
-
-/**
- * Equivalent to `time(NULL)` but tries to use some sort of monotonic
- * clock that isn't affected by someone setting the system real time
- * clock.
- *
- * @return 'current' time
- */
-time_t
-MHD_monotonic_time(void);
 
 
 /**

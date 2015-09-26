@@ -186,7 +186,7 @@ three processes on the same machine).
 Not all combinations of thread modes and event loop styles are
 supported.  This is partially to keep the API simple, and partially
 because some combinations simply make no sense as others are strictly
-superior.  Note that the choice of style depends fist of all on the
+superior.  Note that the choice of style depends first of all on the
 application logic, and then on the performance requirements.
 Applications that perform a blocking operation while handling a
 request within the callbacks from MHD must use a thread per
@@ -487,9 +487,9 @@ production.
 @cindex FD_SETSIZE
 @cindex poll
 @cindex select
-Use poll instead of select. This allows sockets with descriptors
-@code{>= FD_SETSIZE}.  This option currently only works in conjunction
-with @code{MHD_USE_THREAD_PER_CONNECTION} or
+Use @code{poll()} instead of @code{select()}. This allows sockets with
+descriptors @code{>= FD_SETSIZE}.  This option currently only works in
+conjunction with @code{MHD_USE_THREAD_PER_CONNECTION} or
 @code{MHD_USE_INTERNAL_SELECT} (at this point).  If you specify
 @code{MHD_USE_POLL} and the local platform does not support it,
 @code{MHD_start_daemon} will return NULL.
@@ -498,15 +498,16 @@ with @code{MHD_USE_THREAD_PER_CONNECTION} or
 @cindex FD_SETSIZE
 @cindex epoll
 @cindex select
-Use epoll instead of poll or select. This allows sockets with
-descriptors @code{>= FD_SETSIZE}.  This option is only available on
-Linux systems and only works in conjunction with
+Use @code{epoll()} instead of @code{poll()} or @code{select()}. This
+allows sockets with descriptors @code{>= FD_SETSIZE}.  This option is
+only available on Linux systems and does not work in conjunction with
 @code{MHD_USE_THREAD_PER_CONNECTION} (at this point).  If you specify
 @code{MHD_USE_EPOLL_LINUX_ONLY} and the local platform does not
-support it, @code{MHD_start_daemon} will return NULL.  Using epoll
-instead of select or poll can in some situations result in significantly
-higher performance as the system call has fundamentally lower complexity
-(O(1) for epoll vs. O(n) for select/poll where n is the number of
+support it, @code{MHD_start_daemon} will return NULL.  Using
+@code{epoll()} instead of @code{select()} or @code{poll()} can in some
+situations result in significantly higher performance as the system
+call has fundamentally lower complexity (O(1) for @code{epoll()}
+vs. O(n) for @code{select()}/@code{poll()} where n is the number of
 open connections).
 
 @item MHD_SUPPRESS_DATE_NO_CLOCK
@@ -2061,7 +2062,10 @@ connection is suspended, MHD will not detect disconnects by the
 client.
 
 The only safe time to suspend a connection is from the
-@code{MHD_AccessHandlerCallback}.
+@code{MHD_AccessHandlerCallback} or from the respective
+@code{MHD_ContentReaderCallback} (but in this case the
+response object must not be shared among multiple
+connections).
 
 Finally, it is an API violation to call @code{MHD_stop_daemon} while
 having suspended connections (this will at least create memory and
