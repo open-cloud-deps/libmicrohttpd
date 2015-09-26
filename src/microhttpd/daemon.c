@@ -24,7 +24,7 @@
  * @author Daniel Pittman
  * @author Christian Grothoff
  */
-#if defined(_WIN32) && !defined(__CYGWIN__)
+#if defined(MHD_WINSOCK_SOCKETS)
 /* override small default value */
 #define FD_SETSIZE 1024
 #define MHD_DEFAULT_FD_SETSIZE 64
@@ -36,8 +36,9 @@
 #include "response.h"
 #include "connection.h"
 #include "memorypool.h"
-#include <limits.h>
+#include "mhd_limits.h"
 #include "autoinit_funcs.h"
+#include "mhd_mono_clock.h"
 
 #if HAVE_SEARCH_H
 #include <search.h>
@@ -73,7 +74,7 @@
 /**
  * Default connection limit.
  */
-#ifndef WINDOWS
+#ifndef MHD_WINSOCK_SOCKETS
 #define MHD_MAX_CONNECTIONS_DEFAULT FD_SETSIZE - 4
 #else
 #define MHD_MAX_CONNECTIONS_DEFAULT FD_SETSIZE
@@ -350,7 +351,7 @@ MHD_ip_limit_add (struct MHD_Daemon *daemon,
   key = (struct MHD_IPCount *) node;
   /* Test if there is room for another connection; if so,
    * increment count */
-  result = (key->count < daemon->per_ip_connection_limit);
+  result = (key->count < daemon->per_ip_connection_limit) ? MHD_YES : MHD_NO;
   if (MHD_YES == result)
     ++key->count;
 
@@ -426,7 +427,7 @@ MHD_ip_limit_del (struct MHD_Daemon *daemon,
 static ssize_t
 recv_tls_adapter (struct MHD_Connection *connection, void *other, size_t i)
 {
-  int res;
+  ssize_t res;
 
   if (MHD_YES == connection->tls_read_ready)
     {
@@ -451,7 +452,7 @@ recv_tls_adapter (struct MHD_Connection *connection, void *other, size_t i)
       MHD_set_socket_errno_ (ECONNRESET);
       return res;
     }
-  if (res == i)
+  if ((size_t)res == i)
     {
       connection->tls_read_ready = MHD_YES;
       connection->daemon->num_tls_read_ready++;
@@ -640,10 +641,10 @@ add_to_fd_set (MHD_socket fd,
       else
         return MHD_NO;
     }
-#else  // ! MHD_WINSOCK_SOCKETS
-  if (fd >= fd_setsize)
+#else  /* ! MHD_WINSOCK_SOCKETS */
+  if (fd >= (MHD_socket)fd_setsize)
     return MHD_NO;
-#endif // ! MHD_WINSOCK_SOCKETS
+#endif /* ! MHD_WINSOCK_SOCKETS */
   FD_SET (fd, set);
   if ( (NULL != max_fd) && (MHD_INVALID_SOCKET != fd) &&
        ((fd > *max_fd) || (MHD_INVALID_SOCKET == *max_fd)) )
@@ -811,16 +812,6 @@ MHD_handle_connection (void *data)
 	  (MHD_CONNECTION_CLOSED != con->state) )
     {
       tvp = NULL;
-      if (timeout > 0)
-	{
-	  now = MHD_monotonic_time();
-	  if (now - con->last_activity > timeout)
-	    tv.tv_sec = 0;
-	  else
-	    tv.tv_sec = timeout - (now - con->last_activity);
-	  tv.tv_usec = 0;
-	  tvp = &tv;
-	}
 #if HTTPS_SUPPORT
       if (MHD_YES == con->tls_read_ready)
 	{
@@ -830,6 +821,26 @@ MHD_handle_connection (void *data)
 	  tvp = &tv;
 	}
 #endif
+      if (NULL == tvp && timeout > 0)
+	{
+	  now = MHD_monotonic_sec_counter();
+	  if (now - con->last_activity > timeout)
+	    tv.tv_sec = 0;
+          else
+            {
+              const time_t seconds_left = timeout - (now - con->last_activity);
+#ifndef _WIN32
+              tv.tv_sec = seconds_left;
+#else  /* _WIN32 */
+              if (seconds_left > TIMEVAL_TV_SEC_MAX)
+                tv.tv_sec = TIMEVAL_TV_SEC_MAX;
+              else
+                tv.tv_sec = (_MHD_TIMEVAL_TV_SEC_TYPE)seconds_left;
+#endif /* _WIN32 */
+            }
+	  tv.tv_usec = 0;
+	  tvp = &tv;
+	}
       if (0 == (con->daemon->options & MHD_USE_POLL))
 	{
 	  /* use select */
@@ -1015,7 +1026,7 @@ exit:
                                     &con->socket_context,
                                     MHD_CONNECTION_NOTIFY_CLOSED);
 
-  return (MHD_THRD_RTRN_TYPE_)0;
+  return (MHD_THRD_RTRN_TYPE_) 0;
 }
 
 
@@ -1033,6 +1044,9 @@ recv_param_adapter (struct MHD_Connection *connection,
 		    size_t i)
 {
   ssize_t ret;
+#if EPOLL_SUPPORT
+  const size_t requested_size = i;
+#endif
 
   if ( (MHD_INVALID_SOCKET == connection->socket_fd) ||
        (MHD_CONNECTION_CLOSED == connection->state) )
@@ -1040,9 +1054,17 @@ recv_param_adapter (struct MHD_Connection *connection,
       MHD_set_socket_errno_ (ENOTCONN);
       return -1;
     }
-  ret = recv (connection->socket_fd, other, i, MSG_NOSIGNAL);
+#ifdef MHD_POSIX_SOCKETS
+  if (i > SSIZE_MAX)
+    i = SSIZE_MAX; /* return value limit */
+#else  /* MHD_WINSOCK_SOCKETS */
+  if (i > INT_MAX)
+    i = INT_MAX; /* return value limit */
+#endif /* MHD_WINSOCK_SOCKETS */
+
+  ret = (ssize_t)recv (connection->socket_fd, other, (_MHD_socket_funcs_size)i, MSG_NOSIGNAL);
 #if EPOLL_SUPPORT
-  if (ret < (ssize_t) i)
+  if ( (0 > ret) || (requested_size > (size_t) ret))
     {
       /* partial read --- no longer read-ready */
       connection->epoll_state &= ~MHD_EPOLL_STATE_READ_READY;
@@ -1066,10 +1088,11 @@ send_param_adapter (struct MHD_Connection *connection,
 		    size_t i)
 {
   ssize_t ret;
+#if EPOLL_SUPPORT
+  const size_t requested_size = i;
+#endif
 #if LINUX
   MHD_socket fd;
-  off_t offset;
-  off_t left;
 #endif
 
   if ( (MHD_INVALID_SOCKET == connection->socket_fd) ||
@@ -1078,26 +1101,45 @@ send_param_adapter (struct MHD_Connection *connection,
       MHD_set_socket_errno_ (ENOTCONN);
       return -1;
     }
+#ifdef MHD_POSIX_SOCKETS
+  if (i > SSIZE_MAX)
+    i = SSIZE_MAX; /* return value limit */
+#else  /* MHD_WINSOCK_SOCKETS */
+  if (i > INT_MAX)
+    i = INT_MAX; /* return value limit */
+#endif /* MHD_WINSOCK_SOCKETS */
+
   if (0 != (connection->daemon->options & MHD_USE_SSL))
-    return send (connection->socket_fd, other, i, MSG_NOSIGNAL);
+    return (ssize_t)send (connection->socket_fd, other, (_MHD_socket_funcs_size)i, MSG_NOSIGNAL);
 #if LINUX
   if ( (connection->write_buffer_append_offset ==
 	connection->write_buffer_send_offset) &&
        (NULL != connection->response) &&
-       (MHD_INVALID_SOCKET != (fd = connection->response->fd)) )
+       (-1 != (fd = connection->response->fd)) )
     {
       /* can use sendfile */
-      offset = (off_t) connection->response_write_position + connection->response->fd_off;
+      uint64_t left;
+      uint64_t offsetu64;
+      int err;
+#ifndef HAVE_SENDFILE64
+      off_t offset;
+#else  /* HAVE_SENDFILE64 */
+      off64_t offset;
+#endif /* HAVE_SENDFILE64 */
+      offsetu64 = connection->response_write_position + connection->response->fd_off;
       left = connection->response->total_size - connection->response_write_position;
-      if (left > SSIZE_MAX)
-	left = SSIZE_MAX; /* cap at return value limit */
-      if (-1 != (ret = sendfile (connection->socket_fd,
-				 fd,
-				 &offset,
-				 (size_t) left)))
+#ifndef HAVE_SENDFILE64
+      offset = (off_t) offsetu64;
+      if ( (offsetu64 <= (uint64_t)OFF_T_MAX) &&
+           0 < (ret = sendfile (connection->socket_fd, fd, &offset, left)))
+#else  /* HAVE_SENDFILE64 */
+      offset = (off64_t) offsetu64;
+      if ( (offsetu64 <= (uint64_t)OFF64_T_MAX) &&
+          0 < (ret = sendfile64 (connection->socket_fd, fd, &offset, left)))
+#endif /* HAVE_SENDFILE64 */
 	{
 #if EPOLL_SUPPORT
-	  if (ret < left)
+          if (requested_size > (size_t) ret)
 	    {
 	      /* partial write --- no longer write-ready */
 	      connection->epoll_state &= ~MHD_EPOLL_STATE_WRITE_READY;
@@ -1105,7 +1147,7 @@ send_param_adapter (struct MHD_Connection *connection,
 #endif
 	  return ret;
 	}
-      const int err = MHD_socket_errno_;
+      err = MHD_socket_errno_;
       if ( (EINTR == err) || (EAGAIN == err) || (EWOULDBLOCK == err) )
 	return 0;
       if ( (EINVAL == err) || (EBADF == err) )
@@ -1116,9 +1158,9 @@ send_param_adapter (struct MHD_Connection *connection,
 	 http://lists.gnu.org/archive/html/libmicrohttpd/2011-02/msg00015.html */
     }
 #endif
-  ret = send (connection->socket_fd, other, i, MSG_NOSIGNAL);
+  ret = (ssize_t)send (connection->socket_fd, other, (_MHD_socket_funcs_size)i, MSG_NOSIGNAL);
 #if EPOLL_SUPPORT
-  if (ret < (ssize_t) i)
+  if ( (0 > ret) || (requested_size > (size_t) ret) )
     {
       /* partial write --- no longer write-ready */
       connection->epoll_state &= ~MHD_EPOLL_STATE_WRITE_READY;
@@ -1127,8 +1169,8 @@ send_param_adapter (struct MHD_Connection *connection,
   /* Handle broken kernel / libc, returning -1 but not setting errno;
      kill connection as that should be safe; reported on mailinglist here:
      http://lists.gnu.org/archive/html/libmicrohttpd/2014-10/msg00023.html */
-  if ( (-1 == ret) && (0 == errno) )
-    errno = ECONNRESET;
+  if ( (0 > ret) && (0 == MHD_socket_errno_) )
+    MHD_set_socket_errno_(ECONNRESET);
   return ret;
 }
 
@@ -1271,7 +1313,7 @@ internal_add_connection (struct MHD_Daemon *daemon,
       return MHD_NO;
     }
 
-#ifndef WINDOWS
+#ifndef MHD_WINSOCK_SOCKETS
   if ( (client_socket >= FD_SETSIZE) &&
        (0 == (daemon->options & (MHD_USE_POLL | MHD_USE_EPOLL_LINUX_ONLY))) )
     {
@@ -1400,7 +1442,7 @@ internal_add_connection (struct MHD_Daemon *daemon,
   connection->addr_len = addrlen;
   connection->socket_fd = client_socket;
   connection->daemon = daemon;
-  connection->last_activity = MHD_monotonic_time();
+  connection->last_activity = MHD_monotonic_sec_counter();
 
   /* set default connection handlers  */
   MHD_set_http_callbacks_ (connection);
@@ -1418,7 +1460,7 @@ internal_add_connection (struct MHD_Daemon *daemon,
 #endif
 	{
 	  /* make socket non-blocking */
-#if !defined(WINDOWS) || defined(CYGWIN)
+#if !defined(MHD_WINSOCK_SOCKETS)
 	  int flags = fcntl (connection->socket_fd, F_GETFL);
 	  if ( (-1 == flags) ||
 	       (0 != fcntl (connection->socket_fd, F_SETFL, flags | O_NONBLOCK)) )
@@ -1797,7 +1839,7 @@ static void
 make_nonblocking_noninheritable (struct MHD_Daemon *daemon,
 				 MHD_socket sock)
 {
-#ifdef WINDOWS
+#ifdef MHD_WINSOCK_SOCKETS
   DWORD dwFlags;
   unsigned long flags = 1;
 
@@ -2002,6 +2044,7 @@ MHD_cleanup_connections (struct MHD_Daemon *daemon)
       if (NULL != pos->tls_session)
 	gnutls_deinit (pos->tls_session);
 #endif
+      daemon->connections--;
       if (NULL != daemon->notify_connection)
         daemon->notify_connection (daemon->notify_connection_cls,
                                    pos,
@@ -2050,7 +2093,6 @@ MHD_cleanup_connections (struct MHD_Daemon *daemon)
       if (NULL != pos->addr)
 	free (pos->addr);
       free (pos);
-      daemon->connections--;
     }
   if ( (0 != (daemon->options & MHD_USE_THREAD_PER_CONNECTION)) &&
        (MHD_YES != MHD_mutex_unlock_ (&daemon->cleanup_connection_mutex)) )
@@ -2135,11 +2177,17 @@ MHD_get_timeout (struct MHD_Daemon *daemon,
 
   if (MHD_NO == have_timeout)
     return MHD_NO;
-  now = MHD_monotonic_time();
+  now = MHD_monotonic_sec_counter();
   if (earliest_deadline < now)
     *timeout = 0;
   else
-    *timeout = 1000 * (1 + earliest_deadline - now);
+    {
+      const time_t second_left = earliest_deadline - now;
+      if (second_left > ULLONG_MAX / 1000)
+        *timeout = ULLONG_MAX;
+      else
+        *timeout = 1000 * second_left;
+  }
   return MHD_YES;
 }
 
@@ -2173,6 +2221,12 @@ MHD_run_from_select (struct MHD_Daemon *daemon,
   char tmp;
   struct MHD_Connection *pos;
   struct MHD_Connection *next;
+  unsigned int mask = MHD_USE_SUSPEND_RESUME | MHD_USE_EPOLL_INTERNALLY_LINUX_ONLY |
+    MHD_USE_SELECT_INTERNALLY | MHD_USE_POLL_INTERNALLY | MHD_USE_THREAD_PER_CONNECTION;
+ 
+  /* Resuming external connections when using an extern mainloop  */
+  if (MHD_USE_SUSPEND_RESUME == (daemon->options & mask))
+    resume_suspended_connections (daemon);
 
 #if EPOLL_SUPPORT
   if (0 != (daemon->options & MHD_USE_EPOLL_LINUX_ONLY))
@@ -2318,11 +2372,12 @@ MHD_select (struct MHD_Daemon *daemon,
     {
       /* ltimeout is in ms */
       timeout.tv_usec = (ltimeout % 1000) * 1000;
-      timeout.tv_sec = ltimeout / 1000;
+      if (ltimeout / 1000 > TIMEVAL_TV_SEC_MAX)
+        timeout.tv_sec = TIMEVAL_TV_SEC_MAX;
+      else
+        timeout.tv_sec = (_MHD_TIMEVAL_TV_SEC_TYPE)(ltimeout / 1000);
       tv = &timeout;
     }
-  if (MHD_INVALID_SOCKET == max)
-    return MHD_YES;
   num_ready = MHD_SYS_select_ (max + 1, &rs, &ws, &es, tv);
   if (MHD_YES == daemon->shutdown)
     return MHD_NO;
@@ -3562,7 +3617,11 @@ MHD_start_daemon_va (unsigned int flags,
                      MHD_AccessHandlerCallback dh, void *dh_cls,
 		     va_list ap)
 {
+#if defined(MHD_POSIX_SOCKETS)
   const int on = 1;
+#elif defined(MHD_WINSOCK_SOCKETS)
+  const uint32_t on = 1;
+#endif /* MHD_WINSOCK_SOCKETS */
   struct MHD_Daemon *daemon;
   MHD_socket socket_fd;
   struct sockaddr_in servaddr4;
@@ -3611,7 +3670,7 @@ MHD_start_daemon_va (unsigned int flags,
   daemon->socket_fd = MHD_INVALID_SOCKET;
   daemon->listening_address_reuse = 0;
   daemon->options = flags;
-#if WINDOWS
+#if defined(MHD_WINSOCK_SOCKETS) || defined(CYGWIN)
   /* Winsock is broken with respect to 'shutdown';
      this disables us calling 'shutdown' on W32. */
   daemon->options |= MHD_USE_EPOLL_TURBO;
@@ -3650,7 +3709,7 @@ MHD_start_daemon_va (unsigned int flags,
       free (daemon);
       return NULL;
     }
-#ifndef WINDOWS
+#ifndef MHD_WINSOCK_SOCKETS
   if ( (0 == (flags & (MHD_USE_POLL | MHD_USE_EPOLL_LINUX_ONLY))) &&
        (1 == use_pipe) &&
        (daemon->wpipe[0] >= FD_SETSIZE) )
@@ -3934,15 +3993,15 @@ MHD_start_daemon_va (unsigned int flags,
 	     (http://msdn.microsoft.com/en-us/library/ms738574%28v=VS.85%29.aspx);
 	     and may also be missing on older POSIX systems; good luck if you have any of those,
 	     your IPv6 socket may then also bind against IPv4 anyway... */
-#ifndef WINDOWS
+#ifndef MHD_WINSOCK_SOCKETS
 	  const int
 #else
-	  const char
+	  const uint32_t
 #endif
-            on = (MHD_USE_DUAL_STACK != (flags & MHD_USE_DUAL_STACK));
+            v6_only = (MHD_USE_DUAL_STACK != (flags & MHD_USE_DUAL_STACK));
 	  if (0 > setsockopt (socket_fd,
                               IPPROTO_IPV6, IPV6_V6ONLY,
-                              &on, sizeof (on)))
+                              &v6_only, sizeof (v6_only)))
       {
 #if HAVE_MESSAGES
             MHD_DLOG (daemon,
@@ -4016,7 +4075,7 @@ MHD_start_daemon_va (unsigned int flags,
     {
       socket_fd = daemon->socket_fd;
     }
-#ifndef WINDOWS
+#ifndef MHD_WINSOCK_SOCKETS
   if ( (socket_fd >= FD_SETSIZE) &&
        (0 == (flags & (MHD_USE_POLL | MHD_USE_EPOLL_LINUX_ONLY)) ) )
     {
@@ -4121,7 +4180,7 @@ MHD_start_daemon_va (unsigned int flags,
   if ( (daemon->worker_pool_size > 0) &&
        (0 == (daemon->options & MHD_USE_NO_LISTEN_SOCKET)) )
     {
-#if !defined(WINDOWS) || defined(CYGWIN)
+#if !defined(MHD_WINSOCK_SOCKETS)
       int sk_flags;
 #else
       unsigned long sk_flags;
@@ -4140,7 +4199,7 @@ MHD_start_daemon_va (unsigned int flags,
       /* Accept must be non-blocking. Multiple children may wake up
        * to handle a new connection, but only one will win the race.
        * The others must immediately return. */
-#if !defined(WINDOWS) || defined(CYGWIN)
+#if !defined(MHD_WINSOCK_SOCKETS)
       sk_flags = fcntl (socket_fd, F_GETFL);
       if (sk_flags < 0)
         goto thread_failed;
@@ -4150,7 +4209,7 @@ MHD_start_daemon_va (unsigned int flags,
       sk_flags = 1;
       if (SOCKET_ERROR == ioctlsocket (socket_fd, FIONBIO, &sk_flags))
         goto thread_failed;
-#endif /* WINDOWS && !CYGWIN */
+#endif /* MHD_WINSOCK_SOCKETS */
 
       /* Allocate memory for pooled objects */
       daemon->worker_pool = malloc (sizeof (struct MHD_Daemon)
@@ -4182,14 +4241,14 @@ MHD_start_daemon_va (unsigned int flags,
 #endif
               goto thread_failed;
             }
-#ifndef WINDOWS
+#ifndef MHD_WINSOCK_SOCKETS
           if ( (0 == (flags & (MHD_USE_POLL | MHD_USE_EPOLL_LINUX_ONLY))) &&
                (MHD_USE_SUSPEND_RESUME == (flags & MHD_USE_SUSPEND_RESUME)) &&
                (d->wpipe[0] >= FD_SETSIZE) )
             {
 #if HAVE_MESSAGES
               MHD_DLOG (daemon,
-                        "file descriptor for worker control pipe exceeds maximum value\n");
+                        "File descriptor for worker control pipe exceeds maximum value\n");
 #endif
               if (0 != MHD_pipe_close_ (d->wpipe[0]))
                 MHD_PANIC ("close failed\n");
@@ -4343,7 +4402,7 @@ close_all_connections (struct MHD_Daemon *daemon)
     {
       shutdown (pos->socket_fd,
                 (pos->read_closed == MHD_YES) ? SHUT_WR : SHUT_RDWR);
-#if WINDOWS
+#if MHD_WINSOCK_SOCKETS
       if ( (0 != (daemon->options & MHD_USE_THREAD_PER_CONNECTION)) &&
            (MHD_INVALID_PIPE_ != daemon->wpipe[1]) &&
            (1 != MHD_pipe_write_ (daemon->wpipe[1], "e", 1)) )
@@ -4750,6 +4809,12 @@ MHD_is_feature_supported(enum MHD_FEATURE feature)
 #else
       return MHD_NO;
 #endif
+    case MHD_FEATURE_LARGE_FILE:
+#if defined(HAVE___LSEEKI64) || defined(HAVE_LSEEK64)
+      return MHD_YES;
+#else
+      return (sizeof(uint64_t) > sizeof(off_t)) ? MHD_NO : MHD_YES;
+#endif
     }
   return MHD_NO;
 }
@@ -4789,8 +4854,8 @@ static struct gcry_thread_cbs gcry_threads_w32 = {
   gcry_w32_mutex_lock, gcry_w32_mutex_unlock,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 
-#endif // defined(MHD_W32_MUTEX_)
-#endif // HTTPS_SUPPORT && GCRYPT_VERSION_NUMBER < 0x010600
+#endif /* defined(MHD_W32_MUTEX_) */
+#endif /* HTTPS_SUPPORT && GCRYPT_VERSION_NUMBER < 0x010600 */
 
 
 /**
@@ -4817,7 +4882,7 @@ void MHD_init(void)
 #elif defined(MHD_W32_MUTEX_)
   if (0 != gcry_control (GCRYCTL_SET_THREAD_CBS, &gcry_threads_w32))
     MHD_PANIC ("Failed to initialise multithreading in libgcrypt\n");
-#endif // defined(MHD_W32_MUTEX_)
+#endif /* defined(MHD_W32_MUTEX_) */
   gcry_check_version (NULL);
 #else
   if (NULL == gcry_check_version ("1.6.0"))
@@ -4825,6 +4890,7 @@ void MHD_init(void)
 #endif
   gnutls_global_init ();
 #endif
+  MHD_monotonic_sec_counter_init();
 }
 
 
@@ -4837,6 +4903,7 @@ void MHD_fini(void)
   if (mhd_winsock_inited_)
     WSACleanup();
 #endif
+  MHD_monotonic_sec_counter_finish();
 }
 
 _SET_INIT_AND_DEINIT_FUNCS(MHD_init, MHD_fini);

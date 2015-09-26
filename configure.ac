@@ -13,8 +13,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with libmicrohttpd; see the file COPYING.  If not, write to the
-# Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-# Boston, MA 02111-1307, USA.
+# Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+# Boston, MA 02110-1301, USA.
 #
 #
 # Process this file with autoconf to produce a configure script.
@@ -22,15 +22,15 @@
 #
 AC_PREREQ([2.60])
 LT_PREREQ([2.4.0])
-AC_INIT([libmicrohttpd],[0.9.42],[libmicrohttpd@gnu.org])
+AC_INIT([libmicrohttpd],[0.9.43],[libmicrohttpd@gnu.org])
 AM_INIT_AUTOMAKE([silent-rules] [subdir-objects])
 AC_CONFIG_HEADERS([MHD_config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AH_TOP([#define _GNU_SOURCE  1])
 
-LIB_VERSION_CURRENT=42
+LIB_VERSION_CURRENT=43
 LIB_VERSION_REVISION=0
-LIB_VERSION_AGE=32
+LIB_VERSION_AGE=33
 AC_SUBST(LIB_VERSION_CURRENT)
 AC_SUBST(LIB_VERSION_REVISION)
 AC_SUBST(LIB_VERSION_AGE)
@@ -43,6 +43,7 @@ AC_SUBST(LIBSPDY_VERSION_REVISION)
 AC_SUBST(LIBSPDY_VERSION_AGE)
 
 
+AC_MSG_CHECKING([[whether z/OS special settings are required]])
 if test `uname -s` = "OS/390"
 then
 # configure binaries for z/OS
@@ -59,8 +60,11 @@ then
   then
     CXXCPP="c++ -E -+"
   fi
+  AC_MSG_RESULT([[yes]])
 #  _CCC_CCMODE=1
 #  _C89_CCMODE=1
+else
+  AC_MSG_RESULT([[no]])
 fi
 
 # Checks for programs.
@@ -69,7 +73,9 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_CANONICAL_HOST
-AM_PROG_CC_C_O
+AC_PROG_CC_STDC
+AS_IF([[test -n "$ac_cv_prog_cc_stdc" && test "x$ac_cv_prog_cc_stdc" != "xno"]],
+      [[CFLAGS="$CFLAGS $ac_cv_prog_cc_stdc"]])
 LT_INIT([win32-dll])
 LT_LANG([Windows Resource])
 
@@ -84,10 +90,12 @@ AC_CONFIG_FILES([src/microhttpd/microhttpd_dll_res.rc])
 MHD_LIB_CPPFLAGS=""
 MHD_LIB_CFLAGS=""
 MHD_LIB_LDFLAGS=""
+# for pkg-config
 MHD_LIBDEPS=""
+MHD_REQ_PRIVATE=''
 
 AC_ARG_WITH([threads],
-   [AC_HELP_STRING([--with-threads=LIB],[choose threading library (posix, w32, auto) [auto]])],
+   [AS_HELP_STRING([--with-threads=LIB],[choose threading library (posix, w32, auto) [auto]])],
    [], [with_threads='auto'])
 test "x$with_threads" = "xwin32" && with_threads='w32'
 test "x$with_threads" = "xpthreads" && with_threads='posix'
@@ -112,49 +120,65 @@ AC_CHECK_HEADER([windows.h],
   ],
   [HAVE_W32_THREADS='no'])
 
-# for pkg-config
-MHD_LIBDEPS=""
-MHD_REQ_PRIVATE=''
 # Check system type
+AC_MSG_CHECKING([[for target host OS]])
 case "$host_os" in
 *darwin* | *rhapsody* | *macosx*)
      AC_DEFINE_UNQUOTED(OSX,1,[This is an OS X system])
      CFLAGS="-no-cpp-precomp -fno-common $CFLAGS"
+     mhd_host_os='Darwin'
+     AC_MSG_RESULT([[$mhd_host_os]])
      ;;
 freebsd*)
      AC_DEFINE_UNQUOTED(SOMEBSD,1,[This is a BSD system])
      AC_DEFINE_UNQUOTED(FREEBSD,1,[This is a FreeBSD system])
+     mhd_host_os='FreeBSD'
+     AC_MSG_RESULT([[$mhd_host_os]])
      ;;
 openbsd*)
      AC_DEFINE_UNQUOTED(SOMEBSD,1,[This is a BSD system])
      AC_DEFINE_UNQUOTED(OPENBSD,1,[This is an OpenBSD system])
+     mhd_host_os='OpenBSD'
+     AC_MSG_RESULT([[$mhd_host_os]])
      ;;
 netbsd*)
      AC_DEFINE_UNQUOTED(SOMEBSD,1,[This is a BSD system])
      AC_DEFINE_UNQUOTED(NETBSD,1,[This is a NetBSD system])
+     mhd_host_os='NetBSD'
+     AC_MSG_RESULT([[$mhd_host_os]])
      ;;
 *solaris*)
      AC_DEFINE_UNQUOTED(SOLARIS,1,[This is a Solaris system])
      AC_DEFINE_UNQUOTED(_REENTRANT,1,[Need with solaris or errno doesnt work])
+     mhd_host_os='Solaris'
+     AC_MSG_RESULT([[$mhd_host_os]])
      AC_SEARCH_LIBS(gethostbyname, nsl)
      AC_SEARCH_LIBS(socket, socket)
      ;;
 *arm-linux*)
      AC_DEFINE_UNQUOTED(LINUX,1,[This is a Linux kernel])
      AC_DEFINE_UNQUOTED(HAVE_LISTEN_SHUTDOWN,1,[can use shutdown on listen sockets])
+     mhd_host_os='ARM Linux'
+     AC_MSG_RESULT([[$mhd_host_os]])
      CFLAGS="-fPIC -pipe $CFLAGS"
      ;;
 *linux*)
      AC_DEFINE_UNQUOTED(LINUX,1,[This is a Linux kernel])
      AC_DEFINE_UNQUOTED(HAVE_LISTEN_SHUTDOWN,1,[can use shutdown on listen sockets])
+     mhd_host_os='Linux'
+     AC_MSG_RESULT([[$mhd_host_os]])
      ;;
 *cygwin*)
      AC_DEFINE_UNQUOTED(CYGWIN,1,[This is a Cygwin system])
+     mhd_host_os='Windows (Cygwin)'
+     AC_MSG_RESULT([[$mhd_host_os]])
      os_is_windows=yes
      ;;
 *mingw*)
      AC_DEFINE_UNQUOTED(MINGW,1,[This is a MinGW system])
      AC_DEFINE_UNQUOTED(WINDOWS,1,[This is a Windows system])
+     mhd_host_os='Windows (MinGW)'
+     AC_MSG_RESULT([[$mhd_host_os]])
      LIBS="$LIBS -lws2_32"
      AC_CHECK_HEADERS([winsock2.h ws2tcpip.h],, AC_MSG_ERROR([[Winsock2 headers are required for W32]]))
      AC_CACHE_CHECK([for MS lib utility], [ac_cv_use_ms_lib_tool],
@@ -174,8 +198,12 @@ netbsd*)
      ;;
 *openedition*)
      AC_DEFINE_UNQUOTED(OS390,1,[This is a OS/390 system])
+     mhd_host_os='OS/390'
+     AC_MSG_RESULT([[$mhd_host_os]])
     ;;
 *)
+     mhd_host_os='unrecognised OS'
+     AC_MSG_RESULT([[$mhd_host_os]])
      AC_MSG_WARN([Unrecognised OS $host_os])
      AC_DEFINE_UNQUOTED(OTHEROS,1,[Some strange OS])
 #    You might want to find out if your OS supports shutdown on listen sockets,
@@ -358,7 +386,7 @@ fi
 AC_CHECK_HEADERS([fcntl.h math.h errno.h limits.h stdio.h locale.h sys/stat.h sys/types.h pthread.h],,AC_MSG_ERROR([Compiling libmicrohttpd requires standard UNIX headers files]))
 
 # Check for optional headers
-AC_CHECK_HEADERS([sys/types.h sys/time.h sys/msg.h netdb.h netinet/in.h netinet/tcp.h time.h sys/socket.h sys/mman.h arpa/inet.h sys/select.h search.h])
+AC_CHECK_HEADERS([sys/types.h sys/time.h sys/msg.h netdb.h netinet/in.h netinet/tcp.h time.h sys/socket.h sys/mman.h arpa/inet.h sys/select.h search.h endian.h machine/endian.h sys/endian.h sys/param.h sys/machine.h sys/byteorder.h machine/param.h sys/isa_defs.h])
 AM_CONDITIONAL([HAVE_TSEARCH], [test "x$ac_cv_header_search_h" = "xyes"])
 
 AC_CHECK_MEMBER([struct sockaddr_in.sin_len],
@@ -450,6 +478,40 @@ AC_CHECK_DECLS([SOCK_NONBLOCK], [AC_DEFINE([HAVE_SOCK_NONBLOCK], [1], [SOCK_NONB
 AC_SEARCH_LIBS([clock_gettime], [rt], [
 				AC_DEFINE(HAVE_CLOCK_GETTIME, 1, [Have clock_gettime])
 ])
+
+AC_MSG_CHECKING([[for clock_get_time]])
+AC_LINK_IFELSE(
+  [AC_LANG_PROGRAM(
+    [[
+      #include <mach/clock.h>
+      #include <mach/mach.h>
+    ]],
+    [[
+      clock_serv_t cs;
+      mach_timespec_t mt;
+      host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &cs);
+      clock_get_time(cs, &mt);
+      mach_port_deallocate(mach_task_self(), cs);
+    ]])
+  ],
+  [
+    AC_DEFINE([HAVE_CLOCK_GET_TIME], [1], [Define to 1 if you have `clock_get_time', `host_get_clock_service' and `mach_port_deallocate' functions.])
+    AC_MSG_RESULT([[yes]])
+  ],
+  [AC_MSG_RESULT([[no]])
+  ])
+
+AC_MSG_CHECKING([[for gethrtime]])
+AC_LINK_IFELSE(
+  [AC_LANG_PROGRAM(
+    [[#include <sys/time.h>]], [[hrtime_t hrt = gethrtime(); ]])
+  ],
+  [
+    AC_DEFINE([HAVE_GETHRTIME], [1], [Define to 1 if you have `gethrtime' function.])
+    AC_MSG_RESULT([[yes]])
+  ],
+  [AC_MSG_RESULT([[no]])
+  ])
 
 # IPv6
 AC_MSG_CHECKING(for IPv6)
@@ -608,6 +670,7 @@ AM_CONDITIONAL(HAVE_SPDYLAY, [test "x$have_spdylay" = "xyes"])
 # large file support (> 4 GB)
 AC_SYS_LARGEFILE
 AC_FUNC_FSEEKO
+AC_CHECK_FUNCS([_lseeki64 lseek64 sendfile64])
 
 # optional: have error messages ?
 AC_MSG_CHECKING(whether to generate error messages)
@@ -670,7 +733,7 @@ have_gnutls_sni=no
 have_gnutls_pkgcfg=no
 AC_MSG_CHECKING([[how to find GnuTLS library]])
 AC_ARG_WITH([[gnutls]],
-   [AC_HELP_STRING([[--with-gnutls[=PFX]]],[use GnuTLS for HTTPS support, optional PFX overrides pkg-config data for GnuTLS headers (PFX/include) and libs (PFX/lib)])],
+   [AS_HELP_STRING([[--with-gnutls[=PFX]]],[use GnuTLS for HTTPS support, optional PFX overrides pkg-config data for GnuTLS headers (PFX/include) and libs (PFX/lib)])],
    [
     case $with_gnutls in
       no)
@@ -912,7 +975,8 @@ else
  MSG_CURL="yes"
 fi
 
-AC_MSG_NOTICE([Configuration Summary:
+AC_MSG_NOTICE([libmicrohttpd ${PACKAGE_VERSION} Configuration Summary:
+  Cross-compiling:   ${cross_compiling}
   Operating System:  ${host_os}
   Threading lib:     ${USE_THREADS}
   libcurl (testing): ${MSG_CURL}

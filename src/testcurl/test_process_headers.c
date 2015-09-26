@@ -15,8 +15,8 @@
 
      You should have received a copy of the GNU General Public License
      along with libmicrohttpd; see the file COPYING.  If not, write to the
-     Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-     Boston, MA 02111-1307, USA.
+     Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+     Boston, MA 02110-1301, USA.
 */
 
 /**
@@ -424,6 +424,7 @@ main (int argc, char *const *argv)
 
   oneone = (NULL != strrchr (argv[0], (int) '/')) ?
     (NULL != strstr (strrchr (argv[0], (int) '/'), "11")) : 0;
+  errorCount += testInternalGet ();
   errorCount += testMultithreadedGet ();
   errorCount += testMultithreadedPoolGet ();
   errorCount += testExternalGet ();

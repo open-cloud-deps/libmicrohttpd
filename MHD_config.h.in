@@ -29,6 +29,10 @@
 /* Have clock_gettime */
 #undef HAVE_CLOCK_GETTIME
 
+/* Define to 1 if you have `clock_get_time', `host_get_clock_service' and
+   `mach_port_deallocate' functions. */
+#undef HAVE_CLOCK_GET_TIME
+
 /* Define to 1 if you have the declaration of `SOCK_NONBLOCK', and to 0 if you
    don't. */
 #undef HAVE_DECL_SOCK_NONBLOCK
@@ -44,6 +48,9 @@
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
+/* Define to 1 if you have the <endian.h> header file. */
+#undef HAVE_ENDIAN_H
+
 /* Define if you have epoll_create1 function. */
 #undef HAVE_EPOLL_CREATE1
 
@@ -58,6 +65,9 @@
 
 /* Define to 1 if you have the <gcrypt.h> header file. */
 #undef HAVE_GCRYPT_H
+
+/* Define to 1 if you have `gethrtime' function. */
+#undef HAVE_GETHRTIME
 
 /* Define to 1 if you have `gmtime_s' function (only for W32). */
 #undef HAVE_GMTIME_S
@@ -82,6 +92,15 @@
 
 /* Define to 1 if you have the <locale.h> header file. */
 #undef HAVE_LOCALE_H
+
+/* Define to 1 if you have the `lseek64' function. */
+#undef HAVE_LSEEK64
+
+/* Define to 1 if you have the <machine/endian.h> header file. */
+#undef HAVE_MACHINE_ENDIAN_H
+
+/* Define to 1 if you have the <machine/param.h> header file. */
+#undef HAVE_MACHINE_PARAM_H
 
 /* Define to 1 if you have the <magic.h> header file. */
 #undef HAVE_MAGIC_H
@@ -149,6 +168,9 @@
 /* Define to 1 if you have the <search.h> header file. */
 #undef HAVE_SEARCH_H
 
+/* Define to 1 if you have the `sendfile64' function. */
+#undef HAVE_SENDFILE64
+
 /* Do we have sockaddr_in.sin_len? */
 #undef HAVE_SOCKADDR_IN_SIN_LEN
 
@@ -173,11 +195,26 @@
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
 
+/* Define to 1 if you have the <sys/byteorder.h> header file. */
+#undef HAVE_SYS_BYTEORDER_H
+
+/* Define to 1 if you have the <sys/endian.h> header file. */
+#undef HAVE_SYS_ENDIAN_H
+
+/* Define to 1 if you have the <sys/isa_defs.h> header file. */
+#undef HAVE_SYS_ISA_DEFS_H
+
+/* Define to 1 if you have the <sys/machine.h> header file. */
+#undef HAVE_SYS_MACHINE_H
+
 /* Define to 1 if you have the <sys/mman.h> header file. */
 #undef HAVE_SYS_MMAN_H
 
 /* Define to 1 if you have the <sys/msg.h> header file. */
 #undef HAVE_SYS_MSG_H
+
+/* Define to 1 if you have the <sys/param.h> header file. */
+#undef HAVE_SYS_PARAM_H
 
 /* Define to 1 if you have the <sys/select.h> header file. */
 #undef HAVE_SYS_SELECT_H
@@ -205,6 +242,9 @@
 
 /* Define to 1 if you have the <ws2tcpip.h> header file. */
 #undef HAVE_WS2TCPIP_H
+
+/* Define to 1 if you have the `_lseeki64' function. */
+#undef HAVE__LSEEKI64
 
 /* disable HTTPS support */
 #undef HTTPS_SUPPORT
