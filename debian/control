@@ -104,6 +104,8 @@ Section: libdevel
 Architecture: any
 Depends:
  ${misc:Depends}, libmicrospdy0 (= ${binary:Version})
+Replaces: libmicrohttpd-dev (<< 0.9.42~)
+Breaks: libmicrohttpd-dev (<< 0.9.42~)
 Description: library embedding SPDY server functionality (development)
  GNU libmicrospdy is a small C very experimental library embedding a SPDY
  server (the base for HTTP 2.0). libmicrospdy provides a compact API and
