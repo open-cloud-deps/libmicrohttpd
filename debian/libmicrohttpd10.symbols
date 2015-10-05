@@ -7,7 +7,9 @@ libmicrohttpd.so.10 libmicrohttpd10 #MINVER#
  MHD_create_response_from_buffer@Base 0.9.20
  MHD_create_response_from_callback@Base 0.9.20
  MHD_create_response_from_data@Base 0.9.20
+ MHD_create_response_from_fd64@Base 0.9.44
  MHD_create_response_from_fd@Base 0.9.20
+ MHD_create_response_from_fd_at_offset64@Base 0.9.44
  MHD_create_response_from_fd_at_offset@Base 0.9.20
  MHD_del_response_header@Base 0.9.20
  MHD_destroy_post_processor@Base 0.9.20
