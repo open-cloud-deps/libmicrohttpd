@@ -6,8 +6,12 @@ License: LGPL-2.1+
 Files-Excluded: src/datadir/spdy-draft.txt
 
 Files: *
-Copyright: (C) 2007-2013 Christian Grothoff <christian@grothoff.org>
+Copyright: (C) 2007-2015 Christian Grothoff <christian@grothoff.org>
 License: LGPL-2.1+
+
+Files: src/microspdy/*
+Copyright: (C) 2012 Andrey Uzunov <andrey.uzunov@gmail.com>
+License: GPL-3+
 
 Files: doc/*
 Copyright: (C) 2007-2013 Christian Grothoff <christian@grothoff.org>
@@ -20,7 +24,7 @@ License: public-domain
 
 Files: debian/*
 Copyright:
- (C) 2012-2013 Bertrand Marc <beberking@gmail.com>
+ (C) 2012-2015 Bertrand Marc <beberking@gmail.com>
  (C) 2007-2012 Daniel Baumann <daniel.baumann@progress-technologies.net>
 License: LGPL-2.1+
 
