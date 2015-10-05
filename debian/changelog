@@ -1,3 +1,17 @@
+libmicrohttpd (0.9.44+dfsg-1) unstable; urgency=medium
+
+  * Imported Upstream version 0.9.44+dfsg
+  * debian/copyright:
+    + update years and add the microspdy directory.
+    + add a license paragraph for GPL-3 and remove a useless sentence in the
+      LGPL paragraph.
+  * make libmicrospdy-dev break and replace libmicrohttpd-dev, as the latter
+    used to ship libmicrospdy.pc (Closes: #800922).
+  * Add missing dependencies for libmicrohttpd-dev and libmicrospdy-dev.
+  * Add 2 new symbols to libmicrohttpd10.symbols.
+
+ -- Bertrand Marc <beberking@gmail.com>  Mon, 05 Oct 2015 22:24:46 +0200
+
 libmicrohttpd (0.9.42+dfsg-2) unstable; urgency=medium
 
   [ Martin Pitt ]
