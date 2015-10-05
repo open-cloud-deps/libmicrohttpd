@@ -56,7 +56,8 @@ Package: libmicrohttpd-dev
 Section: libdevel
 Architecture: any
 Depends:
- ${misc:Depends}, libmicrohttpd10 (= ${binary:Version})
+ ${misc:Depends}, libmicrohttpd10 (= ${binary:Version}), libgnutls28-dev,
+ libgcrypt-dev
 Description: library embedding HTTP server functionality (development)
  GNU libmicrohttpd is a small C library that is supposed to make it easy to run
  an HTTP server as part of another application. Key features that distinguish
@@ -103,7 +104,7 @@ Package: libmicrospdy-dev
 Section: libdevel
 Architecture: any
 Depends:
- ${misc:Depends}, libmicrospdy0 (= ${binary:Version})
+ ${misc:Depends}, libmicrospdy0 (= ${binary:Version}), libssl-dev
 Replaces: libmicrohttpd-dev (<< 0.9.42~)
 Breaks: libmicrohttpd-dev (<< 0.9.42~)
 Description: library embedding SPDY server functionality (development)
