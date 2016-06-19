@@ -3,7 +3,7 @@ Section: libs
 Priority: optional
 Maintainer: Bertrand Marc <beberking@gmail.com>
 Build-Depends: debhelper (>= 9), autoconf, automake, dh-autoreconf,
- libgcrypt-dev, libgnutls28-dev, libssl-dev, texinfo, pkg-config, zlib1g-dev
+ libgcrypt-dev, libgnutls28-dev, texinfo, pkg-config
 Standards-Version: 3.9.6
 Vcs-Git: git://anonscm.debian.org/collab-maint/libmicrohttpd.git
 Vcs-browser: http://anonscm.debian.org/gitweb/?p=collab-maint/libmicrohttpd.git
@@ -72,45 +72,5 @@ Description: library embedding HTTP server functionality (development)
   * Support for incremental processing of POST data (optional)
   * Support for basic and digest authentication (optional)
   * Support for SSL3 and TLS
- .
- This package contains the development files.
- 
-Package: libmicrospdy0
-Architecture: any
-Pre-Depends: ${misc:Pre-Depends}
-Depends: ${misc:Depends}, ${shlibs:Depends}
-Description: library embedding SPDY server functionality
- GNU libmicrospdy is a small C very experimental library embedding a SPDY
- server (the base for HTTP 2.0). libmicrospdy provides a compact API and
- implementation of SPDY server. libmicrospdy currently only implements partially
- version 3 of SPDY.
-
-Package: libmicrospdy-dbg
-Section: debug
-Priority: extra
-Architecture: any
-Depends:
- ${misc:Depends}, libmicrospdy0 (= ${binary:Version}),
- libmicrospdy-dev (= ${binary:Version})
-Description: library embedding SPDY server functionality (debug)
- GNU libmicrospdy is a small C very experimental library embedding a SPDY
- server (the base for HTTP 2.0). libmicrospdy provides a compact API and
- implementation of SPDY server. libmicrospdy currently only implements partially
- version 3 of SPDY.
- .
- This package contains the debugging symbols.
-
-Package: libmicrospdy-dev
-Section: libdevel
-Architecture: any
-Depends:
- ${misc:Depends}, libmicrospdy0 (= ${binary:Version}), libssl-dev
-Replaces: libmicrohttpd-dev (<< 0.9.42~)
-Breaks: libmicrohttpd-dev (<< 0.9.42~)
-Description: library embedding SPDY server functionality (development)
- GNU libmicrospdy is a small C very experimental library embedding a SPDY
- server (the base for HTTP 2.0). libmicrospdy provides a compact API and
- implementation of SPDY server. libmicrospdy currently only implements partially
- version 3 of SPDY.
  .
  This package contains the development files.

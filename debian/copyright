@@ -3,15 +3,10 @@ Upstream-Name: Libmicrohttpd
 Upstream-Contact: Christian Grothoff <christian@grothoff.org>
 Source: http://www.gnu.org/software/libmicrohttpd/
 License: LGPL-2.1+
-Files-Excluded: src/datadir/spdy-draft.txt
 
 Files: *
 Copyright: (C) 2007-2015 Christian Grothoff <christian@grothoff.org>
 License: LGPL-2.1+
-
-Files: src/microspdy/*
-Copyright: (C) 2012 Andrey Uzunov <andrey.uzunov@gmail.com>
-License: GPL-3+
 
 Files: doc/*
 Copyright: (C) 2007-2013 Christian Grothoff <christian@grothoff.org>
@@ -36,20 +31,6 @@ License: GFDL-1.3+
  .
  The complete text of the GNU Free  Documentation License
  can be found in /usr/share/common-licenses/GFDL-1.3 file.
-
-License: GPL-3+
- This program is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
- .
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
- .
- The complete text of the GNU Library General Public License
- can be found in /usr/share/common-licenses/GPL-3 file.
 
 License: LGPL-2.1+
  This library is free software; you can redistribute it and/or
