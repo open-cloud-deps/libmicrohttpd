@@ -17,8 +17,6 @@ AM_CPPFLAGS = \
 $(LIBCURL_CPPFLAGS)
 
 if !HAVE_W32
-PERF_GET_CONCURRENT=perf_get_concurrent
-TEST_CONCURRENT_STOP=test_concurrent_stop
 if HAVE_CURL_BINARY
 CURL_FORK_TEST = test_get_response_cleanup
 endif
@@ -31,7 +29,6 @@ check_PROGRAMS = \
   test_get_sendfile \
   test_urlparse \
   test_put \
-  $(TEST_CONCURRENT_STOP) \
   test_process_headers \
   test_process_arguments \
   test_parse_cookies \
@@ -49,11 +46,13 @@ check_PROGRAMS = \
   test_timeout \
   test_callback \
   $(CURL_FORK_TEST) \
-  perf_get $(PERF_GET_CONCURRENT)
+  perf_get
 
 if HAVE_POSIX_THREADS
 check_PROGRAMS += \
-  test_quiesce
+  test_quiesce \
+  test_concurrent_stop \
+  perf_get_concurrent
 endif
 
 if HAVE_POSTPROCESSOR
@@ -89,9 +88,11 @@ test_start_stop_LDADD = \
 
 test_concurrent_stop_SOURCES = \
   test_concurrent_stop.c
+test_concurrent_stop_CFLAGS = \
+  $(PTHREAD_CFLAGS) $(AM_CFLAGS)
 test_concurrent_stop_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
- @LIBCURL@
+  $(PTHREAD_LIBS) @LIBCURL@
 
 test_options_SOURCES = \
   test_options.c
@@ -128,9 +129,11 @@ perf_get_LDADD = \
 perf_get_concurrent_SOURCES = \
   perf_get_concurrent.c \
   gauger.h
+perf_get_concurrent_CFLAGS = \
+  $(PTHREAD_CFLAGS) $(AM_CFLAGS)
 perf_get_concurrent_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@
+  $(PTHREAD_LIBS) @LIBCURL@
 
 test_digestauth_SOURCES = \
   test_digestauth.c

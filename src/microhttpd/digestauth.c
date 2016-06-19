@@ -27,6 +27,7 @@
 #include "internal.h"
 #include "md5.h"
 #include "mhd_mono_clock.h"
+#include "mhd_str.h"
 
 #if defined(_WIN32) && defined(MHD_W32_MUTEX_)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -302,17 +303,22 @@ lookup_sub_value (char *dest,
  * @param connection The MHD connection structure
  * @param nonce A pointer that referenced a zero-terminated array of nonce
  * @param nc The nonce counter, zero to add the nonce to the array
- * @return MHD_YES if successful, MHD_NO if invalid (or we have no NC array)
+ * @return #MHD_YES if successful, #MHD_NO if invalid (or we have no NC array)
  */
 static int
 check_nonce_nc (struct MHD_Connection *connection,
 		const char *nonce,
-		unsigned long int nc)
+		uint64_t nc)
 {
   uint32_t off;
   uint32_t mod;
   const char *np;
 
+  if (MAX_NONCE_LENGTH <= strlen (nonce))
+    return MHD_NO; /* This should be impossible, but static analysis
+                      tools have a hard time with it *and* this also
+                      protects against unsafe modifications that may
+                      happen in the future... */
   mod = connection->daemon->nonce_nc_size;
   if (0 == mod)
     return MHD_NO; /* no array! */
@@ -334,8 +340,8 @@ check_nonce_nc (struct MHD_Connection *connection,
   (void) MHD_mutex_lock_ (&connection->daemon->nnc_lock);
   if (0 == nc)
     {
-      strcpy(connection->daemon->nnc[off].nonce,
-	     nonce);
+      strcpy (connection->daemon->nnc[off].nonce,
+              nonce);
       connection->daemon->nnc[off].nc = 0;
       (void) MHD_mutex_unlock_ (&connection->daemon->nnc_lock);
       return MHD_YES;
@@ -344,7 +350,7 @@ check_nonce_nc (struct MHD_Connection *connection,
        (0 != strcmp(connection->daemon->nnc[off].nonce, nonce)) )
     {
       (void) MHD_mutex_unlock_ (&connection->daemon->nnc_lock);
-#if HAVE_MESSAGES
+#ifdef HAVE_MESSAGES
       MHD_DLOG (connection->daemon,
 		"Stale nonce received.  If this happens a lot, you should probably increase the size of the nonce array.\n");
 #endif
@@ -443,19 +449,21 @@ calculate_nonce (uint32_t nonce_time,
  * @param connection the connection
  * @param key the key
  * @param value the value, can be NULL
+ * @param kind type of the header
  * @return #MHD_YES if the key-value pair is in the headers,
  *         #MHD_NO if not
  */
 static int
 test_header (struct MHD_Connection *connection,
 	     const char *key,
-	     const char *value)
+	     const char *value,
+	     enum MHD_ValueKind kind)
 {
   struct MHD_HTTP_Header *pos;
 
   for (pos = connection->headers_received; NULL != pos; pos = pos->next)
     {
-      if (MHD_GET_ARGUMENT_KIND != pos->kind)
+      if (kind != pos->kind)
 	continue;
       if (0 != strcmp (key, pos->header))
 	continue;
@@ -488,114 +496,26 @@ check_argument_match (struct MHD_Connection *connection,
 {
   struct MHD_HTTP_Header *pos;
   char *argb;
-  char *argp;
-  char *equals;
-  char *amper;
   unsigned int num_headers;
+  int ret;
 
   argb = strdup (args);
   if (NULL == argb)
-  {
-#if HAVE_MESSAGES
-    MHD_DLOG (connection->daemon,
-              "Failed to allocate memory for copy of URI arguments\n");
-#endif /* HAVE_MESSAGES */
-    return MHD_NO;
-  }
-  num_headers = 0;
-  argp = argb;
-  while ( (NULL != argp) &&
-	  ('\0' != argp[0]) )
     {
-      equals = strchr (argp, '=');
-      amper = strchr (argp, '&');
-      if (NULL == amper)
-	{
-	  /* last argument */
-	  if (NULL == equals)
-            {
-              /* last argument, without '=' */
-              MHD_unescape_plus (argp);
-              if (MHD_YES != test_header (connection,
-                                          argp,
-                                          NULL))
-                {
-                  free (argb);
-                  return MHD_NO;
-                }
-              num_headers++;
-              break;
-            }
-          /* got 'foo=bar' */
-          equals[0] = '\0';
-          equals++;
-          MHD_unescape_plus (argp);
-	  /* add with 'value' NULL */
-	  connection->daemon->unescape_callback (connection->daemon->unescape_callback_cls,
-						 connection,
-						 argp);
-          MHD_unescape_plus (equals);
-	  /* add with 'value' NULL */
-	  connection->daemon->unescape_callback (connection->daemon->unescape_callback_cls,
-						 connection,
-						 equals);
-	  if (MHD_YES != test_header (connection,
-                                      argp,
-                                      equals))
-            {
-              free (argb);
-              return MHD_NO;
-            }
-	  num_headers++;
-	  break;
-	}
-      /* amper is non-NULL here */
-      amper[0] = '\0';
-      amper++;
-      if ( (NULL == equals) ||
-	   (equals >= amper) )
-	{
-	  /* got 'foo&bar' or 'foo&bar=val', add key 'foo' with NULL for value */
-          MHD_unescape_plus (argp);
-	  connection->daemon->unescape_callback (connection->daemon->unescape_callback_cls,
-						 connection,
-						 argp);
-	  if (MHD_YES !=
-	      test_header (connection,
-                           argp,
-                           NULL))
-            {
-              free (argb);
-              return MHD_NO;
-            }
-	  /* continue with 'bar' */
-          num_headers++;
-	  args = amper;
-	  continue;
-	}
-      equals[0] = '\0';
-      equals++;
-      MHD_unescape_plus (argp);
-      connection->daemon->unescape_callback (connection->daemon->unescape_callback_cls,
-					     connection,
-					     argp);
-      MHD_unescape_plus (equals);
-      connection->daemon->unescape_callback (connection->daemon->unescape_callback_cls,
-					     connection,
-					     equals);
-      if (MHD_YES !=
-          test_header (connection,
-                       argp,
-                       equals))
-        {
-          free (argb);
-          return MHD_NO;
-        }
-      num_headers++;
-      argp = amper;
+#ifdef HAVE_MESSAGES
+      MHD_DLOG (connection->daemon,
+		"Failed to allocate memory for copy of URI arguments\n");
+#endif /* HAVE_MESSAGES */
+      return MHD_NO;
     }
+  ret = MHD_parse_arguments_ (connection,
+			      MHD_GET_ARGUMENT_KIND,
+			      argb,
+			      &test_header,
+			      &num_headers);
   free (argb);
-
+  if (MHD_YES != ret)
+    return MHD_NO;
   /* also check that the number of headers matches */
   for (pos = connection->headers_received; NULL != pos; pos = pos->next)
     {
@@ -634,7 +554,6 @@ MHD_digest_auth_check (struct MHD_Connection *connection,
 {
   size_t len;
   const char *header;
-  char *end;
   char nonce[MAX_NONCE_LENGTH];
   char cnonce[MAX_NONCE_LENGTH];
   char qop[15]; /* auth,auth-int */
@@ -647,7 +566,7 @@ MHD_digest_auth_check (struct MHD_Connection *connection,
   uint32_t nonce_time;
   uint32_t t;
   size_t left; /* number of characters left in 'header' for 'uri' */
-  unsigned long int nci;
+  uint64_t nci;
 
   header = MHD_lookup_connection_value (connection,
 					MHD_HEADER_KIND,
@@ -699,7 +618,15 @@ MHD_digest_auth_check (struct MHD_Connection *connection,
        header value. */
     return MHD_NO;
   }
-  nonce_time = strtoul (nonce + len - TIMESTAMP_HEX_LEN, (char **)NULL, 16);
+  if (TIMESTAMP_HEX_LEN != MHD_strx_to_uint32_n_ (nonce + len - TIMESTAMP_HEX_LEN,
+                                                  TIMESTAMP_HEX_LEN, &nonce_time))
+    {
+#ifdef HAVE_MESSAGES
+      MHD_DLOG (connection->daemon,
+                "Authentication failed, invalid timestamp format.\n");
+#endif
+      return MHD_NO;
+    }
   t = (uint32_t) MHD_monotonic_sec_counter();
   /*
    * First level vetting for the nonce validity: if the timestamp
@@ -740,23 +667,20 @@ MHD_digest_auth_check (struct MHD_Connection *connection,
        (0 == lookup_sub_value (qop, sizeof (qop), header, "qop")) ||
        ( (0 != strcmp (qop, "auth")) &&
          (0 != strcmp (qop, "")) ) ||
-       (0 == lookup_sub_value (nc, sizeof (nc), header, "nc"))  ||
+       (0 == (len = lookup_sub_value (nc, sizeof (nc), header, "nc")) )  ||
        (0 == lookup_sub_value (response, sizeof (response), header, "response")) )
     {
-#if HAVE_MESSAGES
+#ifdef HAVE_MESSAGES
       MHD_DLOG (connection->daemon,
 		"Authentication failed, invalid format.\n");
 #endif
       return MHD_NO;
     }
-  nci = strtoul (nc, &end, 16);
-  if ( ('\0' != *end) ||
-       ( (LONG_MAX == nci) &&
-         (ERANGE == errno) ) )
+  if (len != MHD_strx_to_uint64_n_ (nc, len, &nci))
     {
-#if HAVE_MESSAGES
+#ifdef HAVE_MESSAGES
       MHD_DLOG (connection->daemon,
-		"Authentication failed, invalid format.\n");
+		"Authentication failed, invalid nc format.\n");
 #endif
       return MHD_NO; /* invalid nonce format */
     }
@@ -777,7 +701,7 @@ MHD_digest_auth_check (struct MHD_Connection *connection,
     uri = malloc (left + 1);
     if (NULL == uri)
     {
-#if HAVE_MESSAGES
+#ifdef HAVE_MESSAGES
       MHD_DLOG(connection->daemon,
                "Failed to allocate memory for auth header processing\n");
 #endif /* HAVE_MESSAGES */
@@ -816,7 +740,7 @@ MHD_digest_auth_check (struct MHD_Connection *connection,
 		      connection->url,
 		      strlen (connection->url)))
     {
-#if HAVE_MESSAGES
+#ifdef HAVE_MESSAGES
       MHD_DLOG (connection->daemon,
 		"Authentication failed, URI does not match.\n");
 #endif
@@ -835,7 +759,7 @@ MHD_digest_auth_check (struct MHD_Connection *connection,
 	  check_argument_match (connection,
 				args) )
       {
-#if HAVE_MESSAGES
+#ifdef HAVE_MESSAGES
 	MHD_DLOG (connection->daemon,
 		  "Authentication failed, arguments do not match.\n");
 #endif
@@ -886,7 +810,7 @@ MHD_queue_auth_fail_response (struct MHD_Connection *connection,
 		   nonce);
   if (MHD_YES != check_nonce_nc (connection, nonce, 0))
     {
-#if HAVE_MESSAGES
+#ifdef HAVE_MESSAGES
       MHD_DLOG (connection->daemon,
 		"Could not register nonce (is the nonce array size zero?).\n");
 #endif
@@ -902,20 +826,21 @@ MHD_queue_auth_fail_response (struct MHD_Connection *connection,
 		   signal_stale
 		   ? ",stale=\"true\""
 		   : "");
+  if (hlen > 0)
   {
     char *header;
 
     header = malloc(hlen + 1);
     if (NULL == header)
     {
-#if HAVE_MESSAGES
+#ifdef HAVE_MESSAGES
       MHD_DLOG(connection->daemon,
                "Failed to allocate memory for auth response header\n");
 #endif /* HAVE_MESSAGES */
       return MHD_NO;
     }
 
-    MHD_snprintf_(header,
+    if (MHD_snprintf_(header,
 	      hlen + 1,
 	      "Digest realm=\"%s\",qop=\"auth\",nonce=\"%s\",opaque=\"%s\"%s",
 	      realm,
@@ -923,16 +848,28 @@ MHD_queue_auth_fail_response (struct MHD_Connection *connection,
 	      opaque,
 	      signal_stale
 	      ? ",stale=\"true\""
-	      : "");
-    ret = MHD_add_response_header(response,
+	      : "") == hlen)
+      ret = MHD_add_response_header(response,
 				  MHD_HTTP_HEADER_WWW_AUTHENTICATE,
 				  header);
+    else
+      ret = MHD_NO;
     free(header);
   }
+  else
+    ret = MHD_NO;
+
   if (MHD_YES == ret)
     ret = MHD_queue_response(connection,
 			     MHD_HTTP_UNAUTHORIZED,
 			     response);
+  else
+    {
+#ifdef HAVE_MESSAGES
+      MHD_DLOG (connection->daemon,
+                "Failed to add Digest auth header\n");
+#endif /* HAVE_MESSAGES */
+    }
   return ret;
 }
 

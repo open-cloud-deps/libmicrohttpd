@@ -150,9 +150,14 @@ ServeOneRequest(void *param)
       MHD_SYS_select_ (max + 1, &rs, &ws, &es, &tv);
       MHD_run (d);
     }
+  fd = MHD_quiesce_daemon (d);
+  if (MHD_INVALID_SOCKET == fd)
+    {
+      MHD_stop_daemon (d);
+      return "MHD_quiesce_daemon() failed in ServeOneRequest()";
+    }
   MHD_stop_daemon (d);
-  MHD_socket_close_(fd);
-  return NULL;
+  return done ? NULL : "Requests was not served by ServeOneRequest()";
 }
 
 
@@ -229,6 +234,14 @@ testGet (int type, int pool_count, int poll_flag)
   }
 
   fd = MHD_quiesce_daemon (d);
+  if (MHD_INVALID_SOCKET == fd)
+    {
+      fprintf (stderr,
+               "MHD_quiesce_daemon failed.\n");
+      curl_easy_cleanup (c);
+      MHD_stop_daemon (d);
+      return 2;
+    }
   if (0 != pthread_create(&thrd, NULL, &ServeOneRequest, (void*)(intptr_t) fd))
     {
       fprintf (stderr, "pthread_create failed\n");
@@ -311,7 +324,12 @@ testExternalGet ()
   fd_set rs;
   fd_set ws;
   fd_set es;
-  MHD_socket max;
+  MHD_socket maxsock;
+#ifdef MHD_WINSOCK_SOCKETS
+  int maxposixs; /* Max socket number unused on W32 */
+#else  /* MHD_POSIX_SOCKETS */
+#define maxposixs maxsock
+#endif /* MHD_POSIX_SOCKETS */
   int running;
   struct CURLMsg *msg;
   time_t start;
@@ -349,12 +367,13 @@ testExternalGet ()
     start = time (NULL);
     while ((time (NULL) - start < 5) && (multi != NULL))
       {
-        max = 0;
+        maxsock = MHD_INVALID_SOCKET;
+        maxposixs = -1;
         FD_ZERO (&rs);
         FD_ZERO (&ws);
         FD_ZERO (&es);
         curl_multi_perform (multi, &running);
-        mret = curl_multi_fdset (multi, &rs, &ws, &es, &max);
+        mret = curl_multi_fdset (multi, &rs, &ws, &es, &maxposixs);
         if (mret != CURLM_OK)
           {
             curl_multi_remove_handle (multi, c);
@@ -363,7 +382,7 @@ testExternalGet ()
             MHD_stop_daemon (d);
             return 2048;
           }
-        if (MHD_YES != MHD_get_fdset (d, &rs, &ws, &es, &max))
+        if (MHD_YES != MHD_get_fdset (d, &rs, &ws, &es, &maxsock))
           {
             curl_multi_remove_handle (multi, c);
             curl_multi_cleanup (multi);
@@ -373,7 +392,7 @@ testExternalGet ()
           }
         tv.tv_sec = 0;
         tv.tv_usec = 1000;
-        select (max + 1, &rs, &ws, &es, &tv);
+        select (maxposixs + 1, &rs, &ws, &es, &tv);
         curl_multi_perform (multi, &running);
         if (running == 0)
           {
@@ -405,12 +424,27 @@ testExternalGet ()
       if (i == 0) {
         /* quiesce the daemon on the 1st iteration, so the 2nd should fail */
         fd = MHD_quiesce_daemon(d);
-	if (MHD_INVALID_SOCKET == fd)
-	  abort ();
-	MHD_socket_close_ (fd);
+        if (MHD_INVALID_SOCKET == fd)
+          {
+            fprintf (stderr,
+                     "MHD_quiesce_daemon failed.\n");
+            curl_multi_remove_handle (multi, c);
+            curl_multi_cleanup (multi);
+            curl_easy_cleanup (c);
+            MHD_stop_daemon (d);
+            return 2;
+          }
         c = setupCURL (&cbc);
         multi = curl_multi_init ();
         mret = curl_multi_add_handle (multi, c);
+        if (mret != CURLM_OK)
+        {
+          curl_multi_remove_handle (multi, c);
+          curl_multi_cleanup (multi);
+          curl_easy_cleanup (c);
+          MHD_stop_daemon (d);
+          return 32768;
+        }
       }
     }
   if (multi != NULL)
@@ -420,6 +454,7 @@ testExternalGet ()
       curl_multi_cleanup (multi);
     }
   MHD_stop_daemon (d);
+  MHD_socket_close_ (fd);
   if (cbc.pos != strlen ("/hello_world"))
     return 8192;
   if (0 != strncmp ("/hello_world", cbc.buf, strlen ("/hello_world")))

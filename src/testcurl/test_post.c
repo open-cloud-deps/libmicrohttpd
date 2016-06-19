@@ -333,7 +333,12 @@ testExternalPost ()
   fd_set rs;
   fd_set ws;
   fd_set es;
-  MHD_socket max;
+  MHD_socket maxsock;
+#ifdef MHD_WINSOCK_SOCKETS
+  int maxposixs; /* Max socket number unused on W32 */
+#else  /* MHD_POSIX_SOCKETS */
+#define maxposixs maxsock
+#endif /* MHD_POSIX_SOCKETS */
   int running;
   struct CURLMsg *msg;
   time_t start;
@@ -387,12 +392,13 @@ testExternalPost ()
   start = time (NULL);
   while ((time (NULL) - start < 5) && (multi != NULL))
     {
-      max = 0;
+      maxsock = MHD_INVALID_SOCKET;
+      maxposixs = -1;
       FD_ZERO (&rs);
       FD_ZERO (&ws);
       FD_ZERO (&es);
       curl_multi_perform (multi, &running);
-      mret = curl_multi_fdset (multi, &rs, &ws, &es, &max);
+      mret = curl_multi_fdset (multi, &rs, &ws, &es, &maxposixs);
       if (mret != CURLM_OK)
         {
           curl_multi_remove_handle (multi, c);
@@ -401,7 +407,7 @@ testExternalPost ()
           MHD_stop_daemon (d);
           return 2048;
         }
-      if (MHD_YES != MHD_get_fdset (d, &rs, &ws, &es, &max))
+      if (MHD_YES != MHD_get_fdset (d, &rs, &ws, &es, &maxsock))
         {
           curl_multi_remove_handle (multi, c);
           curl_multi_cleanup (multi);
@@ -411,7 +417,7 @@ testExternalPost ()
         }
       tv.tv_sec = 0;
       tv.tv_usec = 1000;
-      select (max + 1, &rs, &ws, &es, &tv);
+      select (maxposixs + 1, &rs, &ws, &es, &tv);
       curl_multi_perform (multi, &running);
       if (running == 0)
         {
@@ -591,13 +597,28 @@ testMultithreadedPostCancelPart(int flags)
   
   if (CURLE_HTTP_RETURNED_ERROR != (errornum = curl_easy_perform (c)))
     {
-      fprintf (stderr,
-               "flibbet curl_easy_perform didn't fail as expected: `%s' %d\n",
-               curl_easy_strerror (errornum), errornum);
+#ifdef _WIN32
+      curl_version_info_data *curlverd = curl_version_info(CURLVERSION_NOW);
+      if (0 != (flags & FLAG_SLOW_READ) && CURLE_RECV_ERROR == errornum &&
+          (curlverd == NULL || curlverd->ares_num < 0x073100) )
+        { /* libcurl up to version 7.49.0 didn't have workaround for WinSock bug */
+          fprintf (stderr, "Ignored curl_easy_perform expected failure on W32 with \"slow read\".\n");
+          result = 0;
+        }
+      else
+#else  /* ! _WIN32 */
+      if(1)
+#endif /* ! _WIN32 */
+        {
+          fprintf (stderr,
+                   "flibbet curl_easy_perform didn't fail as expected: `%s' %d\n",
+                   curl_easy_strerror (errornum), errornum);
+          result = 65536;
+        }
       curl_easy_cleanup (c);
       MHD_stop_daemon (d);
       curl_slist_free_all(headers);
-      return 65536;
+      return result;
     }
   
   if (CURLE_OK != (cc = curl_easy_getinfo(c, CURLINFO_RESPONSE_CODE, &response_code)))
