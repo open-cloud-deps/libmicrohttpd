@@ -5,8 +5,8 @@ Maintainer: Bertrand Marc <beberking@gmail.com>
 Build-Depends: debhelper (>= 9), autoconf, automake, dh-autoreconf,
  libgcrypt-dev, libgnutls28-dev, texinfo, pkg-config
 Standards-Version: 3.9.8
-Vcs-Git: git://anonscm.debian.org/collab-maint/libmicrohttpd.git
-Vcs-browser: http://anonscm.debian.org/gitweb/?p=collab-maint/libmicrohttpd.git
+Vcs-Git: https://anonscm.debian.org/git/collab-maint/libmicrohttpd.git
+Vcs-browser: https://anonscm.debian.org/git/collab-maint/libmicrohttpd.git
 Homepage: http://www.gnu.org/software/libmicrohttpd/
 
 Package: libmicrohttpd12
