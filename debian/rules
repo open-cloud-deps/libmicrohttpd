@@ -23,4 +23,4 @@ override_dh_install:
 	dh_install --fail-missing
 
 override_dh_strip:
-	dh_strip -plibmicrohttpd10 --dbg-package=libmicrohttpd-dbg
+	dh_strip -plibmicrohttpd12 --dbg-package=libmicrohttpd-dbg

@@ -9,7 +9,7 @@ Vcs-Git: git://anonscm.debian.org/collab-maint/libmicrohttpd.git
 Vcs-browser: http://anonscm.debian.org/gitweb/?p=collab-maint/libmicrohttpd.git
 Homepage: http://www.gnu.org/software/libmicrohttpd/
 
-Package: libmicrohttpd10
+Package: libmicrohttpd12
 Architecture: any
 Pre-Depends: ${misc:Pre-Depends}
 Depends: ${misc:Depends}, ${shlibs:Depends}
@@ -33,7 +33,7 @@ Section: debug
 Priority: extra
 Architecture: any
 Depends:
- ${misc:Depends}, libmicrohttpd10 (= ${binary:Version}),
+ ${misc:Depends}, libmicrohttpd12 (= ${binary:Version}),
  libmicrohttpd-dev (= ${binary:Version})
 Description: library embedding HTTP server functionality (debug)
  GNU libmicrohttpd is a small C library that is supposed to make it easy to run
@@ -56,7 +56,7 @@ Package: libmicrohttpd-dev
 Section: libdevel
 Architecture: any
 Depends:
- ${misc:Depends}, libmicrohttpd10 (= ${binary:Version}), libgnutls28-dev,
+ ${misc:Depends}, libmicrohttpd12 (= ${binary:Version}), libgnutls28-dev,
  libgcrypt-dev
 Description: library embedding HTTP server functionality (development)
  GNU libmicrohttpd is a small C library that is supposed to make it easy to run
