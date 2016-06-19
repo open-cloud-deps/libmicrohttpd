@@ -5,13 +5,13 @@
 /* Define if building universal (internal helper macro) */
 #undef AC_APPLE_UNIVERSAL_BUILD
 
-/* disable basic Auth support */
+/* Define to 1 if libmicrohttpd is compiled with basic Auth support. */
 #undef BAUTH_SUPPORT
 
 /* This is a Cygwin system */
 #undef CYGWIN
 
-/* disable digest Auth support */
+/* Define to 1 if libmicrohttpd is compiled with digest Auth support. */
 #undef DAUTH_SUPPORT
 
 /* define to 0 to disable epoll support */
@@ -26,6 +26,9 @@
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 
+/* Define to 1 if you have the `gmtime_s' function in C11 form. */
+#undef HAVE_C11_GMTIME_S
+
 /* Have clock_gettime */
 #undef HAVE_CLOCK_GETTIME
 
@@ -36,14 +39,6 @@
 /* Define to 1 if you have the declaration of `SOCK_NONBLOCK', and to 0 if you
    don't. */
 #undef HAVE_DECL_SOCK_NONBLOCK
-
-/* Define to 1 if you have the declaration of `TCP_CORK', and to 0 if you
-   don't. */
-#undef HAVE_DECL_TCP_CORK
-
-/* Define to 1 if you have the declaration of `TCP_NOPUSH', and to 0 if you
-   don't. */
-#undef HAVE_DECL_TCP_NOPUSH
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
@@ -69,8 +64,8 @@
 /* Define to 1 if you have `gethrtime' function. */
 #undef HAVE_GETHRTIME
 
-/* Define to 1 if you have `gmtime_s' function (only for W32). */
-#undef HAVE_GMTIME_S
+/* Define to 1 if you have the `gmtime_r' function. */
+#undef HAVE_GMTIME_R
 
 /* Define to 1 if you have the <gnutls/gnutls.h> header file. */
 #undef HAVE_GNUTLS_GNUTLS_H
@@ -114,7 +109,7 @@
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
-/* Disable error messages */
+/* Define to 1 to enable support for error messages. */
 #undef HAVE_MESSAGES
 
 /* Define to 1 if you have the <netdb.h> header file. */
@@ -126,34 +121,13 @@
 /* Define to 1 if you have the <netinet/tcp.h> header file. */
 #undef HAVE_NETINET_TCP_H
 
-/* Define to 1 if you have the <openssl/engine.h> header file. */
-#undef HAVE_OPENSSL_ENGINE_H
-
-/* Define to 1 if you have the <openssl/err.h> header file. */
-#undef HAVE_OPENSSL_ERR_H
-
-/* Define to 1 if you have the <openssl/evp.h> header file. */
-#undef HAVE_OPENSSL_EVP_H
-
-/* Define to 1 if you have the <openssl/pem.h> header file. */
-#undef HAVE_OPENSSL_PEM_H
-
-/* Define to 1 if you have the <openssl/rand.h> header file. */
-#undef HAVE_OPENSSL_RAND_H
-
-/* Define to 1 if you have the <openssl/rsa.h> header file. */
-#undef HAVE_OPENSSL_RSA_H
-
-/* Define to 1 if you have the <openssl/sha.h> header file. */
-#undef HAVE_OPENSSL_SHA_H
-
 /* Define to 1 if you have the `poll' function. */
 #undef HAVE_POLL
 
 /* Define to 1 if you have the <poll.h> header file. */
 #undef HAVE_POLL_H
 
-/* define to 1 if MHD was build with postprocessor.c */
+/* Define to 1 if libmicrohttpd is compiled with postprocessor support. */
 #undef HAVE_POSTPROCESSOR
 
 /* Define to 1 if you have the <pthread.h> header file. */
@@ -171,14 +145,18 @@
 /* Define to 1 if you have the `sendfile64' function. */
 #undef HAVE_SENDFILE64
 
+/* Define to 1 if you have the `snprintf' function. */
+#undef HAVE_SNPRINTF
+
 /* Do we have sockaddr_in.sin_len? */
 #undef HAVE_SOCKADDR_IN_SIN_LEN
 
 /* SOCK_NONBLOCK is defined in a socket header */
 #undef HAVE_SOCK_NONBLOCK
 
-/* Define to 1 if you have the <spdylay/spdylay.h> header file. */
-#undef HAVE_SPDYLAY_SPDYLAY_H
+/* Define to 1 if you have the <stdbool.h> header file and it's required for
+   _MHD_bool. */
+#undef HAVE_STDBOOL_H
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
@@ -237,6 +215,9 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
+/* Define to 1 if you have the `gmtime_s' function in W32 form. */
+#undef HAVE_W32_GMTIME_S
+
 /* Define to 1 if you have the <winsock2.h> header file. */
 #undef HAVE_WINSOCK2_H
 
@@ -248,6 +229,9 @@
 
 /* disable HTTPS support */
 #undef HTTPS_SUPPORT
+
+/* Define to 1 if your C compiler supports inline functions. */
+#undef INLINE_FUNC
 
 /* Defined if libcurl supports AsynchDNS */
 #undef LIBCURL_FEATURE_ASYNCHDNS
@@ -315,8 +299,7 @@
 /* This is a Linux kernel */
 #undef LINUX
 
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
 #undef LT_OBJDIR
 
 /* Define to use pair of sockets instead of pipes for signaling */
@@ -389,9 +372,6 @@
 /* This is a BSD system */
 #undef SOMEBSD
 
-/* disable libmicrospdy support */
-#undef SPDY_SUPPORT
-
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
 
@@ -429,6 +409,12 @@
 
 /* defines how to decorate public symbols while building */
 #undef _MHD_EXTERN
+
+/* Define to type which will be used as boolean type. */
+#undef _MHD_bool
+
+/* Define to prefix which will be used with MHD inline functions. */
+#undef _MHD_inline
 
 /* Need with solaris or errno doesnt work */
 #undef _REENTRANT

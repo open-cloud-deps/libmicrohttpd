@@ -34,50 +34,17 @@
 /* *****************************
      General function mapping
    *****************************/
-#if !defined(_WIN32) || defined(__CYGWIN__)
-/**
- * Check two strings case-insensitive equality
- * @param a first string to check
- * @param b second string to check
- * @return boolean true if strings are equal, boolean false if strings are unequal
- */
-#define MHD_str_equal_caseless_(a,b) (0==strcasecmp((a),(b)))
-#else
-/**
- * Check two strings case-insensitive equality
- * @param a first string to check
- * @param b second string to check
- * @return boolean true if strings are equal, boolean false if strings are unequal
- */
-#define MHD_str_equal_caseless_(a,b) (0==_stricmp((a),(b)))
-#endif
-
-#if !defined(_WIN32) || defined(__CYGWIN__)
-/**
- * Check not more than n chars in two strings case-insensitive equality
- * @param a first string to check
- * @param b second string to check
- * @param n maximum number of chars to check
- * @return boolean true if strings are equal, boolean false if strings are unequal
- */
-#define MHD_str_equal_caseless_n_(a,b,n) (0==strncasecmp((a),(b),(n)))
-#else
-/**
- * Check not more than n chars in two strings case-insensitive equality
- * @param a first string to check
- * @param b second string to check
- * @param n maximum number of chars to check
- * @return boolean true if strings are equal, boolean false if strings are unequal
- */
-#define MHD_str_equal_caseless_n_(a,b,n) (0==_strnicmp((a),(b),(n)))
-#endif
 
 /* Platform-independent snprintf name */
-#if !defined(_WIN32) || defined(__CYGWIN__)
+#if defined(HAVE_SNPRINTF)
 #define MHD_snprintf_ snprintf
-#else
+#else  /* ! HAVE_SNPRINTF */
+#if defined(_WIN32)
 #define MHD_snprintf_ W32_snprintf
-#endif
+#else  /* ! _WIN32*/
+#error Your platform does not support snprintf() and MHD does not know how to emulate it on your platform.
+#endif /* ! _WIN32*/
+#endif /* ! HAVE_SNPRINTF */
 
 
 /**
@@ -141,7 +108,12 @@ typedef int _MHD_socket_funcs_size;
 #if !defined(MHD_WINSOCK_SOCKETS)
 #define MHD_SYS_select_(n,r,w,e,t) select((n),(r),(w),(e),(t))
 #else
-#define MHD_SYS_select_(n,r,w,e,t) select((int)0,(r),(w),(e),(t))
+#define MHD_SYS_select_(n,r,w,e,t) \
+ ( (!(r) || ((fd_set*)(r))->fd_count == 0) && \
+   (!(w) || ((fd_set*)(w))->fd_count == 0) && \
+   (!(e) || ((fd_set*)(e))->fd_count == 0) ) ? \
+ ( (t) ? (Sleep((t)->tv_sec * 1000 + (t)->tv_usec / 1000), 0) : 0 ) : \
+   (select((int)0,(r),(w),(e),(t)))
 #endif
 
 #if defined(HAVE_POLL)
@@ -189,12 +161,12 @@ typedef int _MHD_socket_funcs_size;
 #define MHD_pipe_write_(fd, ptr, sz) send((fd), (const char*)(ptr), (sz), 0)
 #endif
 
-/* MHD_pipe_read_ read data from real pipe (!MHD_DONT_USE_PIPES) /
- *                read data from emulated pipe (MHD_DONT_USE_PIPES) */
+/* MHD_pipe_drain_ drain data from real pipe (!MHD_DONT_USE_PIPES) /
+ *                drain data from emulated pipe (MHD_DONT_USE_PIPES) */
 #ifndef MHD_DONT_USE_PIPES
-#define MHD_pipe_read_(fd, ptr, sz) read((fd), (void*)(ptr), (sz))
+#define MHD_pipe_drain_(fd) do { long tmp; while (0 < read((fd), (void*)&tmp, sizeof (tmp))) ; } while (0)
 #else
-#define MHD_pipe_read_(fd, ptr, sz) recv((fd), (char*)(ptr), (sz), 0)
+#define MHD_pipe_drain_(fd) do { long tmp; while (0 < recv((fd), (void*)&tmp, sizeof (tmp), 0)) ; } while (0)
 #endif
 
 /* MHD_pipe_close_(fd) close any FDs (non-W32) /

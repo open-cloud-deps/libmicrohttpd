@@ -1,8 +1,239 @@
+Thu Jun  2 09:55:50 CEST 2016
+	Releasing libmicrohttpd 0.9.50. -CG
+
+Wed Jun  1 21:59:34 CEST 2016
+	Do not send "Content-Length" header for 1xx/204/304 status codes. -CG
+
+Tue May 17 13:32:21 CEST 2016
+	Allow clients to determine whether a connection is suspended;
+	introduces MHD_CONNECTION_INFO_CONNECTION_SUSPENDED. -CG/FC
+
+Sun May 15 12:17:25 CEST 2016
+	Fix handling system or process resource limit exhaustion upon
+	accept(). -CG/CP
+
+Thu May 12 08:42:19 CEST 2016
+	Fix handling of partial writes in MHD_USE_EPOLL_LINUX_ONLY; only
+	consider sockets returning EAGAIN as unready. -CG/CP
+
+Mon May  2 06:08:26 CEST 2016
+	Adding logic to help address FE performance issue as
+	discussed on the mailinglist with subject
+        "single-threaded daemon, multiple pending requests, responses batched".
+	The new logic is only enabled when MHD_USE_EPOLL_TURBO is set.
+	Note that some additional refactoring was also done to clean up
+	the code and avoid code duplication, which may have actually fixed
+	an unrelated issue with HTTPS and a POLL-style event loop. -CG
+
+Sat Apr 30 10:22:37 CEST 2016
+	Added clarifications to manual based on questions on list. -CG
+
+Sat Apr 23 20:12:01 CET 2016
+	Tests perf_get_concurrent and test_concurrent_stop ported to use
+	pthread instead of fork(). Added more error detections. -EG
+
+Sat Apr 23 16:06:30 CET 2016
+	Improved test_quiesce test. -EG
+
+Sat Apr 23 15:39:38 CET 2016
+	Notify other threads in MHD_quiesce_daemon() so listen socket FD
+	is removed from awaiting select() and poll(). -EG
+
+Sat Apr 23 14:17:15 CET 2016
+	Revert "shutdown trigger select" on Darwin. Fixed daemon shutdown
+	on Darwin without "MHD_USE_PIPE_FOR_SHUTDOWN" option. -EG
+
+Fri Apr 22 14:29:28 CET 2016
+	Fixed race conditions when stopping quiesced daemon with thread
+	pool. -EG
+
+Wed Apr 20 18:12:30 CET 2016
+	Fixed macros in sysfdsetsize.c which could prevent compiling with
+	non-default FD_SETSIZE.
+	Fixed comments in mhd_str.c.
+	Updated test_post.c to not ignore specific error on W32 if libcurl
+	is built with workaround for WinSock bug. -EG
+
+Mon Apr 18 19:35:14 CET 2016
+	Fixed data races leading to inability in rare situations to
+	resume suspended connection. -EG
+
+Tue Apr 13 21:46:01 CET 2016
+	Removed unneeded locking for global timeout list in
+	MHD_USE_THREAD_PER_CONNECTION mode.
+	Added 'simplepost' and 'largepost' examples to VS projects.
+	Added strtoXX() locale-independent replacement functions.
+	Added more error checking and minor fixes in digest auth
+	functions - should improve security.
+	Ignored specific errors in 'test_post' test until libcurl
+	will implement workaround for WinSock bug.
+	Fixed handling of caller-supplied socket with
+	MHD_OPTION_LISTEN_SOCKET (regression in 0.9.49).
+	Minor fixes.
+	Various cosmetics and comments fixes. -EG
+
+Sat Apr 09 13:05:42 CET 2016
+	Releasing libmicrohttpd 0.9.49. -EG
+
+Fri Apr 08 18:32:17 CET 2016
+	Some minor internal fixes, addition error checking and
+	micro optimizations.
+	Reworked usage of sockets shutdown() - now work equally
+	on all platforms, disconnection should be "more graceful". -EG
+
+Tue Mar 15 21:52:27 CET 2016
+	Do not crash if pthread_create() fails. -DD
+
+Tue Mar 15 20:29:34 CET 2016
+	Do not use eready DLL data structure unless
+	we are actually using epoll(). -DD/CG
+
+Fri Feb  5 20:43:11 CET 2016
+	Fixed testsuite compile warning on W32.
+	Added check test for triggering poll() on
+	listen socket. -EG
+
+Thu Feb  4 11:38:11 CET 2016
+	Added some buffer overrun protection.
+	Fixed handling of misformed URI with spaces. -EG
+
+Wed Feb  3 15:41:57 CET 2016
+	Make signal-pipe non-blocking and drain it. -CG
+
+Sat Jan 30 15:49:07 CET 2016
+	Fix running select() with empty fdsets on W32. -EG
+
+Mon Jan 25 13:45:50 CET 2016
+	Added check test for triggering select() on
+	listen socket. -EG
+
+Thu Jan 21 19:35:18 CET 2016
+	Fixed old bug with making sockets non-blocking on
+	various platforms so now sockets are really
+	non-blocking on all supported platforms.
+	Reworked and fixed code for using SOCK_CLOEXEC,
+	SOCK_NONBLOCK and EPOLL_CLOEXEC resulting in
+	fewer used system calls. -EG
+
+Tue Jan 19 20:59:59 CET 2016
+	Cleaned up and optimized with minor fixes code for
+	making sockets non-blocking non-inheritable. -EG
+
+Tue Jan 19 11:14:18 CET 2016
+	Removed workaround for Cygwin non-blocking sockets:
+	handling non-blocking sockets were fixed in Cygwin
+	and libmicrohttpd how uses non-blocking sockets on
+	all platforms. -EG
+
+Mon Jan 18 23:54:45 CET 2016
+	Cleaned up examples to avoid giving oversimplified code
+	that may lead to complications if adopted naively. -CG
+
+Sun Jan 17 11:18:55 CET 2016
+	Do no refuse to send response if sendfile() failed with
+	EINVAL (common error for files located on SMB/CIF). -EG
+
+Sat Jan 16 19:14:39 CET 2016
+	Use US-ASCII only (instead of user locale settings) when
+	performing caseless string comparison as required by
+	standard. -EG
+
+Tue Jan 12 16:10:09 CET 2016
+	Fixed declaraion of MHD_get_reason_phrase_for(). -EG
+
+Mon Jan 11 19:58:50 CET 2016
+	Configure.ac small fixes and refactoring. -EG
+
+Fri Dec 18 15:54:50 CET 2015
+	Releasing libmicrohttpd 0.9.48. -CG
+
+Tue Dec  15 18:35:55 CET 2015
+	Improved compatibility with VS2010 and other older
+	compilers. -EG
+
+Tue Dec  8 21:48:44 CET 2015
+	Default backlog size for listen socket was changed from
+	32 to SOMAXCONN, added new option MHD_OPTION_LISTEN_BACKLOG_SIZE
+	to override default backlog size.
+	If not all connections can be handled by MHD_select() than
+	at least some of connections will be processed instead of
+	failing without any processing.
+	Fixed redefenition of FD_SETSIZE on W32 so select() will
+	work with 2000 connections instead of 64.
+	Better handled redefenition of FD_SETSIZE on all
+	platforms. -EG
+
+Sat Dec  5 17:30:45 CET 2015
+	Close sockets more aggressively in multi-threaded
+	mode (possibly relevant for idle servers). -CG
+
+Fri Dec  4 13:53:05 CET 2015
+	Releasing libmicrohttpd 0.9.47. -CG
+
+Thu Dec  3 18:21:44 CET 2015
+	Reworked VS project files. Used x64 build tools by
+	default, many optimizations, fixes.
+	Added project files for VS 2015. -EG
+
+Tue Dec  1 14:05:13 CET 2015
+	SPDY is dead, killing experimental libmicrospdy. -CG
+
+Tue Dec  1 10:01:12 CET 2015
+	New logic for controlling socket buffer modes.
+	Eliminated delay before last packet in response and before
+	"100 Continue" response on all platforms. Also response
+	header are pushed to client without waiting for response
+	body. -EG
+
+Wed Nov 25 17:02:53 CET 2015
+	Remove 200ms delay observable with keep-alive on Darwin
+	and *BSD platfroms. -EG
+
+Tue Nov 10 15:25:48 CET 2015
+	Fix issue with shutdown if connection was resumed just
+	before shutdown. -FC
+
+Fri Nov  6 22:54:38 CET 2015
+	Fixing the buffer shrinkage issue, this time with test. -CG
+	Releasing libmicrohttpd 0.9.46. -CG
+
+Tue Nov  3 23:24:52 CET 2015
+	Undoing change from Sun Oct 25 15:29:23 CET 2015
+	as the original code was counter-intuitive but
+	correct, and the new code does break pipelining.
+	Ignore empty lines at the beginning of an HTTP
+	request (more tolerant implementation). -CG
+
+Sat Oct 31 15:52:52 CET 2015
+	Releasing libmicrohttpd 0.9.45. -CG
+
+Tue Oct 27 12:08:02 CET 2015
+	Rework deprecation maros: fix errors with old GCC versions,
+	improved support for old clang and new GCC. -EG
+
+Sun Oct 25 23:05:32 CET 2015
+	Return correct header kind in MHD_get_connection_values()
+	even if a bitmask is used for the "kind" argument. -FC/CG
+
+Sun Oct 25 15:29:23 CET 2015
+	Fixing transient resource leak affecting long-lived
+	connections with many keep-alives and HTTP request
+	pipelining under certain circumstances (which reduced
+	the receive window).
+	Fixed assertion failure triggered by a race in
+	thread-per-connection mode on shutdown in rare
+	circumstances. -CG
+
+Mon Oct  5 11:53:52 CEST 2015
+	Deduplicate code between digestauth and connection
+	parsing logic for URI arguments, shared code moved
+	to new MHD_parse_arguments_ function in internal.c. -CG
+
 Thu Oct  1 21:22:05 CEST 2015
 	Releasing libmicrohttpd 0.9.44. -CG
 
 Wed Sep 30 21:05:38 CEST 2015
-	Various fixes for W32 VS project files. - EG
+	Various fixes for W32 VS project files. -EG
 
 Fri Sep 25 09:49:10 CEST 2015
 	Fix digest authentication with URL arguments where

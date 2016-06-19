@@ -93,7 +93,7 @@ host_triplet = @host@
 @HAVE_CURL_TRUE@check_PROGRAMS = test_start_stop$(EXEEXT) \
 @HAVE_CURL_TRUE@	test_get$(EXEEXT) test_get_sendfile$(EXEEXT) \
 @HAVE_CURL_TRUE@	test_urlparse$(EXEEXT) test_put$(EXEEXT) \
-@HAVE_CURL_TRUE@	$(am__EXEEXT_1) test_process_headers$(EXEEXT) \
+@HAVE_CURL_TRUE@	test_process_headers$(EXEEXT) \
 @HAVE_CURL_TRUE@	test_process_arguments$(EXEEXT) \
 @HAVE_CURL_TRUE@	test_parse_cookies$(EXEEXT) \
 @HAVE_CURL_TRUE@	test_large_put$(EXEEXT) test_get11$(EXEEXT) \
@@ -106,11 +106,13 @@ host_triplet = @host@
 @HAVE_CURL_TRUE@	test_iplimit11$(EXEEXT) \
 @HAVE_CURL_TRUE@	test_termination$(EXEEXT) \
 @HAVE_CURL_TRUE@	test_timeout$(EXEEXT) test_callback$(EXEEXT) \
-@HAVE_CURL_TRUE@	$(am__EXEEXT_2) perf_get$(EXEEXT) \
-@HAVE_CURL_TRUE@	$(am__EXEEXT_3) $(am__EXEEXT_4) \
-@HAVE_CURL_TRUE@	$(am__EXEEXT_5) $(am__EXEEXT_6)
+@HAVE_CURL_TRUE@	$(am__EXEEXT_1) perf_get$(EXEEXT) \
+@HAVE_CURL_TRUE@	$(am__EXEEXT_2) $(am__EXEEXT_3) \
+@HAVE_CURL_TRUE@	$(am__EXEEXT_4)
 @HAVE_CURL_TRUE@@HAVE_POSIX_THREADS_TRUE@am__append_2 = \
-@HAVE_CURL_TRUE@@HAVE_POSIX_THREADS_TRUE@  test_quiesce
+@HAVE_CURL_TRUE@@HAVE_POSIX_THREADS_TRUE@  test_quiesce \
+@HAVE_CURL_TRUE@@HAVE_POSIX_THREADS_TRUE@  test_concurrent_stop \
+@HAVE_CURL_TRUE@@HAVE_POSIX_THREADS_TRUE@  perf_get_concurrent
 
 @HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@am__append_3 = \
 @HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@  test_post \
@@ -142,7 +144,6 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_append_compile_flags.m4 \
 	$(top_srcdir)/m4/ax_append_flag.m4 \
 	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
 	$(top_srcdir)/m4/ax_check_link_flag.m4 \
-	$(top_srcdir)/m4/ax_check_openssl.m4 \
 	$(top_srcdir)/m4/ax_count_cpus.m4 \
 	$(top_srcdir)/m4/ax_have_epoll.m4 \
 	$(top_srcdir)/m4/ax_pthread.m4 \
@@ -150,8 +151,8 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_append_compile_flags.m4 \
 	$(top_srcdir)/m4/libcurl.m4 $(top_srcdir)/m4/libgcrypt.m4 \
 	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltoptions.m4 \
 	$(top_srcdir)/m4/ltsugar.m4 $(top_srcdir)/m4/ltversion.m4 \
-	$(top_srcdir)/m4/lt~obsolete.m4 $(top_srcdir)/acinclude.m4 \
-	$(top_srcdir)/configure.ac
+	$(top_srcdir)/m4/lt~obsolete.m4 $(top_srcdir)/m4/pkg.m4 \
+	$(top_srcdir)/acinclude.m4 $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 DIST_COMMON = $(srcdir)/Makefile.am $(am__DIST_COMMON)
@@ -170,18 +171,18 @@ libcurl_version_check_a_LIBADD =
 am_libcurl_version_check_a_OBJECTS = curl_version_check.$(OBJEXT)
 libcurl_version_check_a_OBJECTS =  \
 	$(am_libcurl_version_check_a_OBJECTS)
-@HAVE_W32_FALSE@am__EXEEXT_1 = test_concurrent_stop$(EXEEXT)
-@HAVE_CURL_BINARY_TRUE@@HAVE_W32_FALSE@am__EXEEXT_2 = test_get_response_cleanup$(EXEEXT)
-@HAVE_W32_FALSE@am__EXEEXT_3 = perf_get_concurrent$(EXEEXT)
-@HAVE_CURL_TRUE@@HAVE_POSIX_THREADS_TRUE@am__EXEEXT_4 = test_quiesce$(EXEEXT)
-@HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@am__EXEEXT_5 =  \
+@HAVE_CURL_BINARY_TRUE@@HAVE_W32_FALSE@am__EXEEXT_1 = test_get_response_cleanup$(EXEEXT)
+@HAVE_CURL_TRUE@@HAVE_POSIX_THREADS_TRUE@am__EXEEXT_2 = test_quiesce$(EXEEXT) \
+@HAVE_CURL_TRUE@@HAVE_POSIX_THREADS_TRUE@	test_concurrent_stop$(EXEEXT) \
+@HAVE_CURL_TRUE@@HAVE_POSIX_THREADS_TRUE@	perf_get_concurrent$(EXEEXT)
+@HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@am__EXEEXT_3 =  \
 @HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@	test_post$(EXEEXT) \
 @HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@	test_postform$(EXEEXT) \
 @HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@	test_post_loop$(EXEEXT) \
 @HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@	test_post11$(EXEEXT) \
 @HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@	test_postform11$(EXEEXT) \
 @HAVE_CURL_TRUE@@HAVE_POSTPROCESSOR_TRUE@	test_post_loop11$(EXEEXT)
-@ENABLE_DAUTH_TRUE@@HAVE_CURL_TRUE@am__EXEEXT_6 =  \
+@ENABLE_DAUTH_TRUE@@HAVE_CURL_TRUE@am__EXEEXT_4 =  \
 @ENABLE_DAUTH_TRUE@@HAVE_CURL_TRUE@	test_digestauth$(EXEEXT) \
 @ENABLE_DAUTH_TRUE@@HAVE_CURL_TRUE@	test_digestauth_with_arguments$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
@@ -193,18 +194,31 @@ AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-am_perf_get_concurrent_OBJECTS = perf_get_concurrent.$(OBJEXT)
+am_perf_get_concurrent_OBJECTS =  \
+	perf_get_concurrent-perf_get_concurrent.$(OBJEXT)
 perf_get_concurrent_OBJECTS = $(am_perf_get_concurrent_OBJECTS)
+am__DEPENDENCIES_1 =
 perf_get_concurrent_DEPENDENCIES =  \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
+	$(am__DEPENDENCIES_1)
+perf_get_concurrent_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(perf_get_concurrent_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
 am_test_callback_OBJECTS = test_callback.$(OBJEXT)
 test_callback_OBJECTS = $(am_test_callback_OBJECTS)
 test_callback_DEPENDENCIES =  \
 	$(top_builddir)/src/microhttpd/libmicrohttpd.la
-am_test_concurrent_stop_OBJECTS = test_concurrent_stop.$(OBJEXT)
+am_test_concurrent_stop_OBJECTS =  \
+	test_concurrent_stop-test_concurrent_stop.$(OBJEXT)
 test_concurrent_stop_OBJECTS = $(am_test_concurrent_stop_OBJECTS)
 test_concurrent_stop_DEPENDENCIES =  \
-	$(top_builddir)/src/microhttpd/libmicrohttpd.la
+	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
+	$(am__DEPENDENCIES_1)
+test_concurrent_stop_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(test_concurrent_stop_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
 am_test_digestauth_OBJECTS = test_digestauth.$(OBJEXT)
 test_digestauth_OBJECTS = $(am_test_digestauth_OBJECTS)
 test_digestauth_DEPENDENCIES =  \
@@ -311,7 +325,6 @@ test_put_chunked_DEPENDENCIES =  \
 	$(top_builddir)/src/microhttpd/libmicrohttpd.la
 am_test_quiesce_OBJECTS = test_quiesce-test_quiesce.$(OBJEXT)
 test_quiesce_OBJECTS = $(am_test_quiesce_OBJECTS)
-am__DEPENDENCIES_1 =
 test_quiesce_DEPENDENCIES =  \
 	$(top_builddir)/src/microhttpd/libmicrohttpd.la \
 	$(am__DEPENDENCIES_1)
@@ -727,9 +740,6 @@ LIBGCRYPT_CONFIG = @LIBGCRYPT_CONFIG@
 LIBGCRYPT_LIBS = @LIBGCRYPT_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
-LIBSPDY_VERSION_AGE = @LIBSPDY_VERSION_AGE@
-LIBSPDY_VERSION_CURRENT = @LIBSPDY_VERSION_CURRENT@
-LIBSPDY_VERSION_REVISION = @LIBSPDY_VERSION_REVISION@
 LIBTOOL = @LIBTOOL@
 LIB_VERSION_AGE = @LIB_VERSION_AGE@
 LIB_VERSION_CURRENT = @LIB_VERSION_CURRENT@
@@ -737,6 +747,7 @@ LIB_VERSION_REVISION = @LIB_VERSION_REVISION@
 LIPO = @LIPO@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
+LT_SYS_LIBRARY_PATH = @LT_SYS_LIBRARY_PATH@
 MAKEINFO = @MAKEINFO@
 MANIFEST_TOOL = @MANIFEST_TOOL@
 MHD_LIBDEPS = @MHD_LIBDEPS@
@@ -751,9 +762,6 @@ NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
-OPENSSL_INCLUDES = @OPENSSL_INCLUDES@
-OPENSSL_LDFLAGS = @OPENSSL_LDFLAGS@
-OPENSSL_LIBS = @OPENSSL_LIBS@
 OTOOL = @OTOOL@
 OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
@@ -778,10 +786,6 @@ RC = @RC@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
-SPDY_LIBDEPS = @SPDY_LIBDEPS@
-SPDY_LIB_CFLAGS = @SPDY_LIB_CFLAGS@
-SPDY_LIB_CPPFLAGS = @SPDY_LIB_CPPFLAGS@
-SPDY_LIB_LDFLAGS = @SPDY_LIB_LDFLAGS@
 STRIP = @STRIP@
 VERSION = @VERSION@
 _libcurl_config = @_libcurl_config@
@@ -833,6 +837,7 @@ pdfdir = @pdfdir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+runstatedir = @runstatedir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
@@ -852,8 +857,6 @@ AM_CPPFLAGS = \
 -I$(top_srcdir)/src/include \
 $(LIBCURL_CPPFLAGS)
 
-@HAVE_W32_FALSE@PERF_GET_CONCURRENT = perf_get_concurrent
-@HAVE_W32_FALSE@TEST_CONCURRENT_STOP = test_concurrent_stop
 @HAVE_CURL_BINARY_TRUE@@HAVE_W32_FALSE@CURL_FORK_TEST = test_get_response_cleanup
 @HAVE_CURL_TRUE@TESTS = $(check_PROGRAMS)
 @HAVE_CURL_TRUE@noinst_LIBRARIES = libcurl_version_check.a
@@ -869,9 +872,12 @@ test_start_stop_LDADD = \
 test_concurrent_stop_SOURCES = \
   test_concurrent_stop.c
 
+test_concurrent_stop_CFLAGS = \
+  $(PTHREAD_CFLAGS) $(AM_CFLAGS)
+
 test_concurrent_stop_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
- @LIBCURL@
+  $(PTHREAD_LIBS) @LIBCURL@
 
 test_options_SOURCES = \
   test_options.c
@@ -915,9 +921,12 @@ perf_get_concurrent_SOURCES = \
   perf_get_concurrent.c \
   gauger.h
 
+perf_get_concurrent_CFLAGS = \
+  $(PTHREAD_CFLAGS) $(AM_CFLAGS)
+
 perf_get_concurrent_LDADD = \
   $(top_builddir)/src/microhttpd/libmicrohttpd.la \
-  @LIBCURL@
+  $(PTHREAD_LIBS) @LIBCURL@
 
 test_digestauth_SOURCES = \
   test_digestauth.c
@@ -1173,7 +1182,7 @@ perf_get$(EXEEXT): $(perf_get_OBJECTS) $(perf_get_DEPENDENCIES) $(EXTRA_perf_get
 
 perf_get_concurrent$(EXEEXT): $(perf_get_concurrent_OBJECTS) $(perf_get_concurrent_DEPENDENCIES) $(EXTRA_perf_get_concurrent_DEPENDENCIES) 
 	@rm -f perf_get_concurrent$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(perf_get_concurrent_OBJECTS) $(perf_get_concurrent_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(perf_get_concurrent_LINK) $(perf_get_concurrent_OBJECTS) $(perf_get_concurrent_LDADD) $(LIBS)
 
 test_callback$(EXEEXT): $(test_callback_OBJECTS) $(test_callback_DEPENDENCIES) $(EXTRA_test_callback_DEPENDENCIES) 
 	@rm -f test_callback$(EXEEXT)
@@ -1181,7 +1190,7 @@ test_callback$(EXEEXT): $(test_callback_OBJECTS) $(test_callback_DEPENDENCIES) $
 
 test_concurrent_stop$(EXEEXT): $(test_concurrent_stop_OBJECTS) $(test_concurrent_stop_DEPENDENCIES) $(EXTRA_test_concurrent_stop_DEPENDENCIES) 
 	@rm -f test_concurrent_stop$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(test_concurrent_stop_OBJECTS) $(test_concurrent_stop_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(test_concurrent_stop_LINK) $(test_concurrent_stop_OBJECTS) $(test_concurrent_stop_LDADD) $(LIBS)
 
 test_digestauth$(EXEEXT): $(test_digestauth_OBJECTS) $(test_digestauth_DEPENDENCIES) $(EXTRA_test_digestauth_DEPENDENCIES) 
 	@rm -f test_digestauth$(EXEEXT)
@@ -1315,9 +1324,9 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/curl_version_check.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/perf_get.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/perf_get_concurrent.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/perf_get_concurrent-perf_get_concurrent.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_callback.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_concurrent_stop.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_concurrent_stop-test_concurrent_stop.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_digestauth.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_digestauth_with_arguments.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_get.Po@am__quote@
@@ -1365,6 +1374,34 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
+
+perf_get_concurrent-perf_get_concurrent.o: perf_get_concurrent.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(perf_get_concurrent_CFLAGS) $(CFLAGS) -MT perf_get_concurrent-perf_get_concurrent.o -MD -MP -MF $(DEPDIR)/perf_get_concurrent-perf_get_concurrent.Tpo -c -o perf_get_concurrent-perf_get_concurrent.o `test -f 'perf_get_concurrent.c' || echo '$(srcdir)/'`perf_get_concurrent.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/perf_get_concurrent-perf_get_concurrent.Tpo $(DEPDIR)/perf_get_concurrent-perf_get_concurrent.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='perf_get_concurrent.c' object='perf_get_concurrent-perf_get_concurrent.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(perf_get_concurrent_CFLAGS) $(CFLAGS) -c -o perf_get_concurrent-perf_get_concurrent.o `test -f 'perf_get_concurrent.c' || echo '$(srcdir)/'`perf_get_concurrent.c
+
+perf_get_concurrent-perf_get_concurrent.obj: perf_get_concurrent.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(perf_get_concurrent_CFLAGS) $(CFLAGS) -MT perf_get_concurrent-perf_get_concurrent.obj -MD -MP -MF $(DEPDIR)/perf_get_concurrent-perf_get_concurrent.Tpo -c -o perf_get_concurrent-perf_get_concurrent.obj `if test -f 'perf_get_concurrent.c'; then $(CYGPATH_W) 'perf_get_concurrent.c'; else $(CYGPATH_W) '$(srcdir)/perf_get_concurrent.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/perf_get_concurrent-perf_get_concurrent.Tpo $(DEPDIR)/perf_get_concurrent-perf_get_concurrent.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='perf_get_concurrent.c' object='perf_get_concurrent-perf_get_concurrent.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(perf_get_concurrent_CFLAGS) $(CFLAGS) -c -o perf_get_concurrent-perf_get_concurrent.obj `if test -f 'perf_get_concurrent.c'; then $(CYGPATH_W) 'perf_get_concurrent.c'; else $(CYGPATH_W) '$(srcdir)/perf_get_concurrent.c'; fi`
+
+test_concurrent_stop-test_concurrent_stop.o: test_concurrent_stop.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_concurrent_stop_CFLAGS) $(CFLAGS) -MT test_concurrent_stop-test_concurrent_stop.o -MD -MP -MF $(DEPDIR)/test_concurrent_stop-test_concurrent_stop.Tpo -c -o test_concurrent_stop-test_concurrent_stop.o `test -f 'test_concurrent_stop.c' || echo '$(srcdir)/'`test_concurrent_stop.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_concurrent_stop-test_concurrent_stop.Tpo $(DEPDIR)/test_concurrent_stop-test_concurrent_stop.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_concurrent_stop.c' object='test_concurrent_stop-test_concurrent_stop.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_concurrent_stop_CFLAGS) $(CFLAGS) -c -o test_concurrent_stop-test_concurrent_stop.o `test -f 'test_concurrent_stop.c' || echo '$(srcdir)/'`test_concurrent_stop.c
+
+test_concurrent_stop-test_concurrent_stop.obj: test_concurrent_stop.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_concurrent_stop_CFLAGS) $(CFLAGS) -MT test_concurrent_stop-test_concurrent_stop.obj -MD -MP -MF $(DEPDIR)/test_concurrent_stop-test_concurrent_stop.Tpo -c -o test_concurrent_stop-test_concurrent_stop.obj `if test -f 'test_concurrent_stop.c'; then $(CYGPATH_W) 'test_concurrent_stop.c'; else $(CYGPATH_W) '$(srcdir)/test_concurrent_stop.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_concurrent_stop-test_concurrent_stop.Tpo $(DEPDIR)/test_concurrent_stop-test_concurrent_stop.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_concurrent_stop.c' object='test_concurrent_stop-test_concurrent_stop.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_concurrent_stop_CFLAGS) $(CFLAGS) -c -o test_concurrent_stop-test_concurrent_stop.obj `if test -f 'test_concurrent_stop.c'; then $(CYGPATH_W) 'test_concurrent_stop.c'; else $(CYGPATH_W) '$(srcdir)/test_concurrent_stop.c'; fi`
 
 test_quiesce-test_quiesce.o: test_quiesce.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_quiesce_CFLAGS) $(CFLAGS) -MT test_quiesce-test_quiesce.o -MD -MP -MF $(DEPDIR)/test_quiesce-test_quiesce.Tpo -c -o test_quiesce-test_quiesce.o `test -f 'test_quiesce.c' || echo '$(srcdir)/'`test_quiesce.c
@@ -1661,13 +1698,6 @@ test_put.log: test_put$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-test_concurrent_stop.log: test_concurrent_stop$(EXEEXT)
-	@p='test_concurrent_stop$(EXEEXT)'; \
-	b='test_concurrent_stop'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
 test_process_headers.log: test_process_headers$(EXEEXT)
 	@p='test_process_headers$(EXEEXT)'; \
 	b='test_process_headers'; \
@@ -1794,16 +1824,23 @@ perf_get.log: perf_get$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-perf_get_concurrent.log: perf_get_concurrent$(EXEEXT)
-	@p='perf_get_concurrent$(EXEEXT)'; \
-	b='perf_get_concurrent'; \
+test_quiesce.log: test_quiesce$(EXEEXT)
+	@p='test_quiesce$(EXEEXT)'; \
+	b='test_quiesce'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-test_quiesce.log: test_quiesce$(EXEEXT)
-	@p='test_quiesce$(EXEEXT)'; \
-	b='test_quiesce'; \
+test_concurrent_stop.log: test_concurrent_stop$(EXEEXT)
+	@p='test_concurrent_stop$(EXEEXT)'; \
+	b='test_concurrent_stop'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+perf_get_concurrent.log: perf_get_concurrent$(EXEEXT)
+	@p='perf_get_concurrent$(EXEEXT)'; \
+	b='perf_get_concurrent'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

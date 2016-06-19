@@ -693,12 +693,19 @@ generate_page (void *cls,
       if ( (0 != strcmp (method, MHD_HTTP_METHOD_GET)) &&
            (0 != strcmp (method, MHD_HTTP_METHOD_HEAD)) )
         return MHD_NO;  /* unexpected method (we're not polite...) */
-      if ( (0 == stat (&url[1], &buf)) &&
-	   (NULL == strstr (&url[1], "..")) &&
-	   ('/' != url[1]))
-	fd = open (&url[1], O_RDONLY);
-      else
-	fd = -1;
+      fd = -1;
+      if ( (NULL == strstr (&url[1], "..")) &&
+	   ('/' != url[1]) )
+        {
+          fd = open (&url[1], O_RDONLY);
+          if ( (-1 != fd) &&
+               ( (0 != fstat (fd, &buf)) ||
+                 (! S_ISREG (buf.st_mode)) ) )
+            {
+              (void) close (fd);
+              fd = -1;
+            }
+        }
       if (-1 == fd)
 	return MHD_queue_response (connection,
 				   MHD_HTTP_NOT_FOUND,
@@ -856,9 +863,9 @@ main (int argc, char *const *argv)
 	       "%s PORT\n", argv[0]);
       return 1;
     }
-  #ifndef MINGW
+#ifndef MINGW
   ignore_sigpipe ();
-  #endif
+#endif
   magic = magic_open (MAGIC_MIME_TYPE);
   (void) magic_load (magic, NULL);
 

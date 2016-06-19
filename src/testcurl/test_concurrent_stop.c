@@ -1,6 +1,6 @@
 /*
      This file is part of libmicrohttpd
-     Copyright (C) 2007, 2009, 2011, 2015 Christian Grothoff
+     Copyright (C) 2007, 2009, 2011, 2015, 2016 Christian Grothoff
 
      libmicrohttpd is free software; you can redistribute it and/or modify
      it under the terms of the GNU General Public License as published
@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <pthread.h>
 #include "gauger.h"
 
 #ifdef CPU_COUNT
@@ -68,13 +69,15 @@ copyBuffer (void *ptr,
   return size * nmemb;
 }
 
+
 static int
 ahc_echo (void *cls,
           struct MHD_Connection *connection,
           const char *url,
           const char *method,
           const char *version,
-          const char *upload_data, size_t *upload_data_size,
+          const char *upload_data,
+          size_t *upload_data_size,
           void **unused)
 {
   static int ptr;
@@ -97,97 +100,137 @@ ahc_echo (void *cls,
   return ret;
 }
 
-
-static pid_t
-do_gets (int port)
+static void
+clean_curl(void * param)
 {
-  pid_t ret;
+  if (param)
+    {
+      CURL * const c = *((CURL **)param);
+      if (c)
+        curl_easy_cleanup (c);
+    }
+}
+
+static void *
+thread_gets (void *param)
+{
   CURL *c;
   CURLcode errornum;
   unsigned int i;
-  unsigned int j;
-  pid_t par[PAR];
+  char * const url = (char*) param;
+  int pth_olst;
+  if (pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &pth_olst) ||
+      pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &pth_olst) )
+    {
+      fprintf(stderr,
+              "pthread_setcancelstate()/pthread_setcanceltype() failed.\n");
+      _exit(99);
+    }
+
+  for (i=0;i<ROUNDS;i++)
+    {
+      pthread_testcancel();
+      c = NULL;
+      pthread_cleanup_push(clean_curl, (void*)&c);
+      c = curl_easy_init ();
+      pthread_testcancel();
+      curl_easy_setopt (c, CURLOPT_URL, url);
+      curl_easy_setopt (c, CURLOPT_WRITEFUNCTION, &copyBuffer);
+      curl_easy_setopt (c, CURLOPT_WRITEDATA, NULL);
+      curl_easy_setopt (c, CURLOPT_FAILONERROR, 1);
+      curl_easy_setopt (c, CURLOPT_TIMEOUT, 5L);
+      if (oneone)
+        curl_easy_setopt (c, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+      else
+        curl_easy_setopt (c, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+      curl_easy_setopt (c, CURLOPT_CONNECTTIMEOUT, 5L);
+      /* NOTE: use of CONNECTTIMEOUT without also
+         setting NOSIGNAL results in really weird
+         crashes on my system! */
+      curl_easy_setopt (c, CURLOPT_NOSIGNAL, 1);
+      pthread_testcancel();
+      errornum = curl_easy_perform (c);
+      pthread_cleanup_pop (1);
+      if (CURLE_OK != errornum)
+        return NULL;
+    }
+
+  return NULL;
+}
+
+static void *
+do_gets (void * param)
+{
+  int j;
+  pthread_t par[PAR];
   char url[64];
+  int port = (int)(intptr_t)param;
 
   sprintf(url, "http://127.0.0.1:%d/hello_world", port);
 
-  ret = fork ();
-  if (ret == -1) abort ();
-  if (ret != 0)
-    return ret;
   for (j=0;j<PAR;j++)
     {
-      par[j] = fork ();
-      if (par[j] == 0)
-	{
-	  for (i=0;i<ROUNDS;i++)
-	    {
-	      c = curl_easy_init ();
-	      curl_easy_setopt (c, CURLOPT_URL, url);
-	      curl_easy_setopt (c, CURLOPT_WRITEFUNCTION, &copyBuffer);
-	      curl_easy_setopt (c, CURLOPT_WRITEDATA, NULL);
-	      curl_easy_setopt (c, CURLOPT_FAILONERROR, 1);
-	      curl_easy_setopt (c, CURLOPT_TIMEOUT, 150L);
-	      if (oneone)
-		curl_easy_setopt (c, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-	      else
-		curl_easy_setopt (c, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
-	      curl_easy_setopt (c, CURLOPT_CONNECTTIMEOUT, 150L);
-	      /* NOTE: use of CONNECTTIMEOUT without also
-		 setting NOSIGNAL results in really weird
-		 crashes on my system! */
-	      curl_easy_setopt (c, CURLOPT_NOSIGNAL, 1);
-	      if (CURLE_OK != (errornum = curl_easy_perform (c)))
-		{
-		  curl_easy_cleanup (c);
-		  _exit (1);
-		}
-	      curl_easy_cleanup (c);
-	    }
-	  _exit (0);
-	}
+      if (0 != pthread_create(&par[j], NULL, &thread_gets, (void*)url))
+        {
+          fprintf(stderr, "pthread_create failed.\n");
+          for (j--; j >= 0; j--)
+            {
+              pthread_cancel(par[j]);
+              pthread_join(par[j], NULL);
+            }
+          _exit(99);
+        }
     }
+  sleep (1);
   for (j=0;j<PAR;j++)
-    waitpid (par[j], NULL, 0);
-  _exit (0);
+    {
+      pthread_cancel(par[j]);
+      pthread_join(par[j], NULL);
+    }
+  return NULL;
 }
 
 
-static void
-join_gets (pid_t pid)
+pthread_t start_gets(int port)
 {
-  int status;
-
-  status = 1;
-  waitpid (pid, &status, 0);
-  if (0 != status)
-    abort ();
+  pthread_t tid;
+  if (0 != pthread_create(&tid, NULL, &do_gets, (void*)(intptr_t)port))
+    {
+      fprintf(stderr, "pthread_create failed.\n");
+      _exit(99);
+    }
+  return tid;
 }
 
 
 static int
-testMultithreadedGet (int port, int poll_flag)
+testMultithreadedGet (int port,
+                      int poll_flag)
 {
   struct MHD_Daemon *d;
-  pid_t p;
+  pthread_t p;
 
   d = MHD_start_daemon (MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG  | poll_flag,
-                        port, NULL, NULL, &ahc_echo, "GET", MHD_OPTION_END);
+                        port,
+                        NULL, NULL,
+                        &ahc_echo, "GET",
+                        MHD_OPTION_END);
   if (d == NULL)
     return 16;
-  p = do_gets (port);
+  p = start_gets (port);
   sleep (1);
   MHD_stop_daemon (d);
-  join_gets (p);
+  pthread_join (p, NULL);
   return 0;
 }
 
 
 static int
-testMultithreadedPoolGet (int port, int poll_flag)
+testMultithreadedPoolGet (int port,
+                          int poll_flag)
 {
   struct MHD_Daemon *d;
-  pid_t p;
+  pthread_t p;
 
   d = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG | poll_flag,
                         port,
@@ -197,10 +240,10 @@ testMultithreadedPoolGet (int port, int poll_flag)
                         MHD_OPTION_END);
   if (d == NULL)
     return 16;
-  p = do_gets (port);
+  p = start_gets (port);
   sleep (1);
   MHD_stop_daemon (d);
-  join_gets (p);
+  pthread_join (p, NULL);
   return 0;
 }
 

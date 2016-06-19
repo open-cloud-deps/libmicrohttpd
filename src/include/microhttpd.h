@@ -130,7 +130,7 @@ typedef intptr_t ssize_t;
  * Current version of the library.
  * 0x01093001 = 1.9.30-1.
  */
-#define MHD_VERSION 0x00094400
+#define MHD_VERSION 0x00095000
 
 /**
  * MHD-internal return code for "YES".
@@ -198,47 +198,75 @@ typedef SOCKET MHD_socket;
  */
 #ifdef MHD_NO_DEPRECATION
 #define _MHD_DEPR_MACRO(msg)
+#define _MHD_NO_DEPR_IN_MACRO 1
+#define _MHD_DEPR_IN_MACRO(msg)
+#define _MHD_NO_DEPR_FUNC 1
 #define _MHD_DEPR_FUNC(msg)
 #endif /* MHD_NO_DEPRECATION */
 
 #ifndef _MHD_DEPR_MACRO
 #if defined(_MSC_FULL_VER) && _MSC_VER+0 >= 1500
+/* VS 2008 or later */
 /* Stringify macros */
 #define _MHD_INSTRMACRO(a) #a
 #define _MHD_STRMACRO(a) _MHD_INSTRMACRO(a)
+/* deprecation message */
 #define _MHD_DEPR_MACRO(msg) __pragma(message(__FILE__ "(" _MHD_STRMACRO(__LINE__)"): warning: " msg))
+#define _MHD_DEPR_IN_MACRO(msg) _MHD_DEPR_MACRO(msg)
 #elif defined(__clang__) || defined (__GNUC_PATCHLEVEL__)
+/* clang or GCC since 3.0 */
 #define _MHD_GCC_PRAG(x) _Pragma (#x)
 #if __clang_major__+0 >= 5 || \
   (!defined(__apple_build_version__) && (__clang_major__+0  > 3 || (__clang_major__+0 == 3 && __clang_minor__ >= 3))) || \
   __GNUC__+0 > 4 || (__GNUC__+0 == 4 && __GNUC_MINOR__+0 >= 8)
+/* clang >= 3.3 (or XCode's clang >= 5.0) or
+   GCC >= 4.8 */
 #define _MHD_DEPR_MACRO(msg) _MHD_GCC_PRAG(GCC warning msg)
+#define _MHD_DEPR_IN_MACRO(msg) _MHD_DEPR_MACRO(msg)
 #else /* older clang or GCC */
+/* clang < 3.3, XCode's clang < 5.0, 3.0 <= GCC < 4.8 */
 #define _MHD_DEPR_MACRO(msg) _MHD_GCC_PRAG(message msg)
-#endif
+#if (__clang_major__+0  > 2 || (__clang_major__+0 == 2 && __clang_minor__ >= 9)) /* FIXME: clang >= 2.9, earlier versions not tested */
+/* clang handles inline pragmas better than GCC */
+#define _MHD_DEPR_IN_MACRO(msg) _MHD_DEPR_MACRO(msg)
+#endif /* clang >= 2.9 */
+#endif  /* older clang or GCC */
 /* #elif defined(SOMEMACRO) */ /* add compiler-specific macros here if required */
-#else /* other compilers */
+#endif /* clang || GCC >= 3.0 */
+#endif /* !_MHD_DEPR_MACRO */
+
+#ifndef _MHD_DEPR_MACRO
 #define _MHD_DEPR_MACRO(msg)
-#endif
-#endif /* _MHD_DEPR_MACRO */
+#endif /* !_MHD_DEPR_MACRO */
+
+#ifndef _MHD_DEPR_IN_MACRO
+#define _MHD_NO_DEPR_IN_MACRO 1
+#define _MHD_DEPR_IN_MACRO(msg)
+#endif /* !_MHD_DEPR_IN_MACRO */
 
 #ifndef _MHD_DEPR_FUNC
 #if defined(_MSC_FULL_VER) && _MSC_VER+0 >= 1400
+/* VS 2005 or later */
 #define _MHD_DEPR_FUNC(msg) __declspec(deprecated(msg))
 #elif defined(_MSC_FULL_VER) && _MSC_VER+0 >= 1310
 /* VS .NET 2003 deprecation do not support custom messages */
 #define _MHD_DEPR_FUNC(msg) __declspec(deprecated)
-#elif defined (__clang__) && \
-  (__clang_major__+0 >= 4 || (!defined(__apple_build_version__) && __clang_major__+0 >= 3))
+#elif (__GNUC__+0 >= 5) || (defined (__clang__) && \
+  (__clang_major__+0 > 2 || (__clang_major__+0 == 2 && __clang_minor__ >= 9)))  /* FIXME: earlier versions not tested */
+/* GCC >= 5.0 or clang >= 2.9 */
 #define _MHD_DEPR_FUNC(msg) __attribute__((deprecated(msg)))
 #elif defined (__clang__) || __GNUC__+0 > 3 || (__GNUC__+0 == 3 && __GNUC_MINOR__+0 >= 1)
-/* GCC-style deprecation do not support custom messages */
+/* 3.1 <= GCC < 5.0 or clang < 2.9 */
+/* old GCC-style deprecation do not support custom messages */
 #define _MHD_DEPR_FUNC(msg) __attribute__((__deprecated__))
 /* #elif defined(SOMEMACRO) */ /* add compiler-specific macros here if required */
-#else /* other compilers */
+#endif /* clang < 2.9 || GCC >= 3.1 */
+#endif /* !_MHD_DEPR_FUNC */
+
+#ifndef _MHD_DEPR_FUNC
+#define _MHD_NO_DEPR_FUNC 1
 #define _MHD_DEPR_FUNC(msg)
-#endif
-#endif /* _MHD_DEPR_FUNC */
+#endif /* !_MHD_DEPR_FUNC */
 
 /**
  * Not all architectures and `printf()`'s support the `long long` type.
@@ -305,7 +333,7 @@ _MHD_DEPR_MACRO("Macro MHD_LONG_LONG_PRINTF is deprecated, use MHD_UNSIGNED_LONG
 #define MHD_HTTP_NOT_ACCEPTABLE 406
 /** @deprecated */
 #define MHD_HTTP_METHOD_NOT_ACCEPTABLE \
-  _MHD_DEPR_MACRO("Value MHD_HTTP_METHOD_NOT_ACCEPTABLE is deprecated, use MHD_HTTP_NOT_ACCEPTABLE") 406
+  _MHD_DEPR_IN_MACRO("Value MHD_HTTP_METHOD_NOT_ACCEPTABLE is deprecated, use MHD_HTTP_NOT_ACCEPTABLE") 406
 #define MHD_HTTP_PROXY_AUTHENTICATION_REQUIRED 407
 #define MHD_HTTP_REQUEST_TIMEOUT 408
 #define MHD_HTTP_CONFLICT 409
@@ -346,7 +374,7 @@ _MHD_DEPR_MACRO("Macro MHD_LONG_LONG_PRINTF is deprecated, use MHD_UNSIGNED_LONG
  * If we don't have a string for a status code, we give the first
  * message in that status code class.
  */
-const char *
+_MHD_EXTERN const char *
 MHD_get_reason_phrase_for (unsigned int code);
 
 
@@ -582,7 +610,7 @@ enum MHD_FLAG
    * Use `epoll()` instead of `select()` or `poll()` for the event loop.
    * This option is only available on Linux; using the option on
    * non-Linux systems will cause #MHD_start_daemon to fail.  Using
-   * this option is not supported with MHD_USE_THREAD_PER_CONNECTION.
+   * this option is not supported with #MHD_USE_THREAD_PER_CONNECTION.
    */
   MHD_USE_EPOLL_LINUX_ONLY = 512,
 
@@ -782,7 +810,7 @@ enum MHD_OPTION
   /**
    * Pass a listen socket for MHD to use (systemd-style).  If this
    * option is used, MHD will not open its own listen socket(s). The
-   * argument passed must be of type `int` and refer to an
+   * argument passed must be of type `MHD_socket` and refer to an
    * existing socket that has been bound to a port and is listening.
    */
   MHD_OPTION_LISTEN_SOCKET = 12,
@@ -947,8 +975,15 @@ enum MHD_OPTION
    * pointer to a closure to pass to the request completed callback.
    * The second pointer maybe NULL.
    */
-  MHD_OPTION_NOTIFY_CONNECTION = 27
+  MHD_OPTION_NOTIFY_CONNECTION = 27,
 
+  /**
+   * Allow to change maximum length of the queue of pending connections on
+   * listen socket. If not present than default platform-specific SOMAXCONN
+   * value is used. This option should be followed by an `unsigned int`
+   * argument.
+   */
+  MHD_OPTION_LISTEN_BACKLOG_SIZE = 28
 };
 
 
@@ -1122,6 +1157,11 @@ union MHD_ConnectionInfo
   int /* enum gnutls_protocol */ protocol;
 
   /**
+   * The suspended status of a connection.
+   */
+  int /* MHD_YES or MHD_NO */ suspended;
+
+  /**
    * Connect socket
    */
   MHD_socket connect_fd;
@@ -1220,8 +1260,13 @@ enum MHD_ConnectionInfoType
    * fresh for each HTTP request, while the "socket_context" is fresh
    * for each socket.
    */
-  MHD_CONNECTION_INFO_SOCKET_CONTEXT
+  MHD_CONNECTION_INFO_SOCKET_CONTEXT,
 
+  /**
+   * Check wheter the connection is suspended.
+   * @ingroup request
+   */
+  MHD_CONNECTION_INFO_CONNECTION_SUSPENDED
 };
 
 
@@ -1777,7 +1822,7 @@ MHD_run_from_select (struct MHD_Daemon *daemon,
  * Get all of the headers from the request.
  *
  * @param connection connection to get values from
- * @param kind types of values to iterate over
+ * @param kind types of values to iterate over, can be a bitmask
  * @param iterator callback to call on each header;
  *        maybe NULL (then just count headers)
  * @param iterator_cls extra argument to @a iterator
@@ -1787,7 +1832,8 @@ MHD_run_from_select (struct MHD_Daemon *daemon,
 _MHD_EXTERN int
 MHD_get_connection_values (struct MHD_Connection *connection,
                            enum MHD_ValueKind kind,
-                           MHD_KeyValueIterator iterator, void *iterator_cls);
+                           MHD_KeyValueIterator iterator,
+                           void *iterator_cls);
 
 
 /**
@@ -2133,11 +2179,13 @@ MHD_create_response_from_fd_at_offset (size_t size,
                                        int fd,
                                        off_t offset);
 
+#if !defined(_MHD_NO_DEPR_IN_MACRO) || defined(_MHD_NO_DEPR_FUNC)
 /* Substitute MHD_create_response_from_fd_at_offset64() instead of MHD_create_response_from_fd_at_offset()
-   to minimize possible problems with different off_t options */
+   to minimize potential problems with different off_t sizes */
 #define MHD_create_response_from_fd_at_offset(size,fd,offset) \
-  _MHD_DEPR_MACRO("Usage of MHD_create_response_from_fd_at_offset() is deprecated, use MHD_create_response_from_fd_at_offset64()") \
+  _MHD_DEPR_IN_MACRO("Usage of MHD_create_response_from_fd_at_offset() is deprecated, use MHD_create_response_from_fd_at_offset64()") \
   MHD_create_response_from_fd_at_offset64((size),(fd),(offset))
+#endif /* !_MHD_NO_DEPR_IN_MACRO || _MHD_NO_DEPR_FUNC */
 
 
 /**

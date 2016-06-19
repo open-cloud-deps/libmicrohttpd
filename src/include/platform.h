@@ -34,7 +34,10 @@
 #ifndef MHD_PLATFORM_H
 #define MHD_PLATFORM_H
 
+#ifndef HAVE_USED_MHD_CONFIG_H
+#define HAVE_USED_MHD_CONFIG_H
 #include "MHD_config.h"
+#endif
 
 #ifndef BUILDING_MHD_LIB
 #ifdef _MHD_EXTERN
@@ -43,7 +46,7 @@
 #if defined(_WIN32) && defined(MHD_W32LIB)
 #define _MHD_EXTERN extern
 #elif defined (_WIN32) && defined(MHD_W32DLL)
-#define _MHD_EXTERN __declspec(dllimport) 
+#define _MHD_EXTERN __declspec(dllimport)
 #else
 #define _MHD_EXTERN extern
 #endif
@@ -51,11 +54,27 @@
 #if defined(_WIN32) && defined(MHD_W32LIB)
 #define _MHD_EXTERN extern
 #elif defined (_WIN32) && defined(MHD_W32DLL)
-#define _MHD_EXTERN extern __declspec(dllexport) 
+#define _MHD_EXTERN extern __declspec(dllexport)
 #else
 #define _MHD_EXTERN extern
 #endif
 #endif /* BUILDING_MHD_LIB */
+
+
+#ifdef FD_SETSIZE
+/* FD_SETSIZE defined in command line or in MHD_config.h */
+/* Some platforms (FreeBSD, Solaris, W32) allow to override
+   default FD_SETSIZE by defining it before including
+   headers. */
+#define _MHD_SYS_DEFAULT_FD_SETSIZE get_system_fdsetsize_value()
+#elif defined(_WIN32) && !defined(__CYGWIN__)
+/* Platform with WinSock and without overridden FD_SETSIZE */
+#define FD_SETSIZE 2048 /* Override default small value */
+#define _MHD_SYS_DEFAULT_FD_SETSIZE get_system_fdsetsize_value()
+#else /* !FD_SETSIZE && !WinSock*/
+#define _MHD_SYS_DEFAULT_FD_SETSIZE FD_SETSIZE
+#define _MHD_FD_SETSIZE_IS_DEFAULT 1
+#endif /* FD_SETSIZE */
 
 #define _XOPEN_SOURCE_EXTENDED  1
 #if OS390
@@ -81,6 +100,9 @@
 #if LINUX+0 && (defined(HAVE_SENDFILE64) || defined(HAVE_LSEEK64)) && ! defined(_LARGEFILE64_SOURCE)
 #define _LARGEFILE64_SOURCE 1
 #endif
+#ifdef HAVE_C11_GMTIME_S
+#define __STDC_WANT_LIB_EXT1__ 1
+#endif /* HAVE_C11_GMTIME_S */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -151,6 +173,10 @@
 #include <arpa/inet.h>
 #endif
 
+#if defined(__CYGWIN__) && !defined(_SYS_TYPES_FD_SET)
+/* Do not define __USE_W32_SOCKETS under Cygwin! */
+#error Cygwin with winsock fd_set is not supported
+#endif
 
 #if defined(_WIN32) && !defined(__CYGWIN__)
 #include <ws2tcpip.h>
@@ -172,22 +198,32 @@
 #define _SSIZE_T_DEFINED
 typedef intptr_t ssize_t;
 #endif /* !_SSIZE_T_DEFINED */
+
 #ifndef MHD_SOCKET_DEFINED
 /**
  * MHD_socket is type for socket FDs
  */
-#if !defined(_WIN32) || defined(_SYS_TYPES_FD_SET)
+#if !defined(_WIN32) || defined(__CYGWIN__)
 #define MHD_POSIX_SOCKETS 1
 typedef int MHD_socket;
 #define MHD_INVALID_SOCKET (-1)
-#else /* !defined(_WIN32) || defined(_SYS_TYPES_FD_SET) */
+#else  /* defined(_WIN32) && !defined(__CYGWIN__) */
 #define MHD_WINSOCK_SOCKETS 1
 #include <winsock2.h>
 typedef SOCKET MHD_socket;
 #define MHD_INVALID_SOCKET (INVALID_SOCKET)
-#endif /* !defined(_WIN32) || defined(_SYS_TYPES_FD_SET) */
+#endif /* defined(_WIN32) && !defined(__CYGWIN__) */
 #define MHD_SOCKET_DEFINED 1
 #endif /* MHD_SOCKET_DEFINED */
+
+/**
+ * _MHD_SOCKOPT_BOOL_TYPE is type for bool parameters for setsockopt()/getsockopt()
+ */
+#ifdef MHD_POSIX_SOCKETS
+typedef int _MHD_SOCKOPT_BOOL_TYPE;
+#else /* MHD_WINSOCK_SOCKETS */
+typedef BOOL _MHD_SOCKOPT_BOOL_TYPE;
+#endif /* MHD_WINSOCK_SOCKETS */
 
 #ifndef _WIN32
 typedef time_t _MHD_TIMEVAL_TV_SEC_TYPE;

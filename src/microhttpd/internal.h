@@ -85,7 +85,7 @@ extern void *mhd_panic_cls;
 #endif
 
 
-#if HAVE_MESSAGES
+#ifdef HAVE_MESSAGES
 /**
  * Trigger 'panic' action based on fatal errors.
  *
@@ -109,19 +109,19 @@ enum MHD_EpollState
   {
 
     /**
-     * The socket is not involved with a defined state in epoll right
+     * The socket is not involved with a defined state in epoll() right
      * now.
      */
     MHD_EPOLL_STATE_UNREADY = 0,
 
     /**
-     * epoll told us that data was ready for reading, and we did
+     * epoll() told us that data was ready for reading, and we did
      * not consume all of it yet.
      */
     MHD_EPOLL_STATE_READ_READY = 1,
 
     /**
-     * epoll told us that space was available for writing, and we did
+     * epoll() told us that space was available for writing, and we did
      * not consume all of it yet.
      */
     MHD_EPOLL_STATE_WRITE_READY = 2,
@@ -132,7 +132,7 @@ enum MHD_EpollState
     MHD_EPOLL_STATE_IN_EREADY_EDLL = 4,
 
     /**
-     * Is this connection currently in the 'epoll' set?
+     * Is this connection currently in the epoll() set?
      */
     MHD_EPOLL_STATE_IN_EPOLL_SET = 8,
 
@@ -190,7 +190,7 @@ struct MHD_NonceNc
    * Nonce counter, a value that increases for each subsequent
    * request for the same nonce.
    */
-  unsigned long int nc;
+  uint64_t nc;
 
   /**
    * Nonce value:
@@ -199,9 +199,9 @@ struct MHD_NonceNc
 
 };
 
-#if HAVE_MESSAGES
+#ifdef HAVE_MESSAGES
 /**
- * fprintf-like helper function for logging debug
+ * fprintf()-like helper function for logging debug
  * messages.
  */
 void
@@ -311,8 +311,8 @@ struct MHD_Response
   size_t data_buffer_size;
 
   /**
-   * Reference count for this response.  Free
-   * once the counter hits zero.
+   * Reference count for this response.  Free once the counter hits
+   * zero.
    */
   unsigned int reference_count;
 
@@ -332,16 +332,17 @@ struct MHD_Response
 /**
  * States in a state machine for a connection.
  *
- * Transitions are any-state to CLOSED, any state to state+1,
- * FOOTERS_SENT to INIT.  CLOSED is the terminal state and
- * INIT the initial state.
+ * The main transitions are any-state to #MHD_CONNECTION_CLOSED, any
+ * state to state+1, #MHD_CONNECTION_FOOTERS_SENT to
+ * #MHD_CONNECTION_INIT.  #MHD_CONNECTION_CLOSED is the terminal state
+ * and #MHD_CONNECTION_INIT the initial state.
  *
- * Note that transitions for *reading* happen only after
- * the input has been processed; transitions for
- * *writing* happen after the respective data has been
- * put into the write buffer (the write does not have
- * to be completed yet).  A transition to CLOSED or INIT
- * requires the write to be complete.
+ * Note that transitions for *reading* happen only after the input has
+ * been processed; transitions for *writing* happen after the
+ * respective data has been put into the write buffer (the write does
+ * not have to be completed yet).  A transition to
+ * #MHD_CONNECTION_CLOSED or #MHD_CONNECTION_INIT requires the write
+ * to be complete.
  */
 enum MHD_CONNECTION_STATE
 {
@@ -462,7 +463,7 @@ enum MHD_CONNECTION_STATE
   /**
    * The initial connection state for all secure connectoins
    * Handshake messages will be processed in this state & while
-   * in the 'MHD_TLS_HELLO_REQUEST' state
+   * in the #MHD_TLS_HELLO_REQUEST state
    */
   MHD_TLS_CONNECTION_INIT = MHD_CONNECTION_IN_CLEANUP + 1
 
@@ -474,7 +475,7 @@ enum MHD_CONNECTION_STATE
 #define DEBUG_STATES MHD_NO
 
 
-#if HAVE_MESSAGES
+#ifdef HAVE_MESSAGES
 #if DEBUG_STATES
 const char *
 MHD_state_to_string (enum MHD_CONNECTION_STATE state);
@@ -487,7 +488,7 @@ MHD_state_to_string (enum MHD_CONNECTION_STATE state);
  * @param conn the connection struct
  * @param write_to where to write received data
  * @param max_bytes maximum number of bytes to receive
- * @return number of bytes written to write_to
+ * @return number of bytes written to @a write_to
  */
 typedef ssize_t
 (*ReceiveCallback) (struct MHD_Connection *conn,
@@ -662,7 +663,7 @@ struct MHD_Connection
   MHD_thread_handle_ pid;
 
   /**
-   * Size of read_buffer (in bytes).  This value indicates
+   * Size of @e read_buffer (in bytes).  This value indicates
    * how many bytes we're willing to read into the buffer;
    * the real buffer is one byte longer to allow for
    * adding zero-termination (when needed).
@@ -671,12 +672,12 @@ struct MHD_Connection
 
   /**
    * Position where we currently append data in
-   * read_buffer (last valid position).
+   * @e read_buffer (last valid position).
    */
   size_t read_buffer_offset;
 
   /**
-   * Size of write_buffer (in bytes).
+   * Size of @e write_buffer (in bytes).
    */
   size_t write_buffer_size;
 
@@ -728,8 +729,8 @@ struct MHD_Connection
   unsigned int connection_timeout;
 
   /**
-   * Did we ever call the "default_handler" on this connection?
-   * (this flag will determine if we call the 'notify_completed'
+   * Did we ever call the "default_handler" on this connection?  (this
+   * flag will determine if we call the #MHD_OPTION_NOTIFY_COMPLETED
    * handler when the connection closes down).
    */
   int client_aware;
@@ -755,7 +756,8 @@ struct MHD_Connection
   int thread_joined;
 
   /**
-   * Are we currently inside the "idle" handler (to avoid recursively invoking it).
+   * Are we currently inside the "idle" handler (to avoid recursively
+   * invoking it).
    */
   int in_idle;
 
@@ -783,7 +785,7 @@ struct MHD_Connection
   unsigned int responseCode;
 
   /**
-   * Set to MHD_YES if the response's content reader
+   * Set to #MHD_YES if the response's content reader
    * callback failed to provide data the last time
    * we tried to read from it.  In that case, the
    * write socket should be marked as unready until
@@ -793,10 +795,10 @@ struct MHD_Connection
 
   /**
    * Are we receiving with chunked encoding?  This will be set to
-   * MHD_YES after we parse the headers and are processing the body
+   * #MHD_YES after we parse the headers and are processing the body
    * with chunks.  After we are done with the body and we are
    * processing the footers; once the footers are also done, this will
-   * be set to MHD_NO again (before the final call to the handler).
+   * be set to #MHD_NO again (before the final call to the handler).
    */
   int have_chunked_upload;
 
@@ -882,8 +884,8 @@ struct MHD_Connection
  * @return new closure
  */
 typedef void *
-(*LogCallback)(void * cls,
-               const char * uri,
+(*LogCallback)(void *cls,
+               const char *uri,
                struct MHD_Connection *con);
 
 /**
@@ -972,14 +974,17 @@ struct MHD_Daemon
    * moved back to the tail of the list.
    *
    * All connections by default start in this list; if a custom
-   * timeout that does not match 'connection_timeout' is set, they
-   * are moved to the 'manual_timeout_head'-XDLL.
+   * timeout that does not match @e connection_timeout is set, they
+   * are moved to the @e manual_timeout_head-XDLL.
+   * Not used in MHD_USE_THREAD_PER_CONNECTION mode as each thread
+   * needs only one connection-specific timeout.
    */
   struct MHD_Connection *normal_timeout_head;
 
   /**
    * Tail of the XDLL of ALL connections with a default timeout,
    * sorted by timeout (earliest timeout at the tail).
+   * Not used in MHD_USE_THREAD_PER_CONNECTION mode.
    */
   struct MHD_Connection *normal_timeout_tail;
 
@@ -987,12 +992,14 @@ struct MHD_Daemon
    * Head of the XDLL of ALL connections with a non-default/custom
    * timeout, unsorted.  MHD will do a O(n) scan over this list to
    * determine the current timeout.
+   * Not used in MHD_USE_THREAD_PER_CONNECTION mode.
    */
   struct MHD_Connection *manual_timeout_head;
 
   /**
    * Tail of the XDLL of ALL connections with a non-default/custom
    * timeout, unsorted.
+   * Not used in MHD_USE_THREAD_PER_CONNECTION mode.
    */
   struct MHD_Connection *manual_timeout_tail;
 
@@ -1014,7 +1021,7 @@ struct MHD_Daemon
   MHD_RequestCompletedCallback notify_completed;
 
   /**
-   * Closure argument to notify_completed.
+   * Closure argument to @e notify_completed.
    */
   void *notify_completed_cls;
 
@@ -1025,7 +1032,7 @@ struct MHD_Daemon
   MHD_NotifyConnectionCallback notify_connection;
 
   /**
-   * Closure argument to notify_connection.
+   * Closure argument to @e notify_connection.
    */
   void *notify_connection_cls;
 
@@ -1053,7 +1060,7 @@ struct MHD_Daemon
    */
   void *unescape_callback_cls;
 
-#if HAVE_MESSAGES
+#ifdef HAVE_MESSAGES
   /**
    * Function for logging error messages (if we
    * support error reporting).
@@ -1061,7 +1068,7 @@ struct MHD_Daemon
   void (*custom_error_log) (void *cls, const char *fmt, va_list va);
 
   /**
-   * Closure argument to custom_error_log.
+   * Closure argument to @e custom_error_log.
    */
   void *custom_error_log_cls;
 #endif
@@ -1156,6 +1163,15 @@ struct MHD_Daemon
    * Are we shutting down?
    */
   int shutdown;
+
+  /**
+   * Did we hit some system or process-wide resource limit while
+   * trying to accept() the last time? If so, we don't accept new
+   * connections until we close an existing one.  This effectively
+   * temporarily lowers the "connection_limit" to the current
+   * number of connections.
+   */
+  int at_limit;
 
   /*
    * Do we need to process resuming connections?
@@ -1299,6 +1315,11 @@ struct MHD_Daemon
    */
   unsigned int fastopen_queue_size;
 #endif
+
+  /**
+   * The size of queue for listen socket.
+   */
+  unsigned int listen_backlog_size;
 };
 
 
@@ -1439,12 +1460,52 @@ struct MHD_Daemon
 
 
 /**
- * Convert all occurences of '+' to ' '.
+ * Convert all occurrences of '+' to ' '.
  *
  * @param arg string that is modified (in place), must be 0-terminated
  */
 void
 MHD_unescape_plus (char *arg);
+
+
+/**
+ * Callback invoked when iterating over @a key / @a value
+ * argument pairs during parsing.
+ *
+ * @param connection context of the iteration
+ * @param key 0-terminated key string, never NULL
+ * @param value 0-terminated value string, may be NULL
+ * @param kind origin of the key-value pair
+ * @return #MHD_YES on success (continue to iterate)
+ *         #MHD_NO to signal failure (and abort iteration)
+ */
+typedef int
+(*MHD_ArgumentIterator_)(struct MHD_Connection *connection,
+			 const char *key,
+			 const char *value,
+			 enum MHD_ValueKind kind);
+
+
+/**
+ * Parse and unescape the arguments given by the client
+ * as part of the HTTP request URI.
+ *
+ * @param kind header kind to pass to @a cb
+ * @param connection connection to add headers to
+ * @param[in|out] args argument URI string (after "?" in URI),
+ *        clobbered in the process!
+ * @param cb function to call on each key-value pair found
+ * @param[out] num_headers set to the number of headers found
+ * @return #MHD_NO on failure (@a cb returned #MHD_NO),
+ *         #MHD_YES for success (parsing succeeded, @a cb always
+ *                               returned #MHD_YES)
+ */
+int
+MHD_parse_arguments_ (struct MHD_Connection *connection,
+		      enum MHD_ValueKind kind,
+		      char *args,
+		      MHD_ArgumentIterator_ cb,
+		      unsigned int *num_headers);
 
 
 #endif
