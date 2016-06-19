@@ -1,3 +1,29 @@
+libmicrohttpd (0.9.50-1) experimental; urgency=medium
+
+  * Imported Upstream version 0.9.50 (Closes: #813636).
+  * Stop building libmicrospdy, since upstream removed it:
+    + debian/control: remove libmicrospdy binary packages and remove
+      build-dependency on libssl-dev and zlib1g-dev.
+    + debian/copyright: remove src/microspdy/* files, the GPL3+ paragraph,
+      and the Files-excluded field.
+    + remove debian/libmicrospdy-dev.install, debian/libmicrospdy0.install and
+      debian/libmicrospdy0.symbols.
+    + debian/rules: remove libmicrospdy-dbg from dh_strip.
+  * Change soname version to libmicrohttpd12:
+    + debian/control: update the binary package name.
+    + rename debian/libmicrohttpd10.install.
+    + rename and update debian/libmicrohttpd10.symbols.
+    + debian/rules: strip libmicrohttpd12.
+  * Migrate from a manual "-dbg" package to an automatic generated debug symbol
+    package:
+    + debian/control: remove libmicrohttpd-dbg.
+    + debian/rules: use --dbgsym-migration in override_dh_strip.
+  * Standards version 3.9.8: no changes needed.
+  * debian/control: use secure URIs in vcs-fields.
+  * Build-depend on libcurl4-gnutls-dev, socat and zzuf to enable more tests.
+
+ -- Bertrand Marc <beberking@gmail.com>  Sun, 19 Jun 2016 16:27:47 +0200
+
 libmicrohttpd (0.9.44+dfsg-1) unstable; urgency=medium
 
   * Imported Upstream version 0.9.44+dfsg
