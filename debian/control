@@ -3,7 +3,8 @@ Section: libs
 Priority: optional
 Maintainer: Bertrand Marc <beberking@gmail.com>
 Build-Depends: debhelper (>= 9), autoconf, automake, dh-autoreconf,
- libgcrypt-dev, libgnutls28-dev, texinfo, pkg-config
+ libcurl4-gnutls-dev, libgcrypt-dev, libgnutls28-dev, texinfo, pkg-config,
+ socat, zzuf
 Standards-Version: 3.9.8
 Vcs-Git: https://anonscm.debian.org/git/collab-maint/libmicrohttpd.git
 Vcs-browser: https://anonscm.debian.org/git/collab-maint/libmicrohttpd.git
