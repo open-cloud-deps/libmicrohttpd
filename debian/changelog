@@ -1,3 +1,9 @@
+libmicrohttpd (0.9.50-2) unstable; urgency=medium
+
+  * Upload to unstable.
+
+ -- Bertrand Marc <beberking@gmail.com>  Sat, 23 Jul 2016 15:28:52 +0200
+
 libmicrohttpd (0.9.50-1) experimental; urgency=medium
 
   * Imported Upstream version 0.9.50 (Closes: #813636).
