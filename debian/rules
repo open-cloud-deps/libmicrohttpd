@@ -31,5 +31,5 @@ override_dh_install:
 override_dh_usrlocal:
 
 override_dh_strip:
-	dh_strip -plibmicrohttpd10 --dbg-package=libmicrohttpd-dbg
-	dh_strip -plibmicrospdy0 --dbg-package=libmicrospdy-dbg
+	dh_strip -plibmicrohttpd10 --dbg-package=libmicrohttpd-dbg-bp
+	dh_strip -plibmicrospdy0 --dbg-package=libmicrospdy-dbg-bp
