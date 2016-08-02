@@ -1,3 +1,9 @@
+libmicrohttpd-bp (0.9.44+syndicate-1) unstable; urgency=medium
+
+  * changed to install in /usr/local/bin
+
+ -- Zack Williams <zdw@cs.arizona.edu>  Tue, 02 Aug 2016 11:56:17 -0700
+
 libmicrohttpd (0.9.44+dfsg-1) unstable; urgency=medium
 
   * Imported Upstream version 0.9.44+dfsg

@@ -1,2 +1,2 @@
 Tests: build
-Depends: build-essential, pkg-config, libmicrohttpd-dev
+Depends: build-essential, pkg-config, libmicrohttpd-dev-bp

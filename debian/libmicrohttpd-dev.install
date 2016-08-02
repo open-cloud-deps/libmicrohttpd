@@ -1,6 +1,0 @@
-usr/include/microhttpd.h
-usr/lib/*/libmicrohttpd.a
-usr/lib/*/libmicrohttpd.so
-usr/lib/*/pkgconfig/libmicrohttpd.pc
-usr/share/info
-usr/share/man

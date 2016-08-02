@@ -1,0 +1,4 @@
+usr/local/include/microspdy.h
+usr/local/lib/*/libmicrospdy.a
+usr/local/lib/*/libmicrospdy.so
+usr/local/lib/*/pkgconfig/libmicrospdy.pc

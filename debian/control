@@ -9,7 +9,7 @@ Vcs-Git: git://anonscm.debian.org/collab-maint/libmicrohttpd.git
 Vcs-browser: http://anonscm.debian.org/gitweb/?p=collab-maint/libmicrohttpd.git
 Homepage: http://www.gnu.org/software/libmicrohttpd/
 
-Package: libmicrohttpd10
+Package: libmicrohttpd10-bp
 Architecture: any
 Pre-Depends: ${misc:Pre-Depends}
 Depends: ${misc:Depends}, ${shlibs:Depends}
@@ -28,13 +28,13 @@ Description: library embedding HTTP server functionality
   * Support for basic and digest authentication (optional)
   * Support for SSL3 and TLS
 
-Package: libmicrohttpd-dbg
+Package: libmicrohttpd-dbg-bp
 Section: debug
 Priority: extra
 Architecture: any
 Depends:
- ${misc:Depends}, libmicrohttpd10 (= ${binary:Version}),
- libmicrohttpd-dev (= ${binary:Version})
+ ${misc:Depends}, libmicrohttpd10-bp (= ${binary:Version}),
+ libmicrohttpd-dev-bp (= ${binary:Version})
 Description: library embedding HTTP server functionality (debug)
  GNU libmicrohttpd is a small C library that is supposed to make it easy to run
  an HTTP server as part of another application. Key features that distinguish
@@ -52,11 +52,11 @@ Description: library embedding HTTP server functionality (debug)
  .
  This package contains the debugging symbols.
 
-Package: libmicrohttpd-dev
+Package: libmicrohttpd-dev-bp
 Section: libdevel
 Architecture: any
 Depends:
- ${misc:Depends}, libmicrohttpd10 (= ${binary:Version}), libgnutls28-dev,
+ ${misc:Depends}, libmicrohttpd10-bp (= ${binary:Version}), libgnutls28-dev,
  libgcrypt-dev
 Description: library embedding HTTP server functionality (development)
  GNU libmicrohttpd is a small C library that is supposed to make it easy to run
@@ -75,7 +75,7 @@ Description: library embedding HTTP server functionality (development)
  .
  This package contains the development files.
  
-Package: libmicrospdy0
+Package: libmicrospdy0-bp
 Architecture: any
 Pre-Depends: ${misc:Pre-Depends}
 Depends: ${misc:Depends}, ${shlibs:Depends}
@@ -85,7 +85,7 @@ Description: library embedding SPDY server functionality
  implementation of SPDY server. libmicrospdy currently only implements partially
  version 3 of SPDY.
 
-Package: libmicrospdy-dbg
+Package: libmicrospdy-dbg-bp
 Section: debug
 Priority: extra
 Architecture: any
@@ -100,13 +100,13 @@ Description: library embedding SPDY server functionality (debug)
  .
  This package contains the debugging symbols.
 
-Package: libmicrospdy-dev
+Package: libmicrospdy-dev-bp
 Section: libdevel
 Architecture: any
 Depends:
- ${misc:Depends}, libmicrospdy0 (= ${binary:Version}), libssl-dev
-Replaces: libmicrohttpd-dev (<< 0.9.42~)
-Breaks: libmicrohttpd-dev (<< 0.9.42~)
+ ${misc:Depends}, libmicrospdy0-bp (= ${binary:Version}), libssl-dev
+Replaces: libmicrohttpd-dev-bp (<< 0.9.42~)
+Breaks: libmicrohttpd-dev-bp (<< 0.9.42~)
 Description: library embedding SPDY server functionality (development)
  GNU libmicrospdy is a small C very experimental library embedding a SPDY
  server (the base for HTTP 2.0). libmicrospdy provides a compact API and
