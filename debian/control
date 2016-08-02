@@ -1,4 +1,4 @@
-Source: libmicrohttpd
+Source: libmicrohttpd-bp
 Section: libs
 Priority: optional
 Maintainer: Bertrand Marc <beberking@gmail.com>
