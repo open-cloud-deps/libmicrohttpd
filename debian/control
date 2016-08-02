@@ -3,7 +3,7 @@ Section: libs
 Priority: optional
 Maintainer: Bertrand Marc <beberking@gmail.com>
 Build-Depends: debhelper (>= 9), autoconf, automake, dh-autoreconf,
- libgcrypt-dev, libgnutls28-dev, libssl-dev, texinfo, pkg-config, zlib1g-dev
+ libgcrypt-dev, gnutls-dev, libssl-dev, texinfo, pkg-config, zlib1g-dev
 Standards-Version: 3.9.5
 Vcs-Git: git://anonscm.debian.org/collab-maint/libmicrohttpd.git
 Vcs-browser: http://anonscm.debian.org/gitweb/?p=collab-maint/libmicrohttpd.git
@@ -56,7 +56,7 @@ Package: libmicrohttpd-dev-bp
 Section: libdevel
 Architecture: any
 Depends:
- ${misc:Depends}, libmicrohttpd10-bp (= ${binary:Version}), libgnutls28-dev,
+ ${misc:Depends}, libmicrohttpd10-bp (= ${binary:Version}), gnutls-dev,
  libgcrypt-dev
 Description: library embedding HTTP server functionality (development)
  GNU libmicrohttpd is a small C library that is supposed to make it easy to run
