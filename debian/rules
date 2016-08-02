@@ -28,6 +28,8 @@ override_dh_auto_test:
 override_dh_install:
 	dh_install --fail-missing
 
+override_dh_usrlocal:
+
 override_dh_strip:
 	dh_strip -plibmicrohttpd10 --dbg-package=libmicrohttpd-dbg
 	dh_strip -plibmicrospdy0 --dbg-package=libmicrospdy-dbg
